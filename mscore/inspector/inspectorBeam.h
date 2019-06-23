@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -24,17 +23,16 @@ namespace Ms {
 //   InspectorBeam
 //---------------------------------------------------------
 
-class InspectorBeam : public InspectorBase {
+class InspectorBeam : public InspectorElementBase {
       Q_OBJECT
 
-      UiInspectorElement e;
       Ui::InspectorBeam b;
 
    protected slots:
-      virtual void valueChanged(int idx);
+      virtual void valueChanged(int idx) override;
 
    protected:
-      virtual void setValue(const InspectorItem&, const QVariant& val);
+      virtual void setValue(const InspectorItem&, QVariant val) override;
 
    public:
       InspectorBeam(QWidget* parent);

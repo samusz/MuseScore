@@ -1,7 +1,7 @@
+
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: newwizard.cpp 5626 2012-05-13 18:33:52Z lasconic $
 //
 //  Copyright (C) 2008 Werner Schweer and others
 //
@@ -23,6 +23,8 @@
 #include "preferences.h"
 #include "palette.h"
 #include "instrdialog.h"
+#include "templateBrowser.h"
+#include "extension.h"
 
 #include "libmscore/instrtemplate.h"
 #include "libmscore/score.h"
@@ -52,6 +54,7 @@ TimesigWizard::TimesigWizard(QWidget* parent)
       connect(tsCommonTime, SIGNAL(toggled(bool)), SLOT(commonTimeToggled(bool)));
       connect(tsCutTime,    SIGNAL(toggled(bool)), SLOT(cutTimeToggled(bool)));
       connect(tsFraction,   SIGNAL(toggled(bool)), SLOT(fractionToggled(bool)));
+      pickupMeasure->setChecked(false); // checked in the UI file to enable screen reader on pickup duration controls
       }
 
 //---------------------------------------------------------
@@ -152,21 +155,19 @@ TitleWizard::TitleWizard(QWidget* parent)
       }
 
 //---------------------------------------------------------
-//   NewWizardPage1
+//   NewWizardInfoPage
 //---------------------------------------------------------
 
-NewWizardPage1::NewWizardPage1(QWidget* parent)
+NewWizardInfoPage::NewWizardInfoPage(QWidget* parent)
    : QWizardPage(parent)
       {
       setTitle(tr("Create New Score"));
-      setSubTitle(tr("This wizard creates a new score"));
-      //crash setAccessibleName(title());
-      setAccessibleName(tr("Create New Score"));
-      setAccessibleDescription(subTitle());
+      setSubTitle(tr("Enter score information:"));
+      setAccessibleName(QWizardPage::title());
+      setAccessibleDescription(QWizardPage::subTitle());
 
       w = new TitleWizard;
 
-      registerField("useTemplate", w->rb1, "checked");
       QGridLayout* grid = new QGridLayout;
       grid->addWidget(w, 0, 0);
       setLayout(grid);
@@ -176,74 +177,81 @@ NewWizardPage1::NewWizardPage1(QWidget* parent)
 //   initializePage
 //---------------------------------------------------------
 
-void NewWizardPage1::initializePage()
+void NewWizardInfoPage::initializePage()
       {
       w->title->setText("");
       w->subtitle->setText("");
-      // w->composer->text();
-      // w->poet->text();
-      // w->copyright->text();
       }
 
 //---------------------------------------------------------
-//   NewWizardPage2
+//   NewWizardInstrumentsPage
 //---------------------------------------------------------
 
-NewWizardPage2::NewWizardPage2(QWidget* parent)
+NewWizardInstrumentsPage::NewWizardInstrumentsPage(QWidget* parent)
    : QWizardPage(parent)
       {
+      setFinalPage(true);
       setTitle(tr("Create New Score"));
-      setSubTitle(tr("Define a set of instruments. Each instrument"
-                     " is represented by one or more staves"));
+      setSubTitle(tr("Choose instruments on the left to add to instrument list on the right:"));
       setAccessibleName(title());
       setAccessibleDescription(subTitle());
-      complete = false;
-      w = new InstrumentsWidget;
+      instrumentsWidget = new InstrumentsWidget;
       QGridLayout* grid = new QGridLayout;
       grid->setSpacing(0);
       grid->setContentsMargins(0, 0, 0, 0);
-      grid->addWidget(w, 0, 0);
+      grid->addWidget(instrumentsWidget, 0, 0);
       setLayout(grid);
-      connect(w, SIGNAL(completeChanged(bool)), this, SLOT(setComplete(bool)));
+      connect(instrumentsWidget, SIGNAL(completeChanged(bool)), SLOT(setComplete(bool)));
       }
 
 //---------------------------------------------------------
 //   initializePage
 //---------------------------------------------------------
 
-void NewWizardPage2::initializePage()
+void NewWizardInstrumentsPage::initializePage()
       {
-      w->init();
+      complete = false;
+      instrumentsWidget->init();
       }
 
 //---------------------------------------------------------
 //   setComplete
 //---------------------------------------------------------
 
-void NewWizardPage2::setComplete(bool val)
+void NewWizardInstrumentsPage::setComplete(bool val)
       {
       complete = val;
       emit completeChanged();
       }
 
 //---------------------------------------------------------
-//   createInstruments
+//   isComplete
 //---------------------------------------------------------
 
-void NewWizardPage2::createInstruments(Score* s)
+bool NewWizardInstrumentsPage::isComplete() const
       {
-      w->createInstruments(s);
+      return complete;
       }
 
 //---------------------------------------------------------
-//   NewWizardPage3
+//   createInstruments
 //---------------------------------------------------------
 
-NewWizardPage3::NewWizardPage3(QWidget* parent)
+void NewWizardInstrumentsPage::createInstruments(Score* s)
+      {
+      instrumentsWidget->createInstruments(s);
+      }
+
+//---------------------------------------------------------
+//   NewWizardTimesigPage
+//---------------------------------------------------------
+
+NewWizardTimesigPage::NewWizardTimesigPage(QWidget* parent)
    : QWizardPage(parent)
       {
+      setFinalPage(true);
       setTitle(tr("Create New Score"));
-      setSubTitle(tr("Create Time Signature"));
+      setSubTitle(tr("Choose time signature:"));
       setAccessibleName(title());
       setAccessibleDescription(subTitle());
 
@@ -254,77 +262,69 @@ NewWizardPage3::NewWizardPage3(QWidget* parent)
       }
 
 //---------------------------------------------------------
-//   NewWizardPage4
+//   NewWizardTemplatePage
 //---------------------------------------------------------
 
-NewWizardPage4::NewWizardPage4(QWidget* parent)
+NewWizardTemplatePage::NewWizardTemplatePage(QWidget* parent)
    : QWizardPage(parent)
       {
+      setFinalPage(true);
       setTitle(tr("Create New Score"));
-      setSubTitle(tr("Select Template File:"));
+      setSubTitle(tr("Choose template file:"));
       setAccessibleName(title());
       setAccessibleDescription(subTitle());
 
-      templateFileDialog = new QFileDialog;
-      templateFileDialog->setParent(this);
-      templateFileDialog->setModal(false);
-      templateFileDialog->setSizeGripEnabled(false);
-      templateFileDialog->setFileMode(QFileDialog::ExistingFile);
-      templateFileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-      templateFileDialog->setWindowTitle(tr("MuseScore: Select Template"));
-      QString filter = tr("MuseScore Template Files (*.mscz *.mscx)");
-      templateFileDialog->setNameFilter(filter);
-      templateFileDialog->setSizePolicy(QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored));
+      templateFileBrowser = new TemplateBrowser(this);
+      templateFileBrowser->setStripNumbers(true);
 
-      QFileInfo myTemplates(preferences.myTemplatesPath);
-      if (myTemplates.isRelative())
-            myTemplates.setFile(QDir::home(), preferences.myTemplatesPath);
-      QList<QUrl> urls;
-      urls.append(QUrl::fromLocalFile(mscoreGlobalShare + "templates"));
-      urls.append(QUrl::fromLocalFile(myTemplates.absoluteFilePath()));
-      templateFileDialog->setSidebarUrls(urls);
-
-      QSettings settings;
-      templateFileDialog->restoreState(settings.value("templateFileDialog").toByteArray());
-      templateFileDialog->setAcceptMode(QFileDialog::AcceptOpen);
-      templateFileDialog->setDirectory(mscoreGlobalShare + "templates");
-
-      QLayout* layout = new QVBoxLayout;
-      layout->addWidget(templateFileDialog);
+      QVBoxLayout* layout = new QVBoxLayout;
+      layout->addWidget(templateFileBrowser);
       setLayout(layout);
 
-      connect(templateFileDialog, SIGNAL(currentChanged(const QString&)), SLOT(templateChanged(const QString&)));
-      connect(templateFileDialog, SIGNAL(accepted()), SLOT(fileAccepted()));
+      connect(templateFileBrowser, SIGNAL(scoreSelected(const QString&)), SLOT(templateChanged(const QString&)));
+      connect(templateFileBrowser, SIGNAL(scoreActivated(const QString&)), SLOT(fileAccepted(const QString&)));
+      buildTemplatesList();
       }
 
 //---------------------------------------------------------
 //   initializePage
 //---------------------------------------------------------
 
-void NewWizardPage4::initializePage()
+void NewWizardTemplatePage::initializePage()
       {
-      // modify dialog
-      // possibly this is not portable as we make some assumptions on the
-      // implementation of QFileDialog
 
-      templateFileDialog->show();
-      QList<QPushButton*>widgets = templateFileDialog->findChildren<QPushButton*>();
-      foreach(QPushButton* w, widgets) {
-            w->setEnabled(false);
-            w->setVisible(false);
+      }
+
+//---------------------------------------------------------
+//   buildTemplatesList
+//---------------------------------------------------------
+
+void NewWizardTemplatePage::buildTemplatesList()
+      {
+
+      QDir dir(mscoreGlobalShare + "/templates");
+      QFileInfoList fil = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::Readable | QDir::Dirs | QDir::Files, QDir::Name);
+      if(fil.isEmpty()){
+          fil.append(QFileInfo(QFile(":data/Empty_Score.mscz")));
+          }
+
+      QDir myTemplatesDir(preferences.getString(PREF_APP_PATHS_MYTEMPLATES));
+      fil.append(myTemplatesDir.entryInfoList(QDir::NoDotAndDotDot | QDir::Readable | QDir::Dirs | QDir::Files, QDir::Name));
+
+      // append templates directories from extensions
+      QStringList extensionsDir = Extension::getDirectoriesByType(Extension::templatesDir);
+      for (QString extDir : extensionsDir) {
+            QDir extTemplateDir(extDir);
+            fil.append(extTemplateDir.entryInfoList(QDir::NoDotAndDotDot | QDir::Readable | QDir::Dirs | QDir::Files, QDir::Name));
             }
-      path.clear();
-      if (templateFileDialog->selectedFiles().size() > 0) {
-            path = templateFileDialog->selectedFiles()[0];
-            emit completeChanged();
-            }
+      templateFileBrowser->setScores(fil);
       }
 
 //---------------------------------------------------------
 //   isComplete
 //---------------------------------------------------------
 
-bool NewWizardPage4::isComplete() const
+bool NewWizardTemplatePage::isComplete() const
       {
       return !path.isEmpty();
       }
@@ -333,18 +333,21 @@ bool NewWizardPage4::isComplete() const
 //   fileAccepted
 //---------------------------------------------------------
 
-void NewWizardPage4::fileAccepted()
+void NewWizardTemplatePage::fileAccepted(const QString& s)
       {
-      templateFileDialog->show();
-      wizard()->next();
+      path = s;
+      templateFileBrowser->show();
+      if (wizard()->currentPage() == this)
+            wizard()->next();
       }
 
 //---------------------------------------------------------
 //   templateChanged
 //---------------------------------------------------------
 
-void NewWizardPage4::templateChanged(const QString& s)
+void NewWizardTemplatePage::templateChanged(const QString& s)
       {
+      setFinalPage(QFileInfo(s).completeBaseName() != "00-Blank");
       path = s;
       emit completeChanged();
       }
@@ -353,34 +356,41 @@ void NewWizardPage4::templateChanged(const QString& s)
 //   templatePath
 //---------------------------------------------------------
 
-QString NewWizardPage4::templatePath() const
+QString NewWizardTemplatePage::templatePath() const
       {
-      bool useTemplate = field("useTemplate").toBool();
-      if (useTemplate)
-            return path;
-      return QString();
+      return path;
       }
 
-
 //---------------------------------------------------------
-//   NewWizardPage5
+//   NewWizardKeysigPage
 //---------------------------------------------------------
 
-NewWizardPage5::NewWizardPage5(QWidget* parent)
+NewWizardKeysigPage::NewWizardKeysigPage(QWidget* parent)
    : QWizardPage(parent)
       {
+      setFinalPage(true);
       setTitle(tr("Create New Score"));
-      setSubTitle(tr("Select Key Signature and Tempo:"));
+      setSubTitle(tr("Choose key signature and tempo:"));
       setAccessibleName(title());
       setAccessibleDescription(subTitle());
 
       QGroupBox* b1 = new QGroupBox;
       b1->setTitle(tr("Key Signature"));
-      b1->setAccessibleName(title());
+      b1->setAccessibleName(b1->title());
+      b1->setAccessibleDescription(tr("Choose a key signature"));
       sp = MuseScore::newKeySigPalette();
+      sp->setMoreElements(false);
+      sp->setShowContextMenu(false);
       sp->setSelectable(true);
-      sp->setSelected(14);
+      sp->setDisableDoubleClick(true);
+      int keysigCMajorIdx = 14;
+      sp->setSelected(keysigCMajorIdx);
       PaletteScrollArea* sa = new PaletteScrollArea(sp);
+      // set widget name to include name of selected key signature
+      // we could set the description, but some screen readers ignore it
+      sa->setAccessibleName(tr("Key Signature: %1").arg(qApp->translate("Palette", sp->cellAt(keysigCMajorIdx)->name.toUtf8())));
+      QAccessibleEvent event(sa, QAccessible::NameChanged);
+      QAccessible::updateAccessibility(&event);
       QVBoxLayout* l1 = new QVBoxLayout;
       l1->addWidget(sa);
       b1->setLayout(l1);
@@ -389,12 +399,15 @@ NewWizardPage5::NewWizardPage5(QWidget* parent)
       tempoGroup->setCheckable(true);
       tempoGroup->setChecked(false);
       tempoGroup->setTitle(tr("Tempo"));
+      tempoGroup->setAccessibleName(tempoGroup->title());
+      tempoGroup->setAccessibleDescription(tr("Add tempo marking to score"));
       QLabel* bpm = new QLabel;
       bpm->setText(tr("BPM:"));
       _tempo = new QDoubleSpinBox;
       _tempo->setAccessibleName(tr("Beats per minute"));
       _tempo->setRange(20.0, 400.0);
-      _tempo->setValue(100.0);
+      _tempo->setValue(120.0);
+      _tempo->setDecimals(1);
       QHBoxLayout* l2 = new QHBoxLayout;
       l2->addWidget(bpm);
       l2->addWidget(_tempo);
@@ -406,13 +419,14 @@ NewWizardPage5::NewWizardPage5(QWidget* parent)
       l3->addWidget(tempoGroup);
       l3->addStretch(100);
       setLayout(l3);
+      setFocusPolicy(Qt::StrongFocus);
       }
 
 //---------------------------------------------------------
 //   keysig
 //---------------------------------------------------------
 
-KeySigEvent NewWizardPage5::keysig() const
+KeySigEvent NewWizardKeysigPage::keysig() const
       {
       int idx    = sp->getSelectedIdx();
       Element* e = sp->element(idx);
@@ -426,33 +440,49 @@ KeySigEvent NewWizardPage5::keysig() const
 NewWizard::NewWizard(QWidget* parent)
    : QWizard(parent)
       {
+      setObjectName("NewWizard");
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
-      setWizardStyle(QWizard::ClassicStyle);
+      auto wizardStyleValue = QWizard::ModernStyle; //Modern Winsows look
+#ifdef Q_OS_MAC
+      wizardStyleValue = QWizard::MacStyle;
+      setOption(QWizard::CancelButtonOnLeft, true);
+#endif
+      setWizardStyle(wizardStyleValue);
+      
       setPixmap(QWizard::LogoPixmap, QPixmap(":/data/mscore.png"));
       setPixmap(QWizard::WatermarkPixmap, QPixmap());
-      setWindowTitle(tr("MuseScore: Create New Score"));
+      setWindowTitle(tr("New Score Wizard"));
+
       setOption(QWizard::NoCancelButton, false);
-      setOption(QWizard::CancelButtonOnLeft, true);
       setOption(QWizard::HaveFinishButtonOnEarlyPages, true);
       setOption(QWizard::HaveNextButtonOnLastPage, true);
 
+      infoPage = new NewWizardInfoPage;
+      instrumentsPage = new NewWizardInstrumentsPage;
+      timesigPage = new NewWizardTimesigPage;
+      templatePage = new NewWizardTemplatePage;
+      keysigPage = new NewWizardKeysigPage;
 
-      p1 = new NewWizardPage1;
-      p2 = new NewWizardPage2;
-      p3 = new NewWizardPage3;
-      p4 = new NewWizardPage4;
-      p5 = new NewWizardPage5;
+//  enum Page { Invalid = -1, Type, Instruments, Template, Keysig, Timesig};
 
-      setPage(int(Page::Type), p1);
-      setPage(int(Page::Instruments), p2);
-      setPage(int(Page::Template), p4);
-      setPage(int(Page::Timesig), p3);
-      setPage(int(Page::Keysig), p5);
-      p2->setFinalPage(true);
-      p3->setFinalPage(true);
-      p4->setFinalPage(true);
-      p5->setFinalPage(true);
-      resize(840, 560);
+      setPage(Page::Type,        infoPage);
+      setPage(Page::Instruments, instrumentsPage);
+      setPage(Page::Template,    templatePage);
+      setPage(Page::Keysig,      keysigPage);
+      setPage(Page::Timesig,     timesigPage);
+
+      resize(QSize(840, 560)); //ensure default size if no geometry in settings
+      MuseScore::restoreGeometry(this);
+      connect(this, SIGNAL(currentIdChanged(int)), SLOT(idChanged(int)));
+      }
+
+//---------------------------------------------------------
+//   idChanged
+//---------------------------------------------------------
+
+void NewWizard::idChanged(int /*id*/)
+      {
+//printf("\n===\nWizard: id changed %d\n", id);
       }
 
 //---------------------------------------------------------
@@ -461,28 +491,58 @@ NewWizard::NewWizard(QWidget* parent)
 
 int NewWizard::nextId() const
       {
-      switch(Page(currentId())) {
+      int next;
+      switch (Page(currentId())) {
             case Page::Type:
-                  return useTemplate() ? int(Page::Template) : int(Page::Instruments);
-            case Page::Instruments:
-                  return int(Page::Keysig);
-            case Page::Keysig:
-                  return int(Page::Timesig);
+                  next = Page::Template;
+                  break;
             case Page::Template:
-                  return int(Page::Keysig);
+                  next = emptyScore() ? Page::Instruments : Page::Keysig;
+                  break;
+            case Page::Instruments:
+                  next = Page::Keysig;
+                  break;
+            case Page::Keysig:
+                  next = Page::Timesig;
+                  break;
             case Page::Timesig:
             default:
-                  return int(Page::Invalid);
+                  next = Page::Invalid;
+                  break;
             }
+      return next;
       }
 
 //---------------------------------------------------------
-//   useTemplate
+//   emptyScore
 //---------------------------------------------------------
 
-bool NewWizard::useTemplate() const
+bool NewWizard::emptyScore() const
       {
-      return field("useTemplate").toBool();
+      QString p = templatePage->templatePath();
+      QFileInfo fi(p);
+      bool val = fi.completeBaseName() == "00-Blank";
+      return val;
+      }
+
+//---------------------------------------------------------
+//   updateValues
+//---------------------------------------------------------
+
+void NewWizard::updateValues() const
+      {
+      //p2->buildInstrumentsList();
+      templatePage->buildTemplatesList();
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void NewWizard::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
       }
 
 }

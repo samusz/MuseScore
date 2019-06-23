@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -39,6 +38,7 @@ class TremoloBarProperties : public QDialog, public Ui::TremoloBarDialog {
       TremoloBar* bend;
       QButtonGroup* bendTypes;
 
+      virtual void hideEvent(QHideEvent*);
    private slots:
       void bendTypeChanged(int);
 

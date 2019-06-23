@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: event.cpp 4926 2011-10-29 18:13:35Z wschweer $
 //
 //  Copyright (C) 2008-2011 Werner Schweer
 //
@@ -13,6 +12,7 @@
 
 #include "libmscore/xml.h"
 #include "libmscore/note.h"
+#include "libmscore/sig.h"
 #include "event.h"
 
 namespace Ms {
@@ -21,7 +21,7 @@ namespace Ms {
 //   MidiCoreEvent::write
 //---------------------------------------------------------
 
-void MidiCoreEvent::write(Xml& xml) const
+void MidiCoreEvent::write(XmlWriter& xml) const
       {
       switch(_type) {
             case ME_NOTEON:
@@ -118,7 +118,7 @@ Event::Event(const Event& e)
       _voice      = e._voice;
       _notes      = e._notes;
       if (e._edata) {
-            _edata = new unsigned char[e._len + 1];  // dont forget trailing zero
+            _edata = new unsigned char[e._len + 1];  // don’t forget trailing zero
             memcpy(_edata, e._edata, e._len+1);
             }
       else
@@ -132,6 +132,35 @@ Event::Event(const Event& e)
 Event::~Event()
       {
       delete[] _edata;
+      }
+
+//---------------------------------------------------------
+//   NPlayEvent::NPlayEvent (beatType2metronomeEvent)
+//---------------------------------------------------------
+
+NPlayEvent::NPlayEvent(BeatType beatType)
+      {
+      setType(ME_TICK2);
+      setVelo(127);
+      switch (beatType) {
+            case BeatType::DOWNBEAT:
+                  setType(ME_TICK1);
+                  break;
+            case BeatType::SIMPLE_STRESSED:
+            case BeatType::COMPOUND_STRESSED:
+                  // use defaults
+                  break;
+            case BeatType::SIMPLE_UNSTRESSED:
+            case BeatType::COMPOUND_UNSTRESSED:
+                  setVelo(80);
+                  break;
+            case BeatType::COMPOUND_SUBBEAT:
+                  setVelo(25);
+                  break;
+            case BeatType::SUBBEAT:
+                  setVelo(15);
+                  break;
+            }
       }
 
 //---------------------------------------------------------
@@ -170,14 +199,16 @@ bool MidiCoreEvent::isChannelEvent() const
             default:
                   return false;
             }
-      return false;
+
+      // Prevent "unreachable code" warning.
+      // return false;
       }
 
 //---------------------------------------------------------
 //   Event::write
 //---------------------------------------------------------
 
-void Event::write(Xml& xml) const
+void Event::write(XmlWriter& xml) const
       {
       switch(_type) {
             case ME_NOTE:
@@ -340,5 +371,51 @@ void EventList::insert(const Event& e)
             }
       append(e);
       }
-}
 
+//---------------------------------------------------------
+//   class EventMap::fixupMIDI
+//---------------------------------------------------------
+
+void EventMap::fixupMIDI()
+      {
+      /* track info for each of the 128 possible MIDI notes */
+      struct channelInfo {
+            /* which event the first ME_NOTEON came from */
+            NPlayEvent *event[128];
+            /* how often is the note on right now? */
+            unsigned short nowPlaying[128];
+            };
+
+      /* track info for each channel (on the heap, 0-initialised) */
+      struct channelInfo *info = (struct channelInfo *)calloc(_highestChannel + 1, sizeof(struct channelInfo));
+
+      auto it = begin();
+      while (it != end()) {
+            /* ME_NOTEOFF is never emitted, no need to check for it */
+            if (it->second.type() == ME_NOTEON) {
+                  unsigned short np = info[it->second.channel()].nowPlaying[it->second.pitch()];
+                  if (it->second.velo() == 0) {
+                        /* already off (should not happen) or still playing? */
+                        if (np == 0 || --np > 0)
+                              it->second.setDiscard(1);
+                        else {
+                              /* hoist NOTEOFF to same track as NOTEON */
+                              it->second.setOriginatingStaff(info[it->second.channel()].event[it->second.pitch()]->getOriginatingStaff());
+                              }
+                        }
+                  else {
+                        if (++np > 1)
+                              /* restrike, possibly on different track */
+                              it->second.setDiscard(info[it->second.channel()].event[it->second.pitch()]->getOriginatingStaff() + 1);
+                        info[it->second.channel()].event[it->second.pitch()] = &(it->second);
+                        }
+                  info[it->second.channel()].nowPlaying[it->second.pitch()] = np;
+                  }
+
+            ++it;
+            }
+
+            free((void *)info);
+      }
+
+}

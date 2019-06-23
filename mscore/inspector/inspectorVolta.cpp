@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -15,6 +14,7 @@
 #include "musescore.h"
 #include "libmscore/volta.h"
 #include "libmscore/score.h"
+#include "icons.h"
 
 namespace Ms {
 
@@ -23,28 +23,18 @@ namespace Ms {
 //---------------------------------------------------------
 
 InspectorVolta::InspectorVolta(QWidget* parent)
-   : InspectorBase(parent)
+   : InspectorTextLineBase(parent)
       {
-      e.setupUi(addWidget());
-      l.setupUi(addWidget());
-      setupLineStyle(l.lineStyle);
-      tl.setupUi(addWidget());
       v.setupUi(addWidget());
 
-      iList = {
-            { P_ID::COLOR,       0, 0, e.color,      e.resetColor      },
-            { P_ID::VISIBLE,     0, 0, e.visible,    e.resetVisible    },
-            { P_ID::USER_OFF,    0, 0, e.offsetX,    e.resetX          },
-            { P_ID::USER_OFF,    1, 0, e.offsetY,    e.resetY          },
-            { P_ID::DIAGONAL,    0, 0, l.diagonal,   l.resetDiagonal   },
-            { P_ID::LINE_COLOR,  0, 0, l.lineColor,  l.resetLineColor  },
-            { P_ID::LINE_WIDTH,  0, 0, l.lineWidth,  l.resetLineWidth  },
-            { P_ID::LINE_STYLE,  0, 0, l.lineStyle,  l.resetLineStyle  },
-            // tl
-            { P_ID::VOLTA_TYPE,  0, 0, v.voltaType,  v.resetVoltaType  }
+      const std::vector<InspectorItem> il = {
+            { Pid::VOLTA_ENDING,            0, v.voltaRepeatList,        0  }
             };
-
-      mapSignals();
+      const std::vector<InspectorPanel> ppList = {
+            { v.title, v.panel }
+            };
+      mapSignals(il, ppList);
       }
+
 }
 

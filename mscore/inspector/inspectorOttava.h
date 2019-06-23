@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -15,9 +14,7 @@
 #define __INSPECTOR_OTTAVA_H__
 
 #include "inspector.h"
-#include "inspectorBase.h"
-#include "ui_inspector_line.h"
-#include "ui_inspector_textline.h"
+#include "inspectorTextLineBase.h"
 #include "ui_inspector_ottava.h"
 
 namespace Ms {
@@ -26,12 +23,9 @@ namespace Ms {
 //   InspectorOttava
 //---------------------------------------------------------
 
-class InspectorOttava : public InspectorBase {
+class InspectorOttava : public InspectorTextLineBase {
       Q_OBJECT
 
-      UiInspectorElement    e;
-      Ui::InspectorLine     l;
-      Ui::InspectorTextLine tl;
       Ui::InspectorOttava   o;
 
    public:

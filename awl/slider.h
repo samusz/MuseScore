@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2006 by Werner Schweer and others
 //
@@ -74,7 +73,6 @@ class Slider : public AbstractSlider {
 
       virtual void setInvertedAppearance(bool val);
       virtual QSize sizeHint() const;
-//      virtual void init(const SyntiParameter& p) { AbstractSlider::init(p); }
       };
 }
 

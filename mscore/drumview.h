@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -34,7 +33,7 @@ class Note;
 //---------------------------------------------------------
 
 class DrumItem : public QGraphicsPolygonItem {
-      Note* note;
+      Note* _note;
 
       virtual void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = 0);
 

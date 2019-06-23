@@ -1,7 +1,6 @@
 #=============================================================================
 #  MusE
 #  Linux Music Editor
-#  $Id:$
 #
 #  Copyright (C) 2002-2010 by Werner Schweer and others
 #
@@ -19,8 +18,6 @@
 #=============================================================================
 
 install(FILES
-      leadsheet.mss
-      Jazz_Lead_Sheet.mss
       MuseJazz.mss
       chords_std.xml
       chords_jazz.xml

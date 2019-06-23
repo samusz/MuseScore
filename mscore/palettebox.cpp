@@ -1,9 +1,8 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: palette.cpp 5576 2012-04-24 19:15:22Z wschweer $
 //
-//  Copyright (C) 2011 Werner Schweer and others
+//  Copyright (C) 2011-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -16,7 +15,6 @@
 #include "musescore.h"
 #include "preferences.h"
 #include "libmscore/xml.h"
-#include "paletteBoxButton.h"
 #include "workspace.h"
 
 namespace Ms {
@@ -28,8 +26,42 @@ namespace Ms {
 PaletteBox::PaletteBox(QWidget* parent)
    : QDockWidget(tr("Palettes"), parent)
       {
+      setContextMenuPolicy(Qt::ActionsContextMenu);
       setObjectName("palette-box");
       setAllowedAreas(Qt::DockWidgetAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea));
+
+      singlePaletteAction = new QAction(this);
+      singlePaletteAction->setCheckable(true);
+      singlePaletteAction->setChecked(preferences.getBool(PREF_APP_USESINGLEPALETTE));
+      addAction(singlePaletteAction);
+      connect(singlePaletteAction, SIGNAL(toggled(bool)), SLOT(setSinglePalette(bool)));
+
+      QWidget* w = new QWidget(this);
+      w->setContextMenuPolicy(Qt::NoContextMenu);
+      QVBoxLayout* vl = new QVBoxLayout(w);
+      vl->setMargin(0);
+      QHBoxLayout* hl = new QHBoxLayout;
+      hl->setContentsMargins(5,0,5,0);
+
+      workspaceList = new QComboBox;
+      workspaceList->setObjectName("workspace-list");
+      hl->addWidget(workspaceList);
+      addWorkspaceButton = new QToolButton;
+
+      addWorkspaceButton->setMinimumHeight(24);
+      hl->addWidget(addWorkspaceButton);
+
+      setWidget(w);
+
+      _searchBox = new QLineEdit(this);
+      _searchBox->setFocusPolicy(Qt::StrongFocus);
+      _searchBox->installEventFilter(this);
+      _searchBox->setClearButtonEnabled(true);
+      _searchBox->setPlaceholderText(tr("Search"));
+      connect(_searchBox, SIGNAL(textChanged(const QString&)), this, SLOT(filterPalettes(const QString&)));
+      QHBoxLayout* hlSearch = new QHBoxLayout;
+      hlSearch->setContentsMargins(5,0,5,0);
+      hlSearch->addWidget(_searchBox);
 
       PaletteBoxScrollArea* sa = new PaletteBoxScrollArea;
       sa->setFocusPolicy(Qt::NoFocus);
@@ -39,7 +71,9 @@ PaletteBox::PaletteBox(QWidget* parent)
       sa->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
       sa->setWidgetResizable(true);
       sa->setFrameShape(QFrame::NoFrame);
-      setWidget(sa);
+      vl->addWidget(sa);
+      vl->addLayout(hlSearch);
+      vl->addLayout(hl);
 
       QWidget* paletteList = new QWidget;
       sa->setWidget(paletteList);
@@ -49,6 +83,125 @@ PaletteBox::PaletteBox(QWidget* parent)
       vbox->setSpacing(1);
       vbox->addStretch();
       paletteList->show();
+
+      connect(addWorkspaceButton, SIGNAL(clicked()), SLOT(newWorkspaceClicked()));
+      connect(workspaceList, SIGNAL(activated(int)), SLOT(workspaceSelected(int)));
+      retranslate();
+      }
+
+//---------------------------------------------------------
+//   retranslate
+//---------------------------------------------------------
+
+void PaletteBox::retranslate()
+      {
+      setWindowTitle(tr("Palettes"));
+      singlePaletteAction->setText(tr("Single Palette"));
+      workspaceList->setToolTip(tr("Select workspace"));
+      addWorkspaceButton->setText(tr("+"));
+      addWorkspaceButton->setToolTip(tr("Add new workspace"));
+      updateWorkspaces();
+      }
+
+//---------------------------------------------------------
+//   filterPalettes
+//---------------------------------------------------------
+
+void PaletteBox::filterPalettes(const QString& text)
+      {
+      for (int i = 0; i < vbox->count(); i++) {
+            QWidgetItem* wi = static_cast<QWidgetItem*>(vbox->itemAt(i));
+            PaletteBoxButton* b = static_cast<PaletteBoxButton*>(wi->widget());
+            i++;
+            wi = static_cast<QWidgetItem*>(vbox->itemAt(i));
+            if (!wi) return;
+            Palette* p = static_cast<Palette*>(wi->widget());
+            bool f = p->filter(text);
+            b->setVisible(!f);
+            if (b->isVisible()) {
+                 b->showPalette(!text.isEmpty());
+                 }
+            else
+                 b->showPalette(false);
+            }
+      }
+
+//---------------------------------------------------------
+//   workspaceSelected
+//---------------------------------------------------------
+
+void PaletteBox::workspaceSelected(int idx)
+      {
+      Workspace* w = Workspace::workspaces().at(idx);
+      preferences.setPreference(PREF_APP_WORKSPACE, w->name());
+      mscore->changeWorkspace(w);
+      }
+
+//---------------------------------------------------------
+//   newWorkspaceClicked
+//---------------------------------------------------------
+
+void PaletteBox::newWorkspaceClicked()
+      {
+      mscore->createNewWorkspace();
+      updateWorkspaces();
+      }
+
+//---------------------------------------------------------
+//   updateWorkspaces
+//---------------------------------------------------------
+
+void PaletteBox::updateWorkspaces()
+      {
+      workspaceList->clear();
+      const QList<Workspace*> pl = Workspace::workspaces();
+      int idx = 0;
+      int curIdx = -1;
+      for (Workspace* p : pl) {
+            workspaceList->addItem(qApp->translate("Ms::Workspace", p->name().toUtf8()), p->path());
+            if (p->name() == preferences.getString(PREF_APP_WORKSPACE))
+                  curIdx = idx;
+            ++idx;
+            }
+      
+      //select first workspace in the list if the stored workspace vanished
+      Q_ASSERT(!pl.isEmpty());
+      if (curIdx == -1)
+            curIdx = 0;
+      
+      workspaceList->setCurrentIndex(curIdx);
+      }
+
+//---------------------------------------------------------
+//   selectWorkspace
+//---------------------------------------------------------
+
+void PaletteBox::selectWorkspace(QString path)
+      {
+      int idx = workspaceList->findData(path);
+      selectWorkspace(idx);
+      }
+
+///---------------------------------------------------------
+///   selectWorkspace
+///       Selects the workspace in the workspaceList dropdown widget using specified @idx
+///       If @idx value is out of valid range:
+///           If currentIndex is valid, keep the index
+///           1st element of the list is selected othrwise
+///---------------------------------------------------------
+
+void PaletteBox::selectWorkspace(int idx)
+      {
+      if (idx < 0 || idx >= workspaceList->count()) {
+            //if selected index is valid, keep the index selection
+            if (workspaceList->currentIndex() < workspaceList->count())
+                  idx = workspaceList->currentIndex();
+            else
+                  idx = 0;
+            }
+      
+      workspaceList->setCurrentIndex(idx);
+      workspaceSelected(idx);
       }
 
 //---------------------------------------------------------
@@ -79,7 +232,7 @@ void PaletteBox::addPalette(Palette* w)
       b->setId(slotIdx);
 
       vbox->insertWidget(slotIdx, b);
-      vbox->insertWidget(slotIdx+1, w, 1000);
+      vbox->insertWidget(slotIdx+1, w, paletteStretch);
 
       connect(b, SIGNAL(paletteCmd(PaletteCommand,int)), SLOT(paletteCmd(PaletteCommand,int)));
       connect(b, SIGNAL(closeAll()), SLOT(closeAll()));
@@ -97,7 +250,7 @@ Palette* PaletteBox::newPalette(const QString& name, int slot)
       p->setName(name);
       PaletteBoxButton* b = new PaletteBoxButton(p);
       vbox->insertWidget(slot, b);
-      vbox->insertWidget(slot+1, p, 1000);
+      vbox->insertWidget(slot+1, p, paletteStretch);
       connect(b, SIGNAL(paletteCmd(PaletteCommand, int)), SLOT(paletteCmd(PaletteCommand, int)));
       connect(p, SIGNAL(changed()), Workspace::currentWorkspace, SLOT(setDirty()));
       for (int i = 0; i < (vbox->count() - 1) / 2; ++i)
@@ -118,21 +271,31 @@ void PaletteBox::paletteCmd(PaletteCommand cmd, int slot)
       switch(cmd) {
             case PaletteCommand::PDELETE:
                   {
-                  vbox->removeItem(item);
-                  b->deleteLater();      // this is the button widget
-                  delete item;
-                  item = vbox->itemAt(slot);
-                  vbox->removeItem(item);
-                  delete item->widget();
-                  delete item;
-                  for (int i = 0; i < (vbox->count() - 1) / 2; ++i)
-                        static_cast<PaletteBoxButton*>(vbox->itemAt(i * 2)->widget())->setId(i*2);
-                  emit changed();
+                  QMessageBox::StandardButton reply;
+                  reply = QMessageBox::question(0,
+                             QWidget::tr("Are you sure?"),
+                             QWidget::tr("Do you really want to delete the '%1' palette?").arg(palette->name()),
+                             QMessageBox::Yes | QMessageBox::No,
+                             QMessageBox::Yes
+                             );
+                  if (reply == QMessageBox::Yes) {
+                        vbox->removeItem(item);
+                        b->deleteLater();      // this is the button widget
+                        delete item;
+                        item = vbox->itemAt(slot);
+                        vbox->removeItem(item);
+                        delete item->widget();
+                        delete item;
+                        for (int i = 0; i < (vbox->count() - 1) / 2; ++i)
+                              static_cast<PaletteBoxButton*>(vbox->itemAt(i * 2)->widget())->setId(i*2);
+                        emit changed();
+                        }
                   }
                   break;
+
             case PaletteCommand::SAVE:
                   {
-                  QString path = mscore->getPaletteFilename(false);
+                  QString path = mscore->getPaletteFilename(false, palette->name());
                   if (!path.isEmpty())
                         palette->write(path);
                   }
@@ -143,7 +306,7 @@ void PaletteBox::paletteCmd(PaletteCommand cmd, int slot)
                   QString path = mscore->getPaletteFilename(true);
                   if (!path.isEmpty()) {
                         QFileInfo fi(path);
-                        Palette* palette = newPalette(fi.baseName(), slot);
+                        palette = newPalette(fi.completeBaseName(), slot);
                         palette->read(path);
                         }
                   }
@@ -151,7 +314,7 @@ void PaletteBox::paletteCmd(PaletteCommand cmd, int slot)
                   break;
 
             case PaletteCommand::NEW:
-                  palette = newPalette(tr("new Palette"), slot);
+                  palette = newPalette(tr("New Palette"), slot);
                   item   = vbox->itemAt(slot);
                   b = static_cast<PaletteBoxButton*>(item->widget());
                   // fall through
@@ -175,7 +338,7 @@ void PaletteBox::paletteCmd(PaletteCommand cmd, int slot)
                         QLayoutItem* i2 = vbox->itemAt(slot+1);
                         vbox->removeItem(i1);
                         vbox->removeItem(i2);
-                        vbox->insertWidget(slot-2, i2->widget());
+                        vbox->insertWidget(slot-2, i2->widget(), paletteStretch);
                         vbox->insertWidget(slot-2, i1->widget());
                         delete i1;
                         delete i2;
@@ -191,7 +354,7 @@ void PaletteBox::paletteCmd(PaletteCommand cmd, int slot)
                         QLayoutItem* i2 = vbox->itemAt(slot+1);
                         vbox->removeItem(i1);
                         vbox->removeItem(i2);
-                        vbox->insertWidget(slot+2, i2->widget());
+                        vbox->insertWidget(slot+2, i2->widget(), paletteStretch);
                         vbox->insertWidget(slot+2, i1->widget());
                         delete i1;
                         delete i2;
@@ -220,7 +383,7 @@ void PaletteBox::closeAll()
 //   write
 //---------------------------------------------------------
 
-void PaletteBox::write(Xml& xml)
+void PaletteBox::write(XmlWriter& xml)
       {
       xml.stag("PaletteBox");
       for (int i = 0; i < (vbox->count() - 1); i += 2) {
@@ -257,8 +420,7 @@ bool PaletteBox::read(XmlReader& e)
                   p->setName(name);
                   p->read(e);
                   addPalette(p);
-                  connect(p, SIGNAL(displayMore(const QString&)),
-                     SLOT(displayMore(const QString&)));
+                  connect(p, SIGNAL(displayMore(const QString&)), mscore, SLOT(showMasterPalette(const QString&)));
                   }
             else
                   e.unknown();
@@ -267,12 +429,168 @@ bool PaletteBox::read(XmlReader& e)
       }
 
 //---------------------------------------------------------
-//   displayMore
+//   sizeHint
 //---------------------------------------------------------
 
-void PaletteBox::displayMore(const QString& s)
+QSize PaletteBoxScrollArea::sizeHint() const
       {
-      mscore->showMasterPalette(s);
+      return QSize(170 * guiScaling, 170 * guiScaling);
       }
+
+//---------------------------------------------------------
+//   setSinglePalette
+//---------------------------------------------------------
+
+void PaletteBox::setSinglePalette(bool val)
+      {
+      preferences.setPreference(PREF_APP_USESINGLEPALETTE, val);
+      }
+
+//---------------------------------------------------------
+//   changeEvent
+//---------------------------------------------------------
+
+void PaletteBox::changeEvent(QEvent *event)
+      {
+      QDockWidget::changeEvent(event);
+      if (event->type() == QEvent::LanguageChange)
+            retranslate();
+      }
+
+//---------------------------------------------------------
+//   noSelection
+//---------------------------------------------------------
+
+bool PaletteBox::noSelection()
+      {
+      for (Palette* p : palettes()) {
+            if (p->getCurrentIdx() != -1)
+                  return false;
+            }
+      return true;
+      }
+
+//---------------------------------------------------------
+//   mousePressEvent
+//---------------------------------------------------------
+
+void PaletteBox::mousePressEvent(QMouseEvent* ev, Palette* p1)
+      {
+      for (Palette* p : palettes()) {
+            QList<PaletteCell*> cells = p->getDragCells();
+            if (cells.isEmpty())
+                  continue;
+            if (p->getCurrentIdx() != -1) {
+                  p->setCurrentIdx(-1);
+                  p->update();
+                  }
+            }
+      p1->setCurrentIdx(p1->idx(ev->pos()));
+      p1->update();
+      _searchBox->setFocus();
+      }
+
+//---------------------------------------------------------
+//   navigation
+//---------------------------------------------------------
+
+void PaletteBox::navigation(QKeyEvent *event)
+      {
+      if (!palettes().first()->isFilterActive())
+            return;
+      if (event->key() == Qt::Key_Down) {
+            for (Palette* p : palettes()) {
+                  if (p->getCurrentIdx() == -1)
+                        continue;
+                  if (p->getCurrentIdx() != p->getDragCells().size() - 1) {
+                        p->nextPaletteElement();
+                        return;
+                        }
+                  else {
+                        int index = palettes().indexOf(p);
+                        p->setCurrentIdx(-1);
+                        p->update();
+                        for (int i = index + 1; i < palettes().size(); i++) {
+                              Palette* next = palettes()[i];
+                              if (!next->getDragCells().isEmpty()) {
+                                    next->setCurrentIdx(0);
+                                    next->update();
+                                    return;
+                                    }
+                              }
+                       }
+                  }
+            for (Palette* p : palettes()) {
+                  if (!p->getDragCells().isEmpty()) {
+                        p->setCurrentIdx(0);
+                        p->update();
+                        keyboardNavigation = true;
+                        return;
+                        }
+                  }
+            }
+      else if (event->key() == Qt::Key_Up) {
+            for (Palette* p : palettes()) {
+                  if (p->getCurrentIdx() == -1)
+                        continue;
+                  if (p->getCurrentIdx() != 0) {
+                        p->prevPaletteElement();
+                        return;
+                        }
+                  else {
+                        int index = palettes().indexOf(p);
+                        p->setCurrentIdx(-1);
+                        p->update();
+                        for (int i = index - 1; i >= 0; i--) {
+                              Palette* prev = palettes()[i];
+                              if (!prev->getDragCells().isEmpty()) {
+                                    QList<PaletteCell*> cells = p->getDragCells();
+                                    int l = prev->getDragCells().size() - 1;
+                                    prev->setCurrentIdx(l);
+                                    prev->update();
+                                    return;
+                                    }
+                              }
+                        }
+                  }
+            for (int j = palettes().size() - 1; j >= 0; j--) {
+                  Palette* p = palettes()[j];
+                  if (!p->getDragCells().isEmpty()) {
+                        int l = p->getDragCells().size() - 1;
+                        p->setCurrentIdx(l);
+                        p->update();
+                        keyboardNavigation = true;
+                        return;
+                        }
+                  }
+            }
+      else if ((event->key() == Qt::Key_Enter) ||
+                (event->key() == Qt::Key_Return)) {
+            for (Palette* p : palettes()) {
+                  if (p->getCurrentIdx() != -1) {
+                        p->applyPaletteElement();
+                        return;
+                        }
+                  }
+            }
+
+      }
+
+bool PaletteBox::eventFilter(QObject* obj, QEvent *event)
+      {
+      if (obj == _searchBox) {
+            if (event->type() == QEvent::KeyPress) {
+                  QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+                  if (keyEvent->key() == Qt::Key_Up || keyEvent->key() == Qt::Key_Down ||
+                          keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return) {
+                        navigation(keyEvent);
+                        return true;
+                        }
+                  }
+            return false;
+            }
+      return QDockWidget::eventFilter(obj, event);
+      }
+
 }
 

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: editstringdata.cpp 5392 2012-02-28 11:41:52Z miwarre $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -20,6 +19,7 @@
 
 #include "editstringdata.h"
 #include "editpitch.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -31,6 +31,7 @@ namespace Ms {
 EditStringData::EditStringData(QWidget *parent, QList<instrString> * strings, int * frets)
    : QDialog(parent)
       {
+      setObjectName("EditStringData");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       _strings = strings;
@@ -50,7 +51,7 @@ EditStringData::EditStringData(QWidget *parent, QList<instrString> * strings, in
                   strg = (*_strings)[numOfStrings - i - 1];
                   _stringsLoc.append(strg);
                   QTableWidgetItem *newCheck = new QTableWidgetItem();
-                  newCheck->setFlags(Qt::ItemFlag(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled));
+                  newCheck->setFlags(Qt::ItemFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled));
                   newCheck->setCheckState(strg.open ? Qt::Checked : Qt::Unchecked);
                   stringList->setItem(i, 0, newCheck);
                   QTableWidgetItem *newPitch = new QTableWidgetItem(midiCodeToStr(strg.pitch));
@@ -73,11 +74,23 @@ EditStringData::EditStringData(QWidget *parent, QList<instrString> * strings, in
       connect(stringList,   SIGNAL(doubleClicked(QModelIndex)),     SLOT(editStringClicked()));
       connect(stringList,   SIGNAL(itemClicked(QTableWidgetItem*)), SLOT(listItemClicked(QTableWidgetItem *)));
       _modified = false;
+
+      MuseScore::restoreGeometry(this);
       }
 
 EditStringData::~EditStringData()
 {
 }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void EditStringData::hideEvent(QHideEvent* ev)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(ev);
+      }
 
 //---------------------------------------------------------
 //   deleteStringClicked
@@ -154,7 +167,7 @@ void EditStringData::newStringClicked()
             _stringsLoc.insert(i, strg);
             stringList->insertRow(i);
             QTableWidgetItem *newCheck = new QTableWidgetItem();
-            newCheck->setFlags(Qt::ItemFlag(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled));
+            newCheck->setFlags(Qt::ItemFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled));
             newCheck->setCheckState(strg.open ? Qt::Checked : Qt::Unchecked);
             stringList->setItem(i, 0, newCheck);
             QTableWidgetItem *newPitch = new QTableWidgetItem(midiCodeToStr(strg.pitch));
@@ -198,16 +211,16 @@ void EditStringData::accept()
 
 static const char* g_cNoteName[] = {
       QT_TRANSLATE_NOOP("editstringdata", "C"),
-      QT_TRANSLATE_NOOP("editstringdata", "C#"),
+      QT_TRANSLATE_NOOP("editstringdata", "C♯"),
       QT_TRANSLATE_NOOP("editstringdata", "D"),
-      QT_TRANSLATE_NOOP("editstringdata", "Eb"),
+      QT_TRANSLATE_NOOP("editstringdata", "E♭"),
       QT_TRANSLATE_NOOP("editstringdata", "E"),
       QT_TRANSLATE_NOOP("editstringdata", "F"),
-      QT_TRANSLATE_NOOP("editstringdata", "F#"),
+      QT_TRANSLATE_NOOP("editstringdata", "F♯"),
       QT_TRANSLATE_NOOP("editstringdata", "G"),
-      QT_TRANSLATE_NOOP("editstringdata", "Ab"),
+      QT_TRANSLATE_NOOP("editstringdata", "A♭"),
       QT_TRANSLATE_NOOP("editstringdata", "A"),
-      QT_TRANSLATE_NOOP("editstringdata", "Bb"),
+      QT_TRANSLATE_NOOP("editstringdata", "B♭"),
       QT_TRANSLATE_NOOP("editstringdata", "B")
       };
 

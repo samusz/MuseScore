@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: musicxmlsupport.cpp 5595 2012-04-29 15:30:32Z lvinken $
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -24,6 +23,8 @@
 
 #include "globals.h"
 #include "musicxmlsupport.h"
+#include "libmscore/sym.h"
+#include "libmscore/accidental.h"
 
 namespace Ms {
 
@@ -77,7 +78,7 @@ bool NoteList::stavesOverlap(const int staff1, const int staff2) const
       for (int i = 0; i < _staffNoteLists.at(staff1).size(); ++i)
             for (int j = 0; j < _staffNoteLists.at(staff2).size(); ++j)
                   if (notesOverlap(_staffNoteLists.at(staff1).at(i), _staffNoteLists.at(staff2).at(j))) {
-                        // printf(" %d-%d", staff1, staff2);
+//printf(" %d-%d", staff1, staff2);
                         return true;
                         }
       return false;
@@ -135,9 +136,14 @@ bool VoiceOverlapDetector::stavesOverlap(const QString& voice) const
 
 QString MusicXMLDrumInstrument::toString() const
       {
-      return QString("pitch %1 name %2 notehead %3 line %4 stemDirection %5")
+      return QString("chan %1 prog %2 vol %3 pan %4 pitch %5 name '%6' sound '%7' head %8 line %9 stemDir %10")
+             .arg(midiChannel)
+             .arg(midiProgram)
+             .arg(midiVolume)
+             .arg(midiPan)
              .arg(pitch)
              .arg(name)
+             .arg(sound)
              .arg(int(notehead))
              .arg(line)
              .arg(int(stemDirection));
@@ -154,7 +160,7 @@ void ValidatorMessageHandler::handleMessage(QtMsgType type, const QString& descr
       if (!desc.setContent(description, false, &contentError, &contentLine,
                            &contentColumn)) {
             qDebug("ValidatorMessageHandler: could not parse validation error line %d column %d: %s",
-               contentLine, contentColumn, qPrintable(contentError));
+                   contentLine, contentColumn, qPrintable(contentError));
             return;
             }
       QDomElement e = desc.documentElement();
@@ -166,14 +172,14 @@ void ValidatorMessageHandler::handleMessage(QtMsgType type, const QString& descr
 
       QString strType;
       switch (type) {
-            case 0:  strType = "Debug"; break;
-            case 1:  strType = "Warning"; break;
-            case 2:  strType = "Critical"; break;
-            case 3:  strType = "Fatal"; break;
-            default: strType = "Unknown"; break;
+            case 0:  strType = tr("Debug"); break;
+            case 1:  strType = tr("Warning"); break;
+            case 2:  strType = tr("Critical"); break;
+            case 3:  strType = tr("Fatal"); break;
+            default: strType = tr("Unknown"); break;
             }
 
-      QString errorStr = QString("%1 error: line %2 column %3 %4")
+      QString errorStr = QString(tr("%1 error: line %2 column %3 %4"))
             .arg(strType)
             .arg(sourceLocation.line())
             .arg(sourceLocation.column())
@@ -195,8 +201,8 @@ static QString domElementPath(const QDomElement& e)
       QDomNode dn(e);
       while (!dn.parentNode().isNull()) {
             dn = dn.parentNode();
-            const QDomElement& e = dn.toElement();
-            const QString k(e.tagName());
+            const QDomElement& de = dn.toElement();
+            const QString k(de.tagName());
             if (!s.isEmpty())
                   s += ":";
             s += k;
@@ -349,16 +355,239 @@ Fraction MxmlSupport::calculateFraction(QString type, int dots, int normalNotes,
             // dot(s)
             Fraction f_no_dots = f;
             for (int i = 0; i < dots; ++i)
-                  f += (f_no_dots / (2 << i));
+                  f += (f_no_dots / Fraction(2 << i, 1));
             // tuplet
             if (actualNotes > 0 && normalNotes > 0) {
                   f *= normalNotes;
-                  f /= actualNotes;
+                  f /= Fraction(actualNotes,1);
                   }
             // clean up (just in case)
             f.reduce();
             }
       return f;
       }
-}
 
+//---------------------------------------------------------
+//   accSymId2MxmlString
+//---------------------------------------------------------
+
+QString accSymId2MxmlString(const SymId id)
+      {
+      QString s;
+      switch (id) {
+            case SymId::accidentalNatural:               s = "natural";              break;
+            case SymId::accidentalFlat:                  s = "flat";                 break;
+            case SymId::accidentalSharp:                 s = "sharp";                break;
+            case SymId::accidentalDoubleSharp:           s = "double-sharp";         break;
+            case SymId::accidentalDoubleFlat:            s = "flat-flat";            break;
+            case SymId::accidentalQuarterToneFlatStein:  s = "quarter-flat";         break;
+            case SymId::accidentalQuarterToneSharpStein: s = "quarter-sharp";        break;
+            case SymId::accidentalKucukMucennebSharp:    s = "slash-quarter-sharp";  break;
+            case SymId::accidentalBuyukMucennebSharp:    s = "slash-sharp";          break;
+            case SymId::accidentalBakiyeFlat:            s = "slash-flat";           break;
+            case SymId::accidentalBuyukMucennebFlat:     s = "double-slash-flat";    break;
+            /* TODO
+            case AccidentalType::FLAT_ARROW_UP:      s = "flat-up";              break;
+            case AccidentalType::NATURAL_ARROW_DOWN: s = "natural-down";         break;
+            case AccidentalType::SHARP_ARROW_DOWN:   s = "sharp-down";           break;
+            case AccidentalType::NATURAL_ARROW_UP:   s = "natural-up";           break;
+            case AccidentalType::MIRRORED_FLAT2:     s = "three-quarters-flat";  break;
+            case AccidentalType::FLAT_FLAT_SLASH:    s = "three-quarters-flat";  break;
+            case AccidentalType::FLAT_ARROW_DOWN:    s = "flat-down";            break;
+            case AccidentalType::SHARP_SLASH4:       s = "three-quarters-sharp"; break;
+            case AccidentalType::SHARP_ARROW_UP:     s = "sharp-up";             break;
+            case AccidentalType::SORI:               s = "sori";                 break;
+            case AccidentalType::KORON:              s = "koron";                break;
+             */
+            default:
+                  qDebug("accSymId2MxmlString: unknown accidental %d", static_cast<int>(id));
+            }
+      return s;
+      }
+
+//---------------------------------------------------------
+//   mxmlString2accSymId
+//---------------------------------------------------------
+
+SymId mxmlString2accSymId(const QString mxmlName)
+      {
+      QMap<QString, SymId> map; // map MusicXML accidental name to MuseScore enum SymId
+      map["natural"] = SymId::accidentalDoubleSharp;
+      map["flat"] = SymId::accidentalFlat;
+      map["sharp"] = SymId::accidentalSharp;
+      map["double-sharp"] = SymId::accidentalDoubleSharp;
+      map["sharp-sharp"] = SymId::accidentalDoubleSharp;
+      map["flat-flat"] = SymId::accidentalDoubleFlat;
+
+      //map["double-flat"] = SymId::accidentalDoubleFlat;
+      //map["natural-flat"] = AccidentalType::FLAT;
+
+      map["quarter-flat"] = SymId::accidentalQuarterToneFlatStein;
+      map["quarter-sharp"] = SymId::accidentalQuarterToneSharpStein;
+      //map["three-quarters-flat"] = AccidentalType::MIRRORED_FLAT2;
+      //map["three-quarters-sharp"] = AccidentalType::SHARP_SLASH4;
+
+      //map["sharp-down"] = AccidentalType::SHARP_ARROW_DOWN;
+      //map["sharp-up"] = AccidentalType::SHARP_ARROW_UP;
+      //map["natural-down"] = AccidentalType::NATURAL_ARROW_DOWN;
+      //map["natural-up"] = AccidentalType::NATURAL_ARROW_UP;
+      //map["flat-down"] = AccidentalType::FLAT_ARROW_DOWN;
+      //map["flat-up"] = AccidentalType::FLAT_ARROW_UP;
+
+      map["slash-quarter-sharp"] = SymId::accidentalKucukMucennebSharp;
+      map["slash-sharp"] = SymId::accidentalBuyukMucennebSharp;
+      map["slash-flat"] = SymId::accidentalBakiyeFlat;
+      map["double-slash-flat"] = SymId::accidentalBuyukMucennebFlat;
+
+      //map["sori"] = AccidentalType::SORI;
+      //map["koron"] = AccidentalType::KORON;
+
+      //map["natural-sharp"] = AccidentalType::SHARP;
+
+      if (map.contains(mxmlName))
+            return map.value(mxmlName);
+      else
+            qDebug("mxmlString2accSymId: unknown accidental '%s'", qPrintable(mxmlName));
+
+      // default
+      return SymId::noSym;
+      }
+
+//---------------------------------------------------------
+//   accidentalType2MxmlString
+//---------------------------------------------------------
+
+QString accidentalType2MxmlString(const AccidentalType type)
+      {
+      QString s;
+      switch (type) {
+            case AccidentalType::SHARP:              s = "sharp";                break;
+            case AccidentalType::FLAT:               s = "flat";                 break;
+            case AccidentalType::SHARP2:             s = "double-sharp";         break;
+            case AccidentalType::FLAT2:              s = "flat-flat";            break;
+            case AccidentalType::NATURAL:            s = "natural";              break;
+            case AccidentalType::FLAT_SLASH:         s = "slash-flat";           break;
+            case AccidentalType::MIRRORED_FLAT:      s = "quarter-flat";         break;
+            case AccidentalType::FLAT_ARROW_UP:      s = "flat-up";              break;
+            case AccidentalType::NATURAL_ARROW_DOWN: s = "natural-down";         break;
+            case AccidentalType::SHARP_SLASH:        s = "quarter-sharp";        break;
+            case AccidentalType::SHARP_ARROW_DOWN:   s = "sharp-down";           break;
+            case AccidentalType::NATURAL_ARROW_UP:   s = "natural-up";           break;
+            case AccidentalType::MIRRORED_FLAT2:     s = "three-quarters-flat";  break;
+            //case AccidentalType::FLAT_FLAT_SLASH:    s = "three-quarters-flat";  break;
+            case AccidentalType::FLAT_ARROW_DOWN:    s = "flat-down";            break;
+            case AccidentalType::SHARP_SLASH4:       s = "three-quarters-sharp"; break;
+            case AccidentalType::SHARP_ARROW_UP:     s = "sharp-up";             break;
+            case AccidentalType::SHARP_SLASH3:       s = "slash-quarter-sharp";  break;
+            case AccidentalType::FLAT_SLASH2:        s = "double-slash-flat";    break;
+            case AccidentalType::SHARP_SLASH2:       s = "slash-sharp";          break;
+            case AccidentalType::SORI:               s = "sori";                 break;
+            case AccidentalType::KORON:              s = "koron";                break;
+            default:
+                  qDebug("accidentalType2MxmlString: unknown accidental %d", static_cast<int>(type));
+            }
+      return s;
+      }
+
+//---------------------------------------------------------
+//   mxmlString2accidentalType
+//---------------------------------------------------------
+
+/**
+ Convert a MusicXML accidental name to a MuseScore enum AccidentalType.
+ */
+
+AccidentalType mxmlString2accidentalType(const QString mxmlName)
+      {
+      QMap<QString, AccidentalType> map; // map MusicXML accidental name to MuseScore enum AccidentalType
+      map["natural"] = AccidentalType::NATURAL;
+      map["flat"] = AccidentalType::FLAT;
+      map["sharp"] = AccidentalType::SHARP;
+      map["double-sharp"] = AccidentalType::SHARP2;
+      map["sharp-sharp"] = AccidentalType::SHARP2;
+      map["flat-flat"] = AccidentalType::FLAT2;
+      map["double-flat"] = AccidentalType::FLAT2;
+      map["natural-flat"] = AccidentalType::FLAT;
+
+      map["quarter-flat"] = AccidentalType::MIRRORED_FLAT;
+      map["quarter-sharp"] = AccidentalType::SHARP_SLASH;
+      map["three-quarters-flat"] = AccidentalType::MIRRORED_FLAT2;
+      map["three-quarters-sharp"] = AccidentalType::SHARP_SLASH4;
+
+      map["sharp-down"] = AccidentalType::SHARP_ARROW_DOWN;
+      map["sharp-up"] = AccidentalType::SHARP_ARROW_UP;
+      map["natural-down"] = AccidentalType::NATURAL_ARROW_DOWN;
+      map["natural-up"] = AccidentalType::NATURAL_ARROW_UP;
+      map["flat-down"] = AccidentalType::FLAT_ARROW_DOWN;
+      map["flat-up"] = AccidentalType::FLAT_ARROW_UP;
+
+      map["slash-quarter-sharp"] = AccidentalType::SHARP_SLASH3; // MIRRORED_FLAT_SLASH; ?
+      map["slash-sharp"] = AccidentalType::SHARP_SLASH2; // SHARP_SLASH; ?
+      map["slash-flat"] = AccidentalType::FLAT_SLASH;
+      map["double-slash-flat"] = AccidentalType::FLAT_SLASH2;
+
+      map["sori"] = AccidentalType::SORI;
+      map["koron"] = AccidentalType::KORON;
+
+      map["natural-sharp"] = AccidentalType::SHARP;
+
+      if (map.contains(mxmlName))
+            return map.value(mxmlName);
+      else
+            qDebug("mxmlString2accidentalType: unknown accidental '%s'", qPrintable(mxmlName));
+      // default: return AccidentalType::NONE
+      return AccidentalType::NONE;
+      }
+
+//---------------------------------------------------------
+//   isAppr
+//---------------------------------------------------------
+
+/**
+ Check if v approximately equals ref.
+ Used to prevent floating point comparison for equality from failing
+ */
+
+static bool isAppr(const double v, const double ref, const double epsilon)
+      {
+      return v > ref - epsilon && v < ref + epsilon;
+      }
+
+//---------------------------------------------------------
+//   microtonalGuess
+//---------------------------------------------------------
+
+/**
+ Convert a MusicXML alter tag into a microtonal accidental in MuseScore enum AccidentalType.
+ Works only for quarter tone, half tone, three-quarters tone and whole tone accidentals.
+ */
+
+AccidentalType microtonalGuess(double val)
+      {
+      const double eps = 0.001;
+      if (isAppr(val, -2, eps))
+            return AccidentalType::FLAT2;
+      else if (isAppr(val, -1.5, eps))
+            return AccidentalType::MIRRORED_FLAT2;
+      else if (isAppr(val, -1, eps))
+            return AccidentalType::FLAT;
+      else if (isAppr(val, -0.5, eps))
+            return AccidentalType::MIRRORED_FLAT;
+      else if (isAppr(val, 0, eps))
+            return AccidentalType::NATURAL;
+      else if (isAppr(val, 0.5, eps))
+            return AccidentalType::SHARP_SLASH;
+      else if (isAppr(val, 1, eps))
+            return AccidentalType::SHARP;
+      else if (isAppr(val, 1.5, eps))
+            return AccidentalType::SHARP_SLASH4;
+      else if (isAppr(val, 2, eps))
+            return AccidentalType::SHARP2;
+      else
+            qDebug("Guess for microtonal accidental corresponding to value %f failed.", val);        // TODO
+
+      // default
+      return AccidentalType::NONE;
+      }
+
+}

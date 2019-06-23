@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: metaedit.cpp 5290 2012-02-07 16:27:27Z wschweer $
 //
 //  Copyright (C) 2002-2008 Werner Schweer and others
 //
@@ -21,6 +20,7 @@
 #include "metaedit.h"
 #include "libmscore/score.h"
 #include "libmscore/undo.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -31,27 +31,37 @@ namespace Ms {
 MetaEditDialog::MetaEditDialog(Score* s, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("MetaEditDialog");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       score = s;
+      dirty = false;
 
       level->setValue(score->mscVersion());
       version->setText(score->mscoreVersion());
-      revision->setValue(score->mscoreRevision());
+      int rev = score->mscoreRevision();
+      if (rev > 99999)  // MuseScore 1.3 is decimal 5702, 2.0 and later uses a 7-digit hex SHA
+            revision->setText(QString::number(rev, 16));
+      else
+            revision->setText(QString::number(rev, 10));
+      filePath->setText(score->importedFilePath());
+      filePath->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
       int idx = 0;
       QMapIterator<QString, QString> i(s->metaTags());
+      QGridLayout* grid = static_cast<QGridLayout*>(scrollWidget->layout());
       while (i.hasNext()) {
             i.next();
-            // xml.tag(QString("metaTag name=\"%1\"").arg(i.key()), i.value());
-            QLabel* label = new QLabel;
-            label->setText(i.key());
+            QLabel* l = new QLabel;
+            l->setText(i.key());
             QLineEdit* text = new QLineEdit(i.value(), 0);
-            grid->addWidget(label, idx, 0);
+            connect(text, SIGNAL(textChanged(const QString&)), SLOT(setDirty()));
+            grid->addWidget(l, idx, 0);
             grid->addWidget(text, idx, 1);
             ++idx;
             }
       connect(newButton, SIGNAL(clicked()), SLOT(newClicked()));
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -61,17 +71,19 @@ MetaEditDialog::MetaEditDialog(Score* s, QWidget* parent)
 void MetaEditDialog::newClicked()
       {
       QString s = QInputDialog::getText(this,
-         tr("MuseScore: Input Tag Name"),
-         tr("New Tag Name:")
+         tr("Input Tag Name"),
+         tr("New tag name:")
          );
+      QGridLayout* grid = static_cast<QGridLayout*>(scrollWidget->layout());
       if (!s.isEmpty()) {
             int idx = grid->rowCount();
-            QLabel* label = new QLabel;
-            label->setText(s);
+            QLabel* l = new QLabel;
+            l->setText(s);
             QLineEdit* text = new QLineEdit;
-            grid->addWidget(label, idx, 0);
+            grid->addWidget(l, idx, 0);
             grid->addWidget(text, idx, 1);
             }
+      dirty = true;
       }
 
 //---------------------------------------------------------
@@ -80,19 +92,33 @@ void MetaEditDialog::newClicked()
 
 void MetaEditDialog::accept()
       {
-      int idx = grid->rowCount();
-
-      QMap<QString, QString>& m(score->metaTags());
-      m.clear();
-
-      for (int i = 0; i < idx; ++i) {
-            QLayoutItem* labelItem = grid->itemAtPosition(i, 0);
-            QLayoutItem* dataItem  = grid->itemAtPosition(i, 1);
-            QLabel* label = static_cast<QLabel*>(labelItem->widget());
-            QLineEdit* le = static_cast<QLineEdit*>(dataItem->widget());
-            m.insert(label->text(), le->text());
+      if (dirty) {
+            QGridLayout* grid = static_cast<QGridLayout*>(scrollWidget->layout());
+            int idx = grid->rowCount();
+            QMap<QString, QString> m;
+            for (int i = 0; i < idx; ++i) {
+                  QLayoutItem* labelItem = grid->itemAtPosition(i, 0);
+                  QLayoutItem* dataItem  = grid->itemAtPosition(i, 1);
+                  if (labelItem && dataItem) {
+                        QLabel* l = static_cast<QLabel*>(labelItem->widget());
+                        QLineEdit* le = static_cast<QLineEdit*>(dataItem->widget());
+                        m.insert(l->text(), le->text());
+                        }
+                  }
+            score->undo(new ChangeMetaTags(score, m));
             }
       QDialog::accept();
       }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void MetaEditDialog::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
+
 }
 

@@ -5,7 +5,6 @@
 =====================================================================
     MuseScore
     Linux Music Score Editor
-    $Id: mscore.cpp 1850 2009-05-25 07:44:35Z wschweer $
 
     Copyright (C) 2009 Werner Schweer and others
 
@@ -27,9 +26,9 @@
 =====================================================================
 -->
 
-<!-- MuseJazz extensions are already superscripted; this is how much to move them back down -->
+<!-- MuseJazz Text extensions are already superscripted; this is how much to move them back down -->
   <!ENTITY ext "2.5">
-<!-- MuseJazz modifier digits are already superscripted; this is how much to move everything else up to match -->
+<!-- MuseJazz Text modifier digits are already superscripted; this is how much to move everything else up to match -->
   <!ENTITY mod "4.5">
 <!-- this is additional superscripting to apply to modifier digits -->
   <!ENTITY modn "1">
@@ -45,7 +44,7 @@
       configured text style font family is used.
 -->
 
-  <font family="MuseJazz">
+  <font family="MuseJazz Text">
 
     <sym code="0xe180" name="ma"/>
     <sym code="0xe181" name="mi"/>
@@ -79,24 +78,24 @@
     <sym code="0x266e" name="natural"/>
     <sym code="0x266f" name="#"/>
 
-<!-- add "code" attributes to these, matching those for "b" and "#" above
-    (0x266d / 0x266f) to get German chords to render with flat and sharp -->
+    <sym code="0x1d12a" name="##"/>
+    <sym code="0x1d12b" name="bb"/>
+
+<!-- add "code" attributes (as for "b" and "#" above) to get these to render as flat and sharp signs -->
     <sym class="accidental" name="es"/>
     <sym class="accidental" name="is"/>
 <!-- this is to render the "s" in "As" and "Es" in German -->
     <sym class="accidental" name="s"/>
+<!-- change value of "code" attribute to "0x200b" (zero width space) to force Bb to render as B in German -->
+    <sym class="german_B" code="0x266d" name="b"/>
 
 <!-- these enable "b" and "mi" to render as literals when encountered as note names -->
     <sym class="note" name="b"/>
     <sym class="note" name="mi"/>
 
-<!-- edit the "value" attribute of these to get an accent on the "e" for French spelling -->
-    <sym value="Re" class="note" name="Re"/>
-    <sym value="re" class="note" name="re"/>
-
     </font>
 
-  <font family="MuseJazz">
+  <font family="MuseJazz Text">
     <mag>0.85</mag>
 
     <sym name="("/>
@@ -107,13 +106,22 @@
     <sym name="maj"/>
     <sym name="m"/>
     <sym name="min"/>
+    <sym name="Mi"/>
+    <sym name="Min"/>
     <sym name="aug"/>
+    <sym name="Aug"/>
     <sym name="dim"/>
+    <sym name="Dim"/>
     <sym name="alt"/>
+    <sym name="Alt"/>
+    <sym name="bass"/>
+    <sym name="Bass"/>
+    <sym name="pedal"/>
+    <sym name="Pedal"/>
 
     </font>
 
-  <font family="MuseJazz">
+  <font family="MuseJazz Text">
     <mag>1.3</mag>
 
     <sym code="0xe190" name="e0"/>
@@ -132,7 +140,7 @@
 
     </font>
 
-  <font family="MuseJazz">
+  <font family="MuseJazz Text">
     <mag>0.75</mag>
 
     <sym value="(" name="s("/>
@@ -366,7 +374,7 @@
 
   <token class="modifier">
     <name>1</name>
-    <render>m:0:-&modn; s1m:0:&modn; </render>
+    <render>m:0:-&modn; s1 m:0:&modn; </render>
     </token>
 
   <token class="modifier">
@@ -453,7 +461,7 @@
          render   this is a script which contains render commands
                   commands:
                         xxx         draw symbol name xxx
-                        m:x:y       add x:y (point) to current position
+                        m:x:y       add x:y to current position (1/5 spatium units)
                         :push
                         :pop
                         :n          root or base note

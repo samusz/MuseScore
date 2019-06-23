@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -20,6 +19,7 @@
 #include "libmscore/durationtype.h"
 #include "libmscore/measure.h"
 #include "libmscore/segment.h"
+#include "libmscore/tempotext.h"
 #include "libmscore/chord.h"
 #include "libmscore/note.h"
 #include "libmscore/keysig.h"
@@ -31,7 +31,7 @@
 #define DIR QString("libmscore/midi/")
 
 namespace Ms {
-      extern Score::FileError importMidi(Score*, const QString&);
+      extern Score::FileError importMidi(MasterScore*, const QString&);
       }
 
 using namespace Ms;
@@ -43,6 +43,11 @@ using namespace Ms;
 class TestMidi : public QObject, public MTest
       {
       Q_OBJECT
+      void midiExportTestRef(const QString& file);
+      void testMidiExport(MasterScore* score, const QString& writeFile, const QString& refFile);
+
+      void testTimeStretchFermata(MasterScore* score, const QString& file, const QString& testName);
+      void testTimeStretchFermataTempoEdit(MasterScore* score, const QString& file, const QString& testName);
 
    private slots:
       void initTestCase();
@@ -51,6 +56,27 @@ class TestMidi : public QObject, public MTest
       void midi03();
       void events_data();
       void events();
+      void midiBendsExport1() { midiExportTestRef("testBends1"); }
+      void midiBendsExport2() { midiExportTestRef("testBends2"); }      // Play property test
+      void midiPortExport()   { midiExportTestRef("testMidiPort"); }
+      void midiArpeggio()     { midiExportTestRef("testArpeggio"); }
+      void midi184376ExportMidiInitialKeySig()
+            {
+            midiExportTestRef("testInitialKeySigThenRepeatToMeas2");    // tick 0 has Bb keysig.  Meas 2 has no key sig. Meas 2 repeats back to start of Meas 2.  Result should have initial Bb keysig
+            midiExportTestRef("testRepeatsWithKeySigs");                // 5 measures, with a key sig on every measure. Meas 3-4 are repeated.
+            midiExportTestRef("testRepeatsWithKeySigsExceptFirstMeas"); // 5 measures, with a key sig on every measure except meas 0.  Meas 3-4 are repeated.
+            }
+      void midiVolta()
+          {
+          midiExportTestRef("testVoltaTemp"); // test changing temp in prima and seconda volta
+          midiExportTestRef("testVoltaDynamic"); // test changing Dynamic in prima and seconda volta
+          midiExportTestRef("testVoltaStaffText"); // test changing StaffText in prima and seconda volta
+          }
+      void midiTimeStretchFermata();
+      void midiTimeStretchFermataContinuousView();
+      void midiTimeStretchFermataTempoEdit();
+      void midiTimeStretchFermataTempoEditContinuousView();
+      void midiSingleNoteDynamics();
       };
 
 //---------------------------------------------------------
@@ -66,6 +92,10 @@ void TestMidi::initTestCase()
 void TestMidi::events_data()
       {
       QTest::addColumn<QString>("file");
+      // Test Metronome
+      QTest::newRow("testMetronomeSimple") <<  "testMetronomeSimple";
+      QTest::newRow("testMetronomeCompound") <<  "testMetronomeCompound";
+      QTest::newRow("testMetronomeAnacrusis") <<  "testMetronomeAnacrusis";
       // Test Eighth Swing
       QTest::newRow("testSwing8thSimple") <<  "testSwing8thSimple";
       QTest::newRow("testSwing8thTies") <<  "testSwing8thTies";
@@ -80,7 +110,36 @@ void TestMidi::events_data()
       QTest::newRow("testSwingPickup") <<  "testSwingPickup";
       // Test Text Cominations
       QTest::newRow("testSwingStyleText") <<  "testSwingStyleText";
-      QTest::newRow("testSwingTexts") <<  "testSwingTexts";
+//TODO::ws      QTest::newRow("testSwingTexts") <<  "testSwingTexts";
+      // ornaments
+      QTest::newRow("testMordents") <<  "testMordents";
+      //QTest::newRow("testBaroqueOrnaments") << "testBaroqueOrnaments"; // fail, at least a problem with the first note and stretch
+      QTest::newRow("testOrnamentAccidentals") << "testOrnamentAccidentals";
+//TODO      QTest::newRow("testGraceBefore") <<  "testGraceBefore";
+      QTest::newRow("testBeforeAfterGraceTrill") <<  "testBeforeAfterGraceTrill";
+      QTest::newRow("testBeforeAfterGraceTrillPlay=false") <<  "testBeforeAfterGraceTrillPlay=false";
+      QTest::newRow("testKantataBWV140Excerpts") <<  "testKantataBWV140Excerpts";
+      QTest::newRow("testTrillTransposingInstrument") <<  "testTrillTransposingInstrument";
+      QTest::newRow("testAndanteExcerpts") <<  "testAndanteExcerpts";
+      QTest::newRow("testTrillLines") << "testTrillLines";
+      QTest::newRow("testTrillTempos") << "testTrillTempos";
+//      QTest::newRow("testTrillCrossStaff") << "testTrillCrossStaff";
+      QTest::newRow("testOrnaments") << "testOrnaments";
+      QTest::newRow("testOrnamentsTrillsOttava") << "testOrnamentsTrillsOttava";
+      QTest::newRow("testTieTrill") << "testTieTrill";
+      // glissando
+      QTest::newRow("testGlissando") << "testGlissando";
+      QTest::newRow("testGlissandoAcrossStaffs") << "testGlissandoAcrossStaffs";
+      QTest::newRow("testGlissando-71826") << "testGlissando-71826";
+      // pedal
+//      QTest::newRow("testPedal") <<  "testPedal";
+      // multi note tremolo
+      QTest::newRow("testMultiNoteTremolo") << "testMultiNoteTremolo";
+      // Test Pauses
+      QTest::newRow("testPauses") <<  "testPauses";
+      QTest::newRow("testPausesRepeats") <<  "testPausesRepeats";
+      QTest::newRow("testPausesTempoTimesigChange") <<  "testPausesTempoTimesigChange";
+      QTest::newRow("testGuitarTrem") <<  "testGuitarTrem";
       }
 
 //---------------------------------------------------------
@@ -90,7 +149,7 @@ void TestMidi::events_data()
 bool saveMidi(Score* score, const QString& name)
       {
       ExportMidi em(score);
-      return em.write(name, true);
+      return em.write(name, true, true);
       }
 
 
@@ -102,26 +161,26 @@ bool compareElements(Element* e1, Element* e2)
       {
       if (e1->type() != e2->type())
             return false;
-      if (e1->type() == Element::Type::TIMESIG) {
+      if (e1->type() == ElementType::TIMESIG) {
             }
-      else if (e1->type() == Element::Type::KEYSIG) {
+      else if (e1->type() == ElementType::KEYSIG) {
             KeySig* ks1 = static_cast<KeySig*>(e1);
             KeySig* ks2 = static_cast<KeySig*>(e2);
             if (ks1->key() != ks2->key()) {
-                  qDebug("      key signature %d  !=  %d", ks1->key(), ks2->key());
+                  qDebug("      key signature %d  !=  %d", int(ks1->key()), int(ks2->key()));
                   return false;
                   }
             }
-      else if (e1->type() == Element::Type::CLEF) {
+      else if (e1->type() == ElementType::CLEF) {
             }
-      else if (e1->type() == Element::Type::REST) {
+      else if (e1->type() == ElementType::REST) {
             }
-      else if (e1->type() == Element::Type::CHORD) {
+      else if (e1->type() == ElementType::CHORD) {
             Ms::Chord* c1 = static_cast<Ms::Chord*>(e1);
             Ms::Chord* c2 = static_cast<Ms::Chord*>(e2);
-            if (c1->duration() != c2->duration()) {
-                  Fraction f1 = c1->duration();
-                  Fraction f2 = c2->duration();
+            if (c1->ticks() != c2->ticks()) {
+                  Fraction f1 = c1->ticks();
+                  Fraction f2 = c2->ticks();
                   qDebug("      chord duration %d/%d  !=  %d/%d",
                      f1.numerator(), f1.denominator(),
                      f2.numerator(), f2.denominator()
@@ -204,7 +263,7 @@ void TestMidi::midi01()
       c.setTimeSig(Fraction(4,4));
       c.createScore("test1a");
       c.addPart("voice");
-      c.move(0, 0);     // move to track 0 tick 0
+      c.move(0, Fraction(0,1));     // move to track 0 tick 0
 
       c.addKeySig(Key(1));
       c.addTimeSig(Fraction(4,4));
@@ -212,14 +271,14 @@ void TestMidi::midi01()
       c.addChord(61, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(62, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(63, TDuration(TDuration::DurationType::V_QUARTER));
-      Score* score = c.score();
+      MasterScore* score = c.score();
 
       score->doLayout();
       score->rebuildMidiMapping();
       c.saveScore();
       saveMidi(score, "test1.mid");
 
-      Score* score2 = new Score(mscore->baseStyle());
+      MasterScore* score2 = new MasterScore(mscore->baseStyle());
       score2->setName("test1b");
       QCOMPARE(importMidi(score2, "test1.mid"), Score::FileError::FILE_NO_ERROR);
 
@@ -245,21 +304,21 @@ void TestMidi::midi02()
       c.setTimeSig(Fraction(3,4));
       c.createScore("test2a");
       c.addPart("voice");
-      c.move(0, 0);     // move to track 0 tick 0
+      c.move(0, Fraction(0,1));     // move to track 0 tick 0
 
       c.addKeySig(Key(2));
       c.addTimeSig(Fraction(3,4));
       c.addChord(60, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(61, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(62, TDuration(TDuration::DurationType::V_QUARTER));
-      Score* score = c.score();
+      MasterScore* score = c.score();
 
       score->doLayout();
       score->rebuildMidiMapping();
       c.saveScore();
       saveMidi(score, "test2.mid");
 
-      Score* score2 = new Score(mscore->baseStyle());
+      MasterScore* score2 = new MasterScore(mscore->baseStyle());
       score2->setName("test2b");
 
       QCOMPARE(importMidi(score2, "test2.mid"), Score::FileError::FILE_NO_ERROR);
@@ -286,7 +345,7 @@ void TestMidi::midi03()
       c.setTimeSig(Fraction(4,4));
       c.createScore("test3a");
       c.addPart("voice");
-      c.move(0, 0);     // move to track 0 tick 0
+      c.move(0, Fraction(0,1));     // move to track 0 tick 0
 
       c.addKeySig(Key(1));
       c.addTimeSig(Fraction(4,4));
@@ -294,14 +353,14 @@ void TestMidi::midi03()
       c.addChord(61, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(62, TDuration(TDuration::DurationType::V_QUARTER));
       c.addChord(63, TDuration(TDuration::DurationType::V_QUARTER));
-      Score* score = c.score();
+      MasterScore* score = c.score();
 
       score->doLayout();
       score->rebuildMidiMapping();
       c.saveScore();
       saveMidi(score, "test3.mid");
 
-      Score* score2 = new Score(mscore->baseStyle());
+      MasterScore* score2 = new MasterScore(mscore->baseStyle());
       score2->setName("test3b");
       QCOMPARE(importMidi(score2, "test3.mid"), Score::FileError::FILE_NO_ERROR);
 
@@ -317,6 +376,156 @@ void TestMidi::midi03()
       }
 
 //---------------------------------------------------------
+//   testTimeStretchFermata
+//---------------------------------------------------------
+
+void TestMidi::testTimeStretchFermata(MasterScore* score, const QString& file, const QString& testName)
+      {
+      const QString writeFile = QString("%1-%2-test-%3.mid").arg(file).arg(testName);
+      const QString reference(DIR + file + "-ref.mid");
+
+      testMidiExport(score, writeFile.arg(1), reference);
+
+      const Fraction frac1 = 2 * Fraction(4, 4) + Fraction(2, 4); // 3rd measure, 3rd beat
+      score->doLayoutRange(frac1, frac1);
+      testMidiExport(score, writeFile.arg(2), reference);
+
+      const Fraction frac2 = 6 * Fraction(4, 4); // 7th measure
+      score->doLayoutRange(frac2, frac2);
+      testMidiExport(score, writeFile.arg(3), reference);
+      }
+
+//---------------------------------------------------------
+//   midiTimeStretchFermata
+//---------------------------------------------------------
+
+void TestMidi::midiTimeStretchFermata()
+      {
+      const QString file("testTimeStretchFermata");
+      const QString readFile(DIR + file + ".mscx");
+
+      MasterScore* score = readScore(readFile);
+
+      testTimeStretchFermata(score, file, "page");
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   midiTimeStretchFermataContinuousView
+///   Checks continuous view tempo issues like #289922.
+//---------------------------------------------------------
+
+void TestMidi::midiTimeStretchFermataContinuousView()
+      {
+      const QString file("testTimeStretchFermata");
+      const QString readFile(DIR + file + ".mscx");
+
+      MasterScore* score = readScore(readFile);
+      score->setLayoutMode(LayoutMode::LINE);
+      score->doLayout();
+
+      testTimeStretchFermata(score, file, "linear");
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   testTimeStretchFermataTempoEdit
+///   see the issue #290997
+//---------------------------------------------------------
+
+void TestMidi::testTimeStretchFermataTempoEdit(MasterScore* score, const QString& file, const QString& testName)
+      {
+      const QString writeFile = QString("%1-%2-test-%3.mid").arg(file).arg(testName);
+      const QString reference(DIR + file + "-%1-ref.mid");
+
+      Element* tempo = score->firstSegment(SegmentType::ChordRest)->findAnnotation(ElementType::TEMPO_TEXT, -1, 3);
+      Q_ASSERT(tempo && tempo->isTempoText());
+
+      const int scoreTempo = 200;
+      const int defaultTempo = 120;
+      const qreal defaultTempoBps = defaultTempo / 60.0;
+
+      testMidiExport(score, writeFile.arg("init"), reference.arg(scoreTempo));
+
+      score->startCmd();
+      tempo->undoChangeProperty(Pid::TEMPO_FOLLOW_TEXT, false, PropertyFlags::UNSTYLED);
+      tempo->undoChangeProperty(Pid::TEMPO, defaultTempoBps, PropertyFlags::UNSTYLED);
+      score->endCmd();
+      testMidiExport(score, writeFile.arg("change-tempo"), reference.arg(defaultTempo));
+
+      // undo the last changes
+      score->startCmd();
+      score->undoRedo(/* undo */ true, /* EditData */ nullptr);
+      score->endCmd();
+      testMidiExport(score, writeFile.arg("undo-change-tempo"), reference.arg(scoreTempo));
+
+      score->startCmd();
+      score->undoRemoveElement(tempo);
+      score->endCmd();
+      testMidiExport(score, writeFile.arg("remove-tempo"), reference.arg(defaultTempo));
+
+      // undo the last changes
+      score->startCmd();
+      score->undoRedo(/* undo */ true, /* EditData */ nullptr);
+      score->endCmd();
+      testMidiExport(score, writeFile.arg("undo-remove-tempo"), reference.arg(scoreTempo));
+      }
+
+//---------------------------------------------------------
+//   midiTimeStretchFermataTempoEdit
+//---------------------------------------------------------
+
+void TestMidi::midiTimeStretchFermataTempoEdit()
+      {
+      const QString file("testTimeStretchFermataTempoEdit");
+      const QString readFile(DIR + file + ".mscx");
+
+      MasterScore* score = readScore(readFile);
+
+      testTimeStretchFermataTempoEdit(score, file, "page");
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   midiTimeStretchFermataTempoEditContinuousView
+//---------------------------------------------------------
+
+void TestMidi::midiTimeStretchFermataTempoEditContinuousView()
+      {
+      const QString file("testTimeStretchFermataTempoEdit");
+      const QString readFile(DIR + file + ".mscx");
+
+      MasterScore* score = readScore(readFile);
+      score->setLayoutMode(LayoutMode::LINE);
+      score->doLayout();
+
+      testTimeStretchFermataTempoEdit(score, file, "linear");
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   midiTimeStretchFermata
+//---------------------------------------------------------
+
+void TestMidi::midiSingleNoteDynamics()
+      {
+      const QString file("testSingleNoteDynamics");
+      QString readFile(DIR   + file + ".mscx");
+      QString writeFile(file + "-test.mid");
+      QString reference(DIR + file + "-ref.mid");
+
+      MasterScore* score = readScore(readFile);
+      score->doLayout();
+      testMidiExport(score, writeFile, reference);
+
+      delete score;
+      }
+
+//---------------------------------------------------------
 //   events
 //---------------------------------------------------------
 
@@ -328,16 +537,19 @@ void TestMidi::events()
       QString writeFile(file + "-test.txt");
       QString reference(DIR + file + "-ref.txt");
 
-      Score* score = readScore(readFile);
-      score->doLayout();
+      MasterScore* score = readScore(readFile);
       EventMap events;
-      score->renderMidi(&events);
+      // a temporary, unitialized synth state so we can render the midi - should fall back correctly
+      SynthesizerState ss;
+      score->renderMidi(&events, ss);
       qDebug() << "Opened score " << readFile;
       QFile filehandler(writeFile);
       filehandler.open(QIODevice::WriteOnly | QIODevice::Text);
       QTextStream out(&filehandler);
-      multimap<int, NPlayEvent> ::iterator iter;
+
       for (auto iter = events.begin(); iter!= events.end(); ++iter){
+            if (iter->second.discard())
+                  continue;
             out << qSetFieldWidth(5) << "Tick  =  ";
             out << qSetFieldWidth(5) << iter->first;
             out << qSetFieldWidth(5) << "   Type  = ";
@@ -355,6 +567,35 @@ void TestMidi::events()
       QVERIFY(score);
       QVERIFY(compareFiles(writeFile, reference));
      // QVERIFY(saveCompareScore(score, writeFile, reference));
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   testMidiExport
+//---------------------------------------------------------
+
+void TestMidi::testMidiExport(MasterScore* score, const QString& writeFile, const QString& refFile)
+      {
+      Q_ASSERT(writeFile.endsWith(".mid") && refFile.endsWith(".mid"));
+      QVERIFY(saveMidi(score, writeFile));
+      QVERIFY(compareFiles(writeFile, refFile));
+      }
+
+//---------------------------------------------------------
+//   midiExportTest
+//   read a MuseScore mscx file, write to a MIDI file and verify against reference
+//---------------------------------------------------------
+
+void TestMidi::midiExportTestRef(const QString& file)
+      {
+      MScore::debugMode = true;
+      MasterScore* score = readScore(DIR + file + ".mscx");
+      QVERIFY(score);
+      score->doLayout();
+      score->rebuildMidiMapping();
+      testMidiExport(score, QString(file) + ".mid", DIR + QString(file) + "-ref.mid");
+      delete score;
       }
 
 QTEST_MAIN(TestMidi)

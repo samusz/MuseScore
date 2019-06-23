@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: musicxmlsupport.h 5595 2012-04-29 15:30:32Z lvinken $
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -122,28 +121,40 @@ private:
 //---------------------------------------------------------
 
 /**
- A single instrument in a MusicXML drumset.
+ A single instrument in a MusicXML part.
+ Used for both a drum part and a (non-drum) multi-instrument part
  */
 
 struct MusicXMLDrumInstrument {
-      int pitch;
-      QString name;
-      NoteHead::Group notehead; ///< notehead symbol set
-      int line;                 ///< place notehead onto this line
-      MScore::Direction stemDirection;
+      int pitch;                       // pitch read from MusicXML
+      QString name;                    // name read from MusicXML
+      QString sound;                   // sound read from MusicXML
+      QString virtLib;                 // virtual library read from MusicXML
+      QString virtName;                // virtualname read from MusicXML
+      int midiChannel;                 // channel read from MusicXML
+      int midiPort;                    // port read from MusicXML
+      int midiProgram;                 // program read from MusicXML
+      int midiVolume;                  // volume read from MusicXML
+      int midiPan;                     // pan value read from MusicXML
+      NoteHead::Group notehead;        ///< notehead symbol set
+      int line;                        ///< place notehead onto this line
+      Direction stemDirection;
 
       QString toString() const;
 
       MusicXMLDrumInstrument()
-            : pitch(-1), name(), notehead(NoteHead::Group::HEAD_INVALID), line(0), stemDirection(MScore::Direction::AUTO) {}
+            : pitch(-1), name(), midiChannel(-1), midiPort(-1), midiProgram(-1), midiVolume(100), midiPan(63),
+            notehead(NoteHead::Group::HEAD_INVALID), line(0), stemDirection(Direction::AUTO) {}
       MusicXMLDrumInstrument(QString s)
-            : pitch(-1), name(s), notehead(NoteHead::Group::HEAD_INVALID), line(0), stemDirection(MScore::Direction::AUTO) {}
-      MusicXMLDrumInstrument(int p, QString s, NoteHead::Group nh, int l, MScore::Direction d)
-            : pitch(p), name(s), notehead(nh), line(l), stemDirection(d) {}
+            : pitch(-1), name(s), midiChannel(-1), midiPort(-1), midiProgram(-1), midiVolume(100), midiPan(63),
+            notehead(NoteHead::Group::HEAD_INVALID), line(0), stemDirection(Direction::AUTO) {}
+      MusicXMLDrumInstrument(int p, QString s, NoteHead::Group nh, int l, Direction d)
+            : pitch(p), name(s), midiChannel(-1), midiPort(-1), midiProgram(-1), midiVolume(100), midiPan(63),
+            notehead(nh), line(l), stemDirection(d) {}
       };
 
 /**
- A MusicXML drumset.
+ A MusicXML drumset or set of instruments in a multi-instrument part.
  */
 
 typedef QMap<QString, MusicXMLDrumInstrument> MusicXMLDrumset;
@@ -160,7 +171,7 @@ public:
       static Fraction durationAsFraction(const int divisions, const QDomElement e);
       static Fraction noteTypeToFraction(QString type);
       static Fraction calculateFraction(QString type, int dots, int normalNotes, int actualNotes);
-};
+      };
 
 //---------------------------------------------------------
 //   ValidatorMessageHandler
@@ -172,6 +183,8 @@ public:
 
 class ValidatorMessageHandler : public QAbstractMessageHandler
       {
+      Q_OBJECT
+
 public:
       ValidatorMessageHandler() : QAbstractMessageHandler(0) {}
       QString getErrors() const { return errors; }
@@ -185,6 +198,12 @@ private:
 extern void domError(const QDomElement&);
 extern void domNotImplemented(const QDomElement&);
 
+
+extern QString accSymId2MxmlString(const SymId id);
+extern QString accidentalType2MxmlString(const AccidentalType type);
+extern AccidentalType mxmlString2accidentalType(const QString mxmlName);
+extern SymId mxmlString2accSymId(const QString mxmlName);
+extern AccidentalType microtonalGuess(double val);
 
 } // namespace Ms
 #endif

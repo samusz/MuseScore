@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: jackaudio.h 4147 2011-04-07 14:39:44Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -86,6 +85,7 @@ class JackAudio : public Driver {
       virtual void checkTransportSeek(int, int, bool);
       virtual int bufferSize() {return _segmentSize;}
       void setBufferSize(int nframes) { _segmentSize = nframes;}
+      void updateOutPortCount(int);
       };
 
 

@@ -1,26 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.00">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
     <Division>480</Division>
     <Style>
-      <page-layout>
-        <page-height>1683.78</page-height>
-        <page-width>1190.55</page-width>
-        <page-margins type="even">
-          <left-margin>56.6929</left-margin>
-          <right-margin>56.6929</right-margin>
-          <top-margin>56.6929</top-margin>
-          <bottom-margin>113.386</bottom-margin>
-          </page-margins>
-        <page-margins type="odd">
-          <left-margin>56.6929</left-margin>
-          <right-margin>56.6929</right-margin>
-          <top-margin>56.6929</top-margin>
-          <bottom-margin>113.386</bottom-margin>
-          </page-margins>
-        </page-layout>
       <Spatium>1.76389</Spatium>
       </Style>
     <showInvisible>1</showInvisible>
@@ -38,18 +22,6 @@
     <metaTag name="translator"></metaTag>
     <metaTag name="workNumber"></metaTag>
     <metaTag name="workTitle"></metaTag>
-    <PageList>
-      <Page>
-        <System>
-          </System>
-        <System>
-          </System>
-        <System>
-          </System>
-        <System>
-          </System>
-        </Page>
-      </PageList>
     <Part>
       <Staff id="1">
         <StaffType group="pitched">
@@ -57,34 +29,49 @@
         </Staff>
       <trackName>E-Gt</trackName>
       <Instrument>
-        <longName pos="0">Electric Guitar</longName>
-        <shortName pos="0">El. Guit.</shortName>
-        <trackName>Electric Guitar</trackName>
+        <longName>Electric Guitar</longName>
+        <shortName>El. Guit.</shortName>
+        <trackName>Electric Guitar (Treble Clef)</trackName>
         <minPitchP>40</minPitchP>
         <maxPitchP>86</maxPitchP>
         <minPitchA>40</minPitchA>
         <maxPitchA>86</maxPitchA>
+        <transposeDiatonic>-7</transposeDiatonic>
+        <transposeChromatic>-12</transposeChromatic>
+        <instrumentId>pluck.guitar.electric</instrumentId>
         <clef>G8vb</clef>
         <StringData>
           <frets>21</frets>
-          <string>40</string>
-          <string>45</string>
-          <string>50</string>
-          <string>55</string>
-          <string>59</string>
-          <string>64</string>
+          <string>52</string>
+          <string>57</string>
+          <string>62</string>
+          <string>67</string>
+          <string>71</string>
+          <string>76</string>
           </StringData>
         <Articulation>
           <velocity>100</velocity>
           <gateTime>100</gateTime>
           </Articulation>
+        <Articulation name="staccatissimo">
+          <velocity>100</velocity>
+          <gateTime>33</gateTime>
+          </Articulation>
         <Articulation name="staccato">
           <velocity>100</velocity>
           <gateTime>50</gateTime>
           </Articulation>
+        <Articulation name="portato">
+          <velocity>100</velocity>
+          <gateTime>67</gateTime>
+          </Articulation>
         <Articulation name="tenuto">
           <velocity>100</velocity>
           <gateTime>100</gateTime>
+          </Articulation>
+        <Articulation name="marcato">
+          <velocity>120</velocity>
+          <gateTime>67</gateTime>
           </Articulation>
         <Articulation name="sforzato">
           <velocity>120</velocity>
@@ -102,8 +89,8 @@
         </VBox>
       <Measure number="1">
         <Clef>
-          <concertClefType>G8vb</concertClefType>
-          <transposingClefType>G8vb</transposingClefType>
+          <concertClefType>G</concertClefType>
+          <transposingClefType>G</transposingClefType>
           <lid>1</lid>
           </Clef>
         <StaffText>
@@ -128,7 +115,7 @@
         <Tempo>
           <tempo>2</tempo>
           <lid>6</lid>
-          <text><sym>unicodeNoteQuarterUp</sym> = 120</text>
+          <text><sym>metNoteQuarterUp</sym> = 120</text>
           </Tempo>
         <Chord>
           <lid>7</lid>
@@ -162,7 +149,7 @@
         <Rest>
           <lid>14</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="3">
@@ -198,7 +185,7 @@
         <Rest>
           <lid>23</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="5">
@@ -234,7 +221,7 @@
         <Rest>
           <lid>32</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="7">
@@ -270,14 +257,14 @@
         <Rest>
           <lid>41</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="9">
         <Rest>
           <lid>43</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="10">
@@ -288,14 +275,14 @@
         <Rest>
           <lid>46</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="11">
         <Rest>
           <lid>48</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="12">
@@ -306,14 +293,14 @@
         <Rest>
           <lid>51</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="13">
         <Rest>
           <lid>53</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="14">
@@ -324,14 +311,14 @@
         <Rest>
           <lid>56</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="15">
         <Rest>
           <lid>58</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="16">
@@ -342,21 +329,21 @@
         <Rest>
           <lid>61</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="17">
         <Rest>
           <lid>63</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="18">
         <Rest>
           <lid>65</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="19">
@@ -367,21 +354,21 @@
         <Rest>
           <lid>68</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="20">
         <Rest>
           <lid>70</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="21">
         <Rest>
           <lid>72</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="22">
@@ -392,21 +379,21 @@
         <Rest>
           <lid>75</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="23">
         <Rest>
           <lid>77</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="24">
         <Rest>
           <lid>79</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="25">
@@ -417,14 +404,14 @@
         <Rest>
           <lid>82</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="26">
         <Rest>
           <lid>84</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="27">
@@ -435,14 +422,14 @@
         <Rest>
           <lid>87</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="28">
         <Rest>
           <lid>89</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="29">
@@ -453,14 +440,14 @@
         <Rest>
           <lid>92</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="30">
         <Rest>
           <lid>94</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="31">
@@ -471,14 +458,14 @@
         <Rest>
           <lid>97</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="32">
         <Rest>
           <lid>99</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="33">
@@ -490,14 +477,10 @@
           <name>segno</name>
           <lid>102</lid>
           </Symbol>
-        <Symbol>
-          <name>segno</name>
-          <lid>112</lid>
-          </Symbol>
         <Rest>
           <lid>103</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="34">
@@ -508,7 +491,7 @@
         <Rest>
           <lid>106</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
         </Measure>
       <Measure number="35">
@@ -520,19 +503,11 @@
           <name>coda</name>
           <lid>109</lid>
           </Symbol>
-        <Symbol>
-          <name>coda</name>
-          <lid>113</lid>
-          </Symbol>
         <Rest>
           <lid>110</lid>
           <durationType>measure</durationType>
-          <duration z="1" n="1"/>
+          <duration>4/4</duration>
           </Rest>
-        <BarLine>
-          <subtype>end</subtype>
-          <span>1</span>
-          </BarLine>
         </Measure>
       </Staff>
     <Score>
@@ -541,38 +516,12 @@
       <Division>480</Division>
       <Style>
         <createMultiMeasureRests>1</createMultiMeasureRests>
-        <page-layout>
-          <page-height>1683.78</page-height>
-          <page-width>1190.55</page-width>
-          <page-margins type="even">
-            <left-margin>56.6929</left-margin>
-            <right-margin>56.6929</right-margin>
-            <top-margin>56.6929</top-margin>
-            <bottom-margin>113.386</bottom-margin>
-            </page-margins>
-          <page-margins type="odd">
-            <left-margin>56.6929</left-margin>
-            <right-margin>56.6929</right-margin>
-            <top-margin>56.6929</top-margin>
-            <bottom-margin>113.386</bottom-margin>
-            </page-margins>
-          </page-layout>
         <Spatium>1.76389</Spatium>
         </Style>
       <showInvisible>1</showInvisible>
       <showUnprintable>1</showUnprintable>
       <showFrames>1</showFrames>
       <showMargins>0</showMargins>
-      <PageList>
-        <Page>
-          <System>
-            </System>
-          <System>
-            </System>
-          <System>
-            </System>
-          </Page>
-        </PageList>
       <Part>
         <Staff id="1">
           <linkedTo>1</linkedTo>
@@ -607,34 +556,49 @@
           </Staff>
         <trackName></trackName>
         <Instrument>
-          <longName pos="0">Electric Guitar</longName>
-          <shortName pos="0">El. Guit.</shortName>
-          <trackName>Electric Guitar</trackName>
+          <longName>Electric Guitar</longName>
+          <shortName>El. Guit.</shortName>
+          <trackName>Electric Guitar (Treble Clef)</trackName>
           <minPitchP>40</minPitchP>
           <maxPitchP>86</maxPitchP>
           <minPitchA>40</minPitchA>
           <maxPitchA>86</maxPitchA>
+          <transposeDiatonic>-7</transposeDiatonic>
+          <transposeChromatic>-12</transposeChromatic>
+          <instrumentId>pluck.guitar.electric</instrumentId>
           <clef>G8vb</clef>
           <StringData>
             <frets>21</frets>
-            <string>40</string>
-            <string>45</string>
-            <string>50</string>
-            <string>55</string>
-            <string>59</string>
-            <string>64</string>
+            <string>52</string>
+            <string>57</string>
+            <string>62</string>
+            <string>67</string>
+            <string>71</string>
+            <string>76</string>
             </StringData>
           <Articulation>
             <velocity>100</velocity>
             <gateTime>100</gateTime>
             </Articulation>
+          <Articulation name="staccatissimo">
+            <velocity>100</velocity>
+            <gateTime>33</gateTime>
+            </Articulation>
           <Articulation name="staccato">
             <velocity>100</velocity>
             <gateTime>50</gateTime>
             </Articulation>
+          <Articulation name="portato">
+            <velocity>100</velocity>
+            <gateTime>67</gateTime>
+            </Articulation>
           <Articulation name="tenuto">
             <velocity>100</velocity>
             <gateTime>100</gateTime>
+            </Articulation>
+          <Articulation name="marcato">
+            <velocity>120</velocity>
+            <gateTime>67</gateTime>
             </Articulation>
           <Articulation name="sforzato">
             <velocity>120</velocity>
@@ -656,8 +620,8 @@
           </VBox>
         <Measure number="1">
           <Clef>
-            <concertClefType>G8vb</concertClefType>
-            <transposingClefType>G8vb</transposingClefType>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
             <lid>1</lid>
             </Clef>
           <StaffText>
@@ -682,7 +646,7 @@
           <Tempo>
             <tempo>2</tempo>
             <lid>6</lid>
-            <text><sym>unicodeNoteQuarterUp</sym> = 120</text>
+            <text><sym>metNoteQuarterUp</sym> = 120</text>
             </Tempo>
           <Chord>
             <lid>7</lid>
@@ -716,7 +680,7 @@
           <Rest>
             <lid>14</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="3">
@@ -752,7 +716,7 @@
           <Rest>
             <lid>23</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="5">
@@ -788,7 +752,7 @@
           <Rest>
             <lid>32</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="7">
@@ -824,26 +788,21 @@
           <Rest>
             <lid>41</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="8" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>17280</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>15360</tick>
         <Measure number="9">
           <Rest>
             <lid>43</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="10">
@@ -854,26 +813,21 @@
           <Rest>
             <lid>46</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="10" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>21120</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>19200</tick>
         <Measure number="11">
           <Rest>
             <lid>48</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="12">
@@ -884,26 +838,21 @@
           <Rest>
             <lid>51</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="12" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>24960</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>23040</tick>
         <Measure number="13">
           <Rest>
             <lid>53</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="14">
@@ -914,26 +863,21 @@
           <Rest>
             <lid>56</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="14" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>28800</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>26880</tick>
         <Measure number="15">
           <Rest>
             <lid>58</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="16">
@@ -944,33 +888,28 @@
           <Rest>
             <lid>61</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="16" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>34560</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>30720</tick>
         <Measure number="17">
           <Rest>
             <lid>63</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="18">
           <Rest>
             <lid>65</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="19">
@@ -981,33 +920,28 @@
           <Rest>
             <lid>68</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="19" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>40320</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>36480</tick>
         <Measure number="20">
           <Rest>
             <lid>70</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="21">
           <Rest>
             <lid>72</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="22">
@@ -1018,33 +952,28 @@
           <Rest>
             <lid>75</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="22" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>46080</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>42240</tick>
         <Measure number="23">
           <Rest>
             <lid>77</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="24">
           <Rest>
             <lid>79</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="25">
@@ -1055,26 +984,21 @@
           <Rest>
             <lid>82</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="25" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>49920</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>48000</tick>
         <Measure number="26">
           <Rest>
             <lid>84</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="27">
@@ -1085,26 +1009,21 @@
           <Rest>
             <lid>87</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="27" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>53760</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>51840</tick>
         <Measure number="28">
           <Rest>
             <lid>89</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="29">
@@ -1115,26 +1034,21 @@
           <Rest>
             <lid>92</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="29" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>57600</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>55680</tick>
         <Measure number="30">
           <Rest>
             <lid>94</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="31">
@@ -1145,14 +1059,14 @@
           <Rest>
             <lid>97</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="32">
           <Rest>
             <lid>99</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="33">
@@ -1164,14 +1078,10 @@
             <name>segno</name>
             <lid>102</lid>
             </Symbol>
-          <Symbol>
-            <name>segno</name>
-            <lid>112</lid>
-            </Symbol>
           <Rest>
             <lid>103</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="34">
@@ -1182,7 +1092,7 @@
           <Rest>
             <lid>106</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="35">
@@ -1194,19 +1104,11 @@
             <name>coda</name>
             <lid>109</lid>
             </Symbol>
-          <Symbol>
-            <name>coda</name>
-            <lid>113</lid>
-            </Symbol>
           <Rest>
             <lid>110</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
-          <BarLine>
-            <subtype>end</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
         </Staff>
       <Staff id="2">
@@ -1243,7 +1145,7 @@
           <Rest>
             <lid>14</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="3">
@@ -1275,7 +1177,7 @@
           <Rest>
             <lid>23</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="5">
@@ -1307,7 +1209,7 @@
           <Rest>
             <lid>32</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="7">
@@ -1339,329 +1241,273 @@
           <Rest>
             <lid>41</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="8" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>17280</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>15360</tick>
         <Measure number="9">
           <Rest>
             <lid>43</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="10">
           <Rest>
             <lid>46</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="10" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>21120</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>19200</tick>
         <Measure number="11">
           <Rest>
             <lid>48</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="12">
           <Rest>
             <lid>51</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="12" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>24960</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>23040</tick>
         <Measure number="13">
           <Rest>
             <lid>53</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="14">
           <Rest>
             <lid>56</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="14" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>28800</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>26880</tick>
         <Measure number="15">
           <Rest>
             <lid>58</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="16">
           <Rest>
             <lid>61</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="16" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>34560</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>30720</tick>
         <Measure number="17">
           <Rest>
             <lid>63</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="18">
           <Rest>
             <lid>65</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="19">
           <Rest>
             <lid>68</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="19" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>40320</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>36480</tick>
         <Measure number="20">
           <Rest>
             <lid>70</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="21">
           <Rest>
             <lid>72</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="22">
           <Rest>
             <lid>75</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="22" len="12/4">
           <multiMeasureRest>3</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>12/4</duration>
             </Rest>
-          <tick>46080</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>42240</tick>
         <Measure number="23">
           <Rest>
             <lid>77</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="24">
           <Rest>
             <lid>79</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="25">
           <Rest>
             <lid>82</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="25" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>49920</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>48000</tick>
         <Measure number="26">
           <Rest>
             <lid>84</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="27">
           <Rest>
             <lid>87</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="27" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>53760</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>51840</tick>
         <Measure number="28">
           <Rest>
             <lid>89</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="29">
           <Rest>
             <lid>92</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="29" len="8/4">
           <multiMeasureRest>2</multiMeasureRest>
           <Rest>
             <durationType>measure</durationType>
+            <duration>8/4</duration>
             </Rest>
-          <tick>57600</tick>
-          <BarLine>
-            <subtype>normal</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
-        <tick>55680</tick>
         <Measure number="30">
           <Rest>
             <lid>94</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="31">
           <Rest>
             <lid>97</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="32">
           <Rest>
             <lid>99</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="33">
           <Symbol>
             <name>segno</name>
-            <lid>112</lid>
             </Symbol>
           <Rest>
             <lid>103</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="34">
           <Rest>
             <lid>106</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
           </Measure>
         <Measure number="35">
           <Symbol>
             <name>coda</name>
-            <lid>113</lid>
             </Symbol>
           <Rest>
             <lid>110</lid>
             <durationType>measure</durationType>
-            <duration z="1" n="1"/>
+            <duration>4/4</duration>
             </Rest>
-          <BarLine>
-            <subtype>end</subtype>
-            <span>1</span>
-            </BarLine>
           </Measure>
         </Staff>
       <name>E-Gt</name>

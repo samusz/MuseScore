@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: metaedit.h 5290 2012-02-07 16:27:27Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -36,8 +35,13 @@ class MetaEditDialog : public QDialog, public Ui::MetaEditDialog {
 
       Score* score;
 
+      bool dirty;
+
+      virtual void hideEvent(QHideEvent*);
+
    private slots:
       void newClicked();
+      void setDirty() { dirty = true; }
 
    public slots:
       virtual void accept();

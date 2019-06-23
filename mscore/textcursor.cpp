@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2013 Werner Schweer
+//  Copyright (C) 2013-15 Werner Schweer & others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -10,16 +10,19 @@
 //  the file LICENCE.GPL
 //=============================================================================
 
-#include "libmscore/score.h"
+#include "textcursor.h"
+
+#include "libmscore/input.h"
 #include "libmscore/measure.h"
-#include "libmscore/segment.h"
-#include "libmscore/system.h"
-#include "libmscore/staff.h"
 #include "libmscore/page.h"
+#include "libmscore/score.h"
+#include "libmscore/segment.h"
+#include "libmscore/staff.h"
+#include "libmscore/stafftype.h"
 #include "libmscore/sym.h"
+#include "libmscore/system.h"
 
 #include "scoreview.h"
-#include "textcursor.h"
 
 namespace Ms {
 
@@ -57,31 +60,41 @@ void PositionCursor::paint(QPainter* p)
 
       qreal x = _rect.left();
       qreal y = _rect.top();
-      qreal tx = x - 1.0;
 
       switch(_type) {
-            case CursorType::LOOP_IN:
-                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::FlatCap));
+            case CursorType::LOOP_IN:           // draw a right-pointing triangle
+                  {
+                  qreal tx = x - 1.0;
+                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::FlatCap, Qt::MiterJoin));
                   p->drawLine(x, y, x, _rect.bottom());
-                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::MiterJoin));
                   points[0] = QPointF(tx, y);
                   points[1] = QPointF(tx, y + h);
                   points[2] = QPointF(tx + h, y + h * .5);
                   p->setBrush(_color);
-                  p->drawPolygon(points, 3);
+                  p->drawConvexPolygon(points, 3);
+                  }
                   break;
-            case CursorType::LOOP_OUT:
-                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::FlatCap));
+            case CursorType::LOOP_OUT:          // draw a left-pointing triangle
+                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::FlatCap, Qt::MiterJoin));
                   p->drawLine(x, y, x, _rect.bottom());
-                  p->setPen(QPen(_color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::MiterJoin));
                   points[0] = QPointF(x, y);
                   points[1] = QPointF(x, y + h);
                   points[2] = QPointF(x - h, y + h * .5);
                   p->setBrush(_color);
-                  p->drawPolygon(points, 3);
+                  p->drawConvexPolygon(points, 3);
                   break;
-            default:
+            default:                            // fill the rectangle and add TAB string marks, if required
                   p->fillRect(_rect, color());
+                  if (_sv->score()->noteEntryMode()) {
+                        int         track       = _sv->score()->inputTrack();
+                        if (track >= 0) {
+                              Staff*      staff       = _sv->score()->staff(track2staff(track));
+                              const StaffType*  staffType   = staff->staffType(Fraction(0,1));
+                              if (staffType && staffType->group() == StaffGroup::TAB)
+                                    staffType->drawInputStringMarks(p, _sv->score()->inputState().string(),
+                                       track2voice(track), _rect);
+                                    }
+                        }
                   break;
             }
       }
@@ -114,26 +127,29 @@ QRectF PositionCursor::bbox() const
 //   move
 //---------------------------------------------------------
 
-void PositionCursor::move(int tick)
+void PositionCursor::move(const Fraction& t)
       {
+      Fraction tick(t);
       QRectF r(bbox());
       //
       // set mark height for whole system
       //
+      if (_type == CursorType::LOOP_OUT && tick > Fraction(0,1))
+            tick -= Fraction::fromTicks(1);           // tick--
       Score* score = _sv->score();
-      Measure* measure = score->tick2measure(tick);
+      Measure* measure = score->tick2measureMM(tick);
       if (measure == 0)
             return;
-      qreal x;
-      int offset = 0;
+      qreal x = 0.0;
+      const Fraction offset = {0,1};    //??
 
       Segment* s;
-      for (s = measure->first(Segment::Type::ChordRest); s;) {
-            int t1 = s->tick();
+      for (s = measure->first(SegmentType::ChordRest); s;) {
+            Fraction t1 = s->tick();
             int x1 = s->canvasPos().x();
             qreal x2;
-            int t2;
-            Segment* ns = s->next(Segment::Type::ChordRest);
+            Fraction t2;
+            Segment* ns = s->next(SegmentType::ChordRest);
             if (ns) {
                   t2 = ns->tick();
                   x2 = ns->canvasPos().x();
@@ -145,9 +161,9 @@ void PositionCursor::move(int tick)
             t1 += offset;
             t2 += offset;
             if (tick >= t1 && tick < t2) {
-                  int   dt = t2 - t1;
+                  Fraction dt = t2 - t1;
                   qreal dx = x2 - x1;
-                  x = x1 + dx * (tick-t1) / dt;
+                  x = x1 + dx * (tick-t1).ticks() / dt.ticks();
                   break;
                   }
             s = ns;
@@ -156,12 +172,12 @@ void PositionCursor::move(int tick)
             return;
 
       System* system = measure->system();
-      if (system == 0)
+      if (system == 0 || system->page() == 0)
             return;
       double y        = system->staffYpage(0) + system->page()->pos().y();
       double _spatium = score->spatium();
 
-      qreal mag = _spatium / (MScore::DPI * SPATIUM20);
+      qreal mag = _spatium / SPATIUM20;
       double w  = (_spatium * 2.0 + score->scoreFont()->width(SymId::noteheadBlack, mag))/3;
       double h  = 6 * _spatium;
       //

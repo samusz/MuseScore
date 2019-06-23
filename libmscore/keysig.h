@@ -16,24 +16,10 @@
 #include "key.h"
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Sym;
 class Segment;
-enum class SymId;
-
-//---------------------------------------------------------
-//   KeySym
-//    position of one symbol in KeySig
-//---------------------------------------------------------
-
-struct KeySym {
-      SymId sym;
-      QPointF spos;
-      QPointF pos;
-      };
 
 //---------------------------------------------------------------------------------------
 //   @@ KeySig
@@ -42,44 +28,40 @@ struct KeySym {
 //   @P showCourtesy  bool  show courtesy key signature for this sig if appropriate
 //---------------------------------------------------------------------------------------
 
-class KeySig : public Element {
-      Q_OBJECT
-      Q_PROPERTY(bool showCourtesy READ showCourtesy   WRITE undoSetShowCourtesy)
-
+class KeySig final : public Element {
       bool _showCourtesy;
       bool _hideNaturals;     // used in layout to override score style (needed for the Continuous panel)
-      QList<KeySym> keySymbols;
       KeySigEvent _sig;
       void addLayout(SymId sym, qreal x, int y);
 
    public:
       KeySig(Score* = 0);
       KeySig(const KeySig&);
-      virtual KeySig* clone() const       { return new KeySig(*this); }
-      virtual void draw(QPainter*) const;
-      virtual Element::Type type() const  { return Element::Type::KEYSIG; }
-      virtual bool acceptDrop(const DropData&) const override;
-      virtual Element* drop(const DropData&);
-      virtual void layout();
-      virtual qreal mag() const;
+      virtual KeySig* clone() const override       { return new KeySig(*this); }
+      virtual void draw(QPainter*) const override;
+      virtual ElementType type() const override    { return ElementType::KEYSIG; }
+      virtual bool acceptDrop(EditData&) const override;
+      virtual Element* drop(EditData&) override;
+      virtual void layout() override;
+      virtual Shape shape() const override;
+      virtual qreal mag() const override;
 
+      //@ sets the key of the key signature
       Q_INVOKABLE void setKey(Key);
 
       Segment* segment() const            { return (Segment*)parent(); }
       Measure* measure() const            { return parent() ? (Measure*)parent()->parent() : nullptr; }
-      Space space() const;
-      void setCustom(const QList<KeySym>& symbols);
-      virtual void write(Xml&) const;
-      virtual void read(XmlReader&);
-      //@ -7 (flats) -- +7 (sharps)
+      virtual void write(XmlWriter&) const override;
+      virtual void read(XmlReader&) override;
+      //@ returns the key of the key signature (from -7 (flats) to +7 (sharps) )
       Q_INVOKABLE Key key() const         { return _sig.key(); }
-      int customType() const              { return _sig.customType(); }
       bool isCustom() const               { return _sig.custom(); }
+      bool isAtonal() const               { return _sig.isAtonal(); }
+      bool isChange() const;
       KeySigEvent keySigEvent() const     { return _sig; }
       bool operator==(const KeySig&) const;
       void changeKeySigEvent(const KeySigEvent&);
       void setKeySigEvent(const KeySigEvent& e)      { _sig = e; }
-      int tick() const;
 
       bool showCourtesy() const           { return _showCourtesy; }
       void setShowCourtesy(bool v)        { _showCourtesy = v;    }
@@ -87,13 +69,15 @@ class KeySig : public Element {
 
       void setHideNaturals(bool hide)     { _hideNaturals = hide; }
 
-      QVariant getProperty(P_ID propertyId) const;
-      bool setProperty(P_ID propertyId, const QVariant&);
-      QVariant propertyDefault(P_ID id) const;
+      QVariant getProperty(Pid propertyId) const;
+      bool setProperty(Pid propertyId, const QVariant&);
+      QVariant propertyDefault(Pid id) const;
 
-      virtual Element* nextElement() override;
-      virtual Element* prevElement() override;
-      virtual QString accessibleInfo() override;
+      virtual Element* nextSegmentElement() override;
+      virtual Element* prevSegmentElement() override;
+      virtual QString accessibleInfo() const override;
+
+      SymId convertFromOldId(int val) const;
       };
 
 extern const char* keyNames[];

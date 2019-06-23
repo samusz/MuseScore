@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
-<score-partwise>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
   <work>
     <work-number>MuseScore testfile</work-number>
     <work-title>Note Attributes 1</work-title>
@@ -10,15 +10,21 @@
     <encoding>
       <software>MuseScore 0.7.0</software>
       <encoding-date>2007-09-10</encoding-date>
+      <supports element="accidental" type="yes"/>
+      <supports element="beam" type="yes"/>
+      <supports element="print" attribute="new-page" type="no"/>
+      <supports element="print" attribute="new-system" type="no"/>
+      <supports element="stem" type="yes"/>
       </encoding>
     </identification>
   <part-list>
     <score-part id="P1">
       <part-name>Staff 1</part-name>
-      <score-instrument id="P1-I3">
+      <score-instrument id="P1-I1">
         <instrument-name>Staff 1</instrument-name>
         </score-instrument>
-      <midi-instrument id="P1-I3">
+      <midi-device id="P1-I1" port="1"></midi-device>
+      <midi-instrument id="P1-I1">
         <midi-channel>1</midi-channel>
         <midi-program>1</midi-program>
         <volume>78.7402</volume>
@@ -32,7 +38,6 @@
         <divisions>1</divisions>
         <key>
           <fifths>0</fifths>
-          <mode>major</mode>
           </key>
         <time>
           <beats>4</beats>
@@ -164,6 +169,17 @@
       </measure>
     <measure number="3">
       <note>
+        <rest/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <type>whole</type>
+        <notations>
+          <fermata type="upright"/>
+          </notations>
+        </note>
+      </measure>
+    <measure number="4">
+      <note>
         <pitch>
           <step>E</step>
           <octave>4</octave>
@@ -224,7 +240,7 @@
           </notations>
         </note>
       </measure>
-    <measure number="4">
+    <measure number="5">
       <note>
         <pitch>
           <step>G</step>
@@ -235,7 +251,7 @@
         <type>quarter</type>
         <stem>up</stem>
         <notations>
-          <slur type="start" number="1"/>
+          <slur type="start" placement="below" number="1"/>
           <articulations>
             <staccato/>
             </articulations>
@@ -251,7 +267,7 @@
         <type>quarter</type>
         <stem>up</stem>
         <notations>
-          <slur type="start" number="2"/>
+          <slur type="start" placement="below" number="2"/>
           <articulations>
             <staccato/>
             </articulations>
@@ -269,8 +285,8 @@
         <notations>
           <slur type="stop" number="2"/>
           <articulations>
-            <accent/>
             <staccato/>
+            <accent/>
             </articulations>
           </notations>
         </note>

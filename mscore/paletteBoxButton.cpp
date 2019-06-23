@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2013 Werner Schweer
+//  Copyright (C) 2013-2016 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -13,6 +13,7 @@
 #include "paletteBoxButton.h"
 #include "palette.h"
 #include "preferences.h"
+#include "tourhandler.h"
 
 namespace Ms {
 
@@ -34,6 +35,7 @@ PaletteBoxButton::PaletteBoxButton(Palette* p, QWidget* parent)
       setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
       setArrowType(Qt::RightArrow);
       showPalette(false);
+      setObjectName("palette");
       }
 
 //---------------------------------------------------------
@@ -44,13 +46,15 @@ void PaletteBoxButton::contextMenuEvent(QContextMenuEvent* event)
       {
       QMenu menu;
 
-      QAction* actionProperties = menu.addAction(tr("Palette Properties..."));
-      QAction* actionInsert     = menu.addAction(tr("Insert New Palette..."));
+      QAction* actionProperties = menu.addAction(tr("Palette Properties…"));
+      QAction* actionInsert     = menu.addAction(tr("Insert New Palette…"));
       QAction* actionUp         = menu.addAction(tr("Move Palette Up"));
       QAction* actionDown       = menu.addAction(tr("Move Palette Down"));
       QAction* actionEdit       = menu.addAction(tr("Enable Editing"));
       actionEdit->setCheckable(true);
       actionEdit->setChecked(!palette->readOnly());
+      if (palette->isFilterActive())
+            actionEdit->setVisible(false);
 
       bool _systemPalette = palette->systemPalette();
       actionProperties->setDisabled(_systemPalette);
@@ -60,8 +64,8 @@ void PaletteBoxButton::contextMenuEvent(QContextMenuEvent* event)
       actionEdit->setDisabled(_systemPalette);
 
       menu.addSeparator();
-      QAction* actionSave = menu.addAction(tr("Save Palette"));
-      QAction* actionLoad = menu.addAction(tr("Load Palette"));
+      QAction* actionSave = menu.addAction(tr("Save Palette…"));
+      QAction* actionLoad = menu.addAction(tr("Load Palette…"));
       actionLoad->setDisabled(_systemPalette);
 
       menu.addSeparator();
@@ -102,6 +106,7 @@ void PaletteBoxButton::enableEditing(bool val)
 
 void PaletteBoxButton::changeEvent(QEvent* ev)
       {
+      QToolButton::changeEvent(ev);
       if (ev->type() == QEvent::FontChange)
             setFixedHeight(QFontMetrics(font()).height() + 2);
       }
@@ -112,13 +117,15 @@ void PaletteBoxButton::changeEvent(QEvent* ev)
 
 void PaletteBoxButton::showPalette(bool visible)
       {
-      if (visible && preferences.singlePalette) {
+      if (visible && preferences.getBool(PREF_APP_USESINGLEPALETTE)) {
             // close all palettes
             emit closeAll();
             }
       palette->setVisible(visible);
       setChecked(visible);
       setArrowType(visible ? Qt::DownArrow : Qt::RightArrow );
+      if (visible)
+            TourHandler::startTour("show-palette");
       }
 
 //---------------------------------------------------------

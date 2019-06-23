@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -27,11 +26,19 @@ class InspectorGroupElement : public InspectorBase {
       Q_OBJECT
 
       Ui::InspectorGroupElement ge;
+      QPushButton* notes;
+      QPushButton* graceNotes;
+      QPushButton* rests;
 
    private slots:
       void setColor();
       void setVisible();
       void setInvisible();
+      void enableAutoplace();
+      void disableAutoplace();
+      void notesClicked();
+      void graceNotesClicked();
+      void restsClicked();
 
    public:
       InspectorGroupElement(QWidget* parent);

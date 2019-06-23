@@ -15,6 +15,8 @@
 #include "staff.h"
 #include "sym.h"
 #include "xml.h"
+#include "chord.h"
+#include "rest.h"
 
 namespace Ms {
 
@@ -29,17 +31,6 @@ NoteDot::NoteDot(Score* s)
       }
 
 //---------------------------------------------------------
-//   layout
-//    height() and width() should return sensible
-//    values when calling this method
-//---------------------------------------------------------
-
-void NoteDot::layout()
-      {
-      setbbox(symBbox(SymId::augmentationDot));
-      }
-
-//---------------------------------------------------------
 //   NoteDot::draw
 //---------------------------------------------------------
 
@@ -47,21 +38,20 @@ void NoteDot::draw(QPainter* p) const
       {
       if (note() && note()->dotsHidden())     // don't draw dot if note is hidden
             return;
-      if (!staff()->isTabStaff() || staff()->staffType()->stemThrough()) {
+      Fraction tick = note() ? note()->chord()->tick() : rest()->tick();
+      if (!staff()->isTabStaff(tick) || staff()->staffType(tick)->stemThrough()) {
             p->setPen(curColor());
             drawSymbol(SymId::augmentationDot, p);
             }
       }
 
 //---------------------------------------------------------
-//   write
+//   layout
 //---------------------------------------------------------
 
-void NoteDot::write(Xml& xml) const
+void NoteDot::layout()
       {
-      xml.stag(name());
-      Element::writeProperties(xml);
-      xml.etag();
+      setbbox(symBbox(SymId::augmentationDot));
       }
 
 //---------------------------------------------------------
@@ -86,7 +76,7 @@ void NoteDot::read(XmlReader& e)
 
 qreal NoteDot::mag() const
       {
-      return parent()->mag() * score()->styleD(StyleIdx::dotMag);
+      return parent()->mag() * score()->styleD(Sid::dotMag);
       }
 }
 

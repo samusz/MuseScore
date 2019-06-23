@@ -16,6 +16,7 @@
 #include "score.h"
 #include "pitchspelling.h"
 #include "keylist.h"
+#include "accidental.h"
 
 namespace Ms {
 
@@ -23,11 +24,12 @@ namespace Ms {
 //   KeySigEvent
 //---------------------------------------------------------
 
-KeySigEvent::KeySigEvent(Key k)
+KeySigEvent::KeySigEvent(const KeySigEvent& k)
       {
-      Q_ASSERT(int(k) >= -7 && int(k) <= 7);
-      _key = k;
-      _invalid = false;
+      _key        = k._key;
+      _mode       = k._mode;
+      _custom     = k._custom;
+      _keySymbols = k._keySymbols;
       }
 
 //---------------------------------------------------------
@@ -38,29 +40,14 @@ KeySigEvent::KeySigEvent(Key k)
 
 void KeySigEvent::enforceLimits()
       {
-      const char* msg = 0;
       if (_key < Key::MIN) {
             _key = Key::MIN;
-            msg = "key < -7";
+            qDebug("key < -7");
             }
       else if (_key > Key::MAX) {
             _key = Key::MAX;
-            msg = "key > 7";
+            qDebug("key > 7");
             }
-      if (msg)
-            qDebug("KeySigEvent: %s", msg);
-      }
-
-//---------------------------------------------------------
-//   setCustomType
-//---------------------------------------------------------
-
-void KeySigEvent::setCustomType(int v)
-      {
-      _key         = Key::C;
-      _customType  = v;
-      _custom      = true;
-      _invalid     = false;
       }
 
 //---------------------------------------------------------
@@ -70,11 +57,13 @@ void KeySigEvent::setCustomType(int v)
 void KeySigEvent::print() const
       {
       qDebug("<KeySigEvent: ");
-      if (_invalid)
+      if (!isValid())
             qDebug("invalid>");
       else {
-            if (_custom)
-                  qDebug("custom %d>", _customType);
+            if (isAtonal())
+                  qDebug("atonal>");
+            else if (custom())
+                  qDebug("custom>");
             else
                   qDebug("accidental %d>", int(_key));
             }
@@ -88,7 +77,6 @@ void KeySigEvent::setKey(Key v)
       {
       _key      = v;
       _custom   = false;
-      _invalid  = false;
       enforceLimits();
       }
 
@@ -98,52 +86,19 @@ void KeySigEvent::setKey(Key v)
 
 bool KeySigEvent::operator==(const KeySigEvent& e) const
       {
-      if ((e._invalid != _invalid) || (e._custom != _custom))
+      if (e._custom != _custom || e._mode != _mode)
             return false;
-      if (_custom)
-            return e._customType == _customType;
-      else
-            return e._key == _key;
-      }
-
-//---------------------------------------------------------
-//   KeySigEvent::operator!=
-//---------------------------------------------------------
-
-bool KeySigEvent::operator!=(const KeySigEvent& e) const
-      {
-      if ((e._invalid != _invalid) || (e._custom != _custom))
+      if (_custom && !isAtonal()) {
+            if (e._keySymbols.size() != _keySymbols.size())
+                  return false;
+            for (int i = 0; i < _keySymbols.size(); ++i) {
+                  if (e._keySymbols[i].sym != _keySymbols[i].sym)
+                        return false;
+                  // TODO: position matters
+                  }
             return true;
-      if (_custom)
-            return e._customType != _customType;
-      else
-            return e._key != _key;
-      }
-
-//---------------------------------------------------------
-//   initLineList
-//    preset lines list with accidentals for given key
-//---------------------------------------------------------
-
-void AccidentalState::init(Key key)
-      {
-      memset(state, 2, 74);
-      for (int octave = 0; octave < 11; ++octave) {
-            if (key > 0) {
-                  for (int i = 0; i < int(key); ++i) {
-                        int idx = tpc2step(20 + i) + octave * 7;
-                        if (idx < 74)
-                              state[idx] = 1 + 2;
-                        }
-                  }
-            else {
-                  for (int i = 0; i > int(key); --i) {
-                        int idx = tpc2step(12 + i) + octave * 7;
-                        if (idx < 74)
-                              state[idx] = -1 + 2;
-                        }
-                  }
             }
+      return e._key == _key;
       }
 
 //---------------------------------------------------------
@@ -169,23 +124,99 @@ Key transposeKey(Key key, const Interval& interval)
 
 void KeySigEvent::initFromSubtype(int st)
       {
-      union U {
-            int subtype;
-            struct {
-                  int _key:4;
-                  int _naturalType:4;
-                  unsigned _customType:16;
-                  bool _custom : 1;
-                  bool _invalid : 1;
-                  };
-            };
-      U a;
-      a.subtype       = st;
+      //anatoly-os: legacy code. I don't understand why it is so overcomplicated.
+      //Did refactoring to avoid exception on MSVC, but left the same logic.
+      struct {
+            int _key:4;
+            int _naturalType:4;
+            unsigned _customType:16;
+            bool _custom : 1;
+            bool _invalid : 1;
+            } a;
+
+      a._key         = (st & 0xf);
+      a._naturalType = (st >> 4) & 0xf;
+      a._customType  = (st >> 8) & 0xffff;
+      a._custom      = (st >> 24) & 0x1;
+      a._invalid     = (st >> 25) & 0x1;
+      //end of legacy code
+
       _key            = Key(a._key);
-      _customType     = a._customType;
+//      _customType     = a._customType;
       _custom         = a._custom;
-      _invalid        = a._invalid;
+      if (a._invalid)
+            _key = Key::INVALID;
       enforceLimits();
+      }
+
+//---------------------------------------------------------
+//   accidentalVal
+//---------------------------------------------------------
+
+AccidentalVal AccidentalState::accidentalVal(int line, bool &error) const
+      {
+      if (line < MIN_ACC_STATE || line >= MAX_ACC_STATE) {
+            error = true;
+            return AccidentalVal::NATURAL;
+            }
+      return AccidentalVal((state[line] & 0x0f) - 2);
+      }
+
+//---------------------------------------------------------
+//   init
+//    preset lines list with accidentals for given key
+//---------------------------------------------------------
+
+void AccidentalState::init(Key key)
+      {
+      memset(state, 2, MAX_ACC_STATE);
+      if (key > 0) {
+            for (int i = 0; i < int(key); ++i) {
+                  int idx = tpc2step(20 + i);
+                  for (int octave = 0; octave < (11 * 7); octave += 7) {
+                        int j = idx + octave;
+                        if (j >= MAX_ACC_STATE)
+                              break;
+                        state[j] = 1 + 2;
+                        }
+                  }
+            }
+      else {
+            for (int i = 0; i > int(key); --i) {
+                  int idx = tpc2step(12 + i);
+                  for (int octave = 0; octave < (11 * 7); octave += 7) {
+                        int j = idx + octave ;
+                        if (j >= MAX_ACC_STATE)
+                              break;
+                        state[j] = -1 + 2;
+                        }
+                  }
+            }
+      }
+
+//---------------------------------------------------------
+//   init
+//---------------------------------------------------------
+
+void AccidentalState::init(const KeySigEvent& keySig, ClefType clef)
+      {
+      if (keySig.custom()) {
+            memset(state, 2, MAX_ACC_STATE);
+            for (const KeySym& s : keySig.keySymbols()) {
+                  AccidentalVal a = sym2accidentalVal(s.sym);
+                  int line = int(s.spos.y() * 2);
+                  int idx       = relStep(line, clef) % 7;
+                  for (int octave = 0; octave < (11 * 7); octave += 7) {
+                        int i = idx + octave ;
+                        if (i >= MAX_ACC_STATE)
+                              break;
+                        state[i] = int(a) + 2;
+                        }
+                  }
+            }
+      else {
+            init(keySig.key());
+            }
       }
 
 //---------------------------------------------------------
@@ -194,7 +225,7 @@ void KeySigEvent::initFromSubtype(int st)
 
 AccidentalVal AccidentalState::accidentalVal(int line) const
       {
-      Q_ASSERT(line >= 0 && line < 75);
+      Q_ASSERT(line >= MIN_ACC_STATE && line < MAX_ACC_STATE);
       return AccidentalVal((state[line] & 0x0f) - 2);
       }
 
@@ -204,7 +235,7 @@ AccidentalVal AccidentalState::accidentalVal(int line) const
 
 bool AccidentalState::tieContext(int line) const
       {
-      Q_ASSERT(line >= 0 && line < 75);
+      Q_ASSERT(line >= MIN_ACC_STATE && line < MAX_ACC_STATE);
       return state[line] & TIE_CONTEXT;
       }
 
@@ -214,7 +245,7 @@ bool AccidentalState::tieContext(int line) const
 
 void AccidentalState::setAccidentalVal(int line, AccidentalVal val, bool tieContext)
       {
-      Q_ASSERT(line >= 0 && line < 75);
+      Q_ASSERT(line >= MIN_ACC_STATE && line < MAX_ACC_STATE);
       // casts needed to work around a bug in Xcode 4.2 on Mac, see #25910
       Q_ASSERT(int(val) >= int(AccidentalVal::FLAT2) && int(val) <= int(AccidentalVal::SHARP2));
       state[line] = (int(val) + 2) | (tieContext ? TIE_CONTEXT : 0);

@@ -14,7 +14,6 @@
 #define __BSYMBOL_H__
 
 #include "element.h"
-#include "elementlayout.h"
 
 namespace Ms {
 
@@ -23,42 +22,36 @@ namespace Ms {
 ///    base class for Symbol and Image
 //---------------------------------------------------------
 
-class BSymbol : public Element, public ElementLayout {
-      Q_OBJECT
-
+class BSymbol : public Element {
       QList<Element*> _leafs;
-      int _z;                     ///< stacking order when drawing or selecting;
-                                  ///< elements are drawn from high number to low number;
-                                  ///< default is type() * 100;
-      bool _systemFlag;
+      Align _align;
 
    public:
-      BSymbol(Score* s);
+      BSymbol(Score* s, ElementFlags f = ElementFlag::NOTHING);
       BSymbol(const BSymbol&);
 
       BSymbol &operator=(const BSymbol&) = delete;
 
-      virtual void add(Element*);
-      virtual void remove(Element*);
-      virtual void scanElements(void* data, void (*func)(void*, Element*), bool all=true);
-      virtual bool acceptDrop(const DropData&) const override;
-      virtual Element* drop(const DropData&);
-      virtual void layout();
-      virtual QRectF drag(EditData*) override;
+      virtual void add(Element*) override;
+      virtual void remove(Element*) override;
+      virtual void scanElements(void* data, void (*func)(void*, Element*), bool all=true) override;
+      virtual bool acceptDrop(EditData&) const override;
+      virtual Element* drop(EditData&) override;
+      virtual void layout() override;
+      virtual QRectF drag(EditData&) override;
 
-      void writeProperties(Xml& xml) const;
+      void writeProperties(XmlWriter& xml) const;
       bool readProperties(XmlReader&);
+
+      Align align() const { return _align; }
+      void setAlign(Align a) { _align = a; }
 
       const QList<Element*>& leafs() const { return _leafs; }
       QList<Element*>& leafs()             { return _leafs; }
-      virtual QPointF pagePos() const;
-      virtual QPointF canvasPos() const;
-      virtual QLineF dragAnchor() const;
+      virtual QPointF pagePos() const override;
+      virtual QPointF canvasPos() const override;
+      virtual QLineF dragAnchor() const override;
       Segment* segment() const            { return (Segment*)parent(); }
-      virtual int z() const               { return _z; }
-      void setZ(int val)                  { _z = val;  }
-      bool systemFlag() const             { return _systemFlag; }
-      void setSystemFlag(bool val)        { _systemFlag = val;  }
       };
 
 }     // namespace Ms

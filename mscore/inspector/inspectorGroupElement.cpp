@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -13,6 +12,7 @@
 
 #include "libmscore/score.h"
 #include "libmscore/element.h"
+#include "libmscore/chord.h"
 #include "inspector.h"
 #include "inspectorGroupElement.h"
 
@@ -32,6 +32,46 @@ InspectorGroupElement::InspectorGroupElement(QWidget* parent)
       connect(ge.setColor, SIGNAL(clicked()), SLOT(setColor()));
       connect(ge.setVisible, SIGNAL(clicked()), SLOT(setVisible()));
       connect(ge.setInvisible, SIGNAL(clicked()), SLOT(setInvisible()));
+      connect(ge.enableAutoplace, SIGNAL(clicked()), SLOT(enableAutoplace()));
+      connect(ge.disableAutoplace, SIGNAL(clicked()), SLOT(disableAutoplace()));
+
+      //
+      // Select
+      //
+      QLabel* l = new QLabel;
+      l->setText(tr("Select"));
+      QFont font(l->font());
+      font.setBold(true);
+      l->setFont(font);
+      l->setAlignment(Qt::AlignHCenter);
+      _layout->addWidget(l);
+
+      QHBoxLayout* hbox = new QHBoxLayout;
+      hbox->setSpacing(3);
+      hbox->setContentsMargins(3,3,3,3);
+
+      notes = new QPushButton(this);
+      notes->setText(tr("Notes"));
+      notes->setEnabled(true);
+      notes->setObjectName("notes");
+      hbox->addWidget(notes);
+
+      graceNotes = new QPushButton(this);
+      graceNotes->setText(tr("Grace Notes"));
+      graceNotes->setEnabled(true);
+      graceNotes->setObjectName("graceNotes");
+      hbox->addWidget(graceNotes);
+
+      rests = new QPushButton(this);
+      rests->setText(tr("Rests"));
+      rests->setEnabled(true);
+      rests->setObjectName("rests");
+      hbox->addWidget(rests);
+
+      _layout->addLayout(hbox);
+      connect(notes, SIGNAL(clicked()), SLOT(notesClicked()));
+      connect(graceNotes, SIGNAL(clicked()), SLOT(graceNotesClicked()));
+      connect(rests, SIGNAL(clicked()), SLOT(restsClicked()));
       }
 
 //---------------------------------------------------------
@@ -40,13 +80,13 @@ InspectorGroupElement::InspectorGroupElement(QWidget* parent)
 
 void InspectorGroupElement::setColor()
       {
-      if (inspector->el().isEmpty())
+      if (inspector->el()->isEmpty())
             return;
-      Score* score = inspector->el().front()->score();
+      Score* score = inspector->el()->front()->score();
       score->startCmd();
-      foreach(Element* e, inspector->el()) {
-            if (e->getProperty(P_ID::COLOR) != QVariant(ge.color->color()))
-                  score->undoChangeProperty(e, P_ID::COLOR, ge.color->color());
+      for (Element* e : *inspector->el()) {
+            if (e->getProperty(Pid::COLOR) != QVariant(ge.color->color()))
+                  e->undoChangeProperty(Pid::COLOR, ge.color->color());
             }
       score->endCmd();
       }
@@ -57,13 +97,13 @@ void InspectorGroupElement::setColor()
 
 void InspectorGroupElement::setVisible()
       {
-      if (inspector->el().isEmpty())
+      if (inspector->el()->isEmpty())
             return;
-      Score* score = inspector->el().front()->score();
+      Score* score = inspector->el()->front()->score();
       score->startCmd();
-      foreach(Element* e, inspector->el()) {
-            if (!e->getProperty(P_ID::VISIBLE).toBool())
-                  e->score()->undoChangeProperty(e, P_ID::VISIBLE, true);
+      for (Element* e : *inspector->el()) {
+            if (!e->getProperty(Pid::VISIBLE).toBool())
+                  e->undoChangeProperty(Pid::VISIBLE, true);
             }
       score->endCmd();
       }
@@ -74,15 +114,117 @@ void InspectorGroupElement::setVisible()
 
 void InspectorGroupElement::setInvisible()
       {
-      if (inspector->el().isEmpty())
+      if (inspector->el()->isEmpty())
             return;
-      Score* score = inspector->el().front()->score();
+      Score* score = inspector->el()->front()->score();
       score->startCmd();
-      foreach(Element* e, inspector->el()) {
-            if (e->getProperty(P_ID::VISIBLE).toBool())
-                  e->score()->undoChangeProperty(e, P_ID::VISIBLE, false);
+      for (Element* e : *inspector->el()) {
+            if (e->getProperty(Pid::VISIBLE).toBool())
+                  e->undoChangeProperty(Pid::VISIBLE, false);
             }
       score->endCmd();
+      }
+
+//---------------------------------------------------------
+//   enableAutoplace
+//---------------------------------------------------------
+
+void InspectorGroupElement::enableAutoplace()
+      {
+      if (inspector->el()->isEmpty())
+            return;
+      Score* score = inspector->el()->front()->score();
+      score->startCmd();
+      for (Element* e : *inspector->el()) {
+            if (!e->getProperty(Pid::AUTOPLACE).toBool())
+                  e->undoChangeProperty(Pid::AUTOPLACE, true);
+            }
+      score->endCmd();
+      }
+
+//---------------------------------------------------------
+//   disableAutoplace
+//---------------------------------------------------------
+
+void InspectorGroupElement::disableAutoplace()
+      {
+      if (inspector->el()->isEmpty())
+            return;
+      Score* score = inspector->el()->front()->score();
+      score->startCmd();
+      for (Element* e : *inspector->el()) {
+            if (e->getProperty(Pid::AUTOPLACE).toBool())
+                  e->undoChangeProperty(Pid::AUTOPLACE, false);
+            }
+      score->endCmd();
+      }
+
+//---------------------------------------------------------
+//   notesClicked
+//---------------------------------------------------------
+
+void InspectorGroupElement::notesClicked()
+      {
+      Score* score = inspector->el()->front()->score();
+      QList<Element*> el = score->selection().elements();
+      QList<Element*> nel;
+      score->deselectAll();
+      for (Element* e : el) {
+            if (e->isNote()) {
+                  Note* note = toNote(e);
+                  //if note is not grace note, then add to selection
+                  if (!note->chord()->isGrace()) {
+                        nel.append(note);
+                        score->selection().add(note);
+                        }
+                  }
+            }
+      score->update();
+      inspector->update();
+      }
+
+//---------------------------------------------------------
+//   graceNotesClicked
+//---------------------------------------------------------
+
+void InspectorGroupElement::graceNotesClicked()
+      {
+      Score* score = inspector->el()->front()->score();
+      QList<Element*> el = score->selection().elements();
+      QList<Element*> nel;
+      score->deselectAll();
+      for (Element* e : el) {
+            if (e->isNote()) {
+                  Note* note = toNote(e);
+                  //if note is grace note, then add to selection
+                  if (note->chord()->isGrace()) {
+                        nel.append(note);
+                        score->selection().add(note);
+                        }
+                  }
+            }
+      score->update();
+      inspector->update();
+      }
+
+//---------------------------------------------------------
+//   restsClicked
+//---------------------------------------------------------
+
+void InspectorGroupElement::restsClicked()
+      {
+      Score* score = inspector->el()->front()->score();
+      QList<Element*> el = score->selection().elements();
+      QList<Element*> nel;
+      score->deselectAll();
+      for (Element* e : el) {
+            if (e->isRest()) {
+                  nel.append(e);
+                  score->selection().add(e);
+                  }
+            }
+      score->update();
+      inspector->update();
       }
 
 }

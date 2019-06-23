@@ -18,42 +18,58 @@ else (APPLE)
       set(INCS "")
 endif (APPLE)
 
-QT4_ADD_RESOURCES (qrc_effects_files
-      zita1/zita.qrc
-#      freeverb/freeverb.qrc
-      noeffect/noeffect.qrc
+QT5_ADD_RESOURCES (qrc_effects_files
+     zita1/zita.qrc
+     )
+
+QT5_WRAP_UI (ui_headers
+      compressor/compressor_gui.ui
       )
 
-QT4_WRAP_CPP(effectMocs
-      effectgui.h
-#      freeverb/freeverb.h
-      zita1/zita.h
-      noeffect/noeffect.h
-      effect.h
-      )
+if (NOT MSVC)
+   set(_all_h_file "${PROJECT_BINARY_DIR}/all.h")
+else (NOT MSVC)
+   set(_all_h_file "${PROJECT_SOURCE_DIR}/all.h")
+endif (NOT MSVC)
 
 add_library (effects STATIC
+      ${ui_headers}
       ${qrc_effects_files}
-      ${effectMocs}
-      ${PROJECT_BINARY_DIR}/all.h
+      ${_all_h_file}
       ${PCH}
       effect.cpp
       effectgui.cpp
       noeffect/noeffect.cpp
-#      freeverb/freeverb.cpp
-#      freeverb/freeverbgui.cpp
+      noeffect/noeffectgui.h
       zita1/zita.cpp
       zita1/zitagui.cpp
+      compressor/compressor.cpp
+      compressor/compressorgui.cpp
       ${INCS}
       )
-set_target_properties (
+
+if (NOT MSVC)
+   set_target_properties (
       effects
       PROPERTIES
          COMPILE_FLAGS "${PCH_INCLUDE} -g -Wall -Wextra -Winvalid-pch"
       )
+else (NOT MSVC)
+   set_target_properties (
+      effects
+      PROPERTIES
+         COMPILE_FLAGS "${PCH_INCLUDE}"
+      )
+endif (NOT MSVC)   
 
 xcode_pch(effects all)
 
-ADD_DEPENDENCIES(effects mops1)
-ADD_DEPENDENCIES(effects mops2)
+# Use MSVC pre-compiled headers
+vstudio_pch( effects )
+
+# MSVC does not depend on mops1 & mops2 for PCH
+if (NOT MSVC)
+   ADD_DEPENDENCIES(effects mops1)
+   ADD_DEPENDENCIES(effects mops2)
+endif (NOT MSVC)   
 

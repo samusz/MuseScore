@@ -13,7 +13,7 @@
 #ifndef __PEDAL_H__
 #define __PEDAL_H__
 
-#include "textline.h"
+#include "textlinebase.h"
 
 namespace Ms {
 
@@ -23,22 +23,16 @@ class Pedal;
 //   @@ PedalSegment
 //---------------------------------------------------------
 
-class PedalSegment : public TextLineSegment {
-      Q_OBJECT
+class PedalSegment final : public TextLineBaseSegment {
 
-   protected:
+      virtual Sid getPropertyStyle(Pid) const override;
 
    public:
-      PedalSegment(Score* s) : TextLineSegment(s) {}
-      virtual Element::Type type() const override   { return Element::Type::PEDAL_SEGMENT; }
-      virtual PedalSegment* clone() const override  { return new PedalSegment(*this); }
-      Pedal* pedal() const                          { return (Pedal*)spanner(); }
+      PedalSegment(Spanner* sp, Score* s) : TextLineBaseSegment(sp, s, ElementFlag::MOVABLE | ElementFlag::ON_STAFF) {}
+      virtual ElementType type() const override       { return ElementType::PEDAL_SEGMENT; }
+      virtual PedalSegment* clone() const override    { return new PedalSegment(*this);    }
+      Pedal* pedal() const                            { return toPedal(spanner());          }
       virtual void layout() override;
-      virtual bool setProperty(P_ID propertyId, const QVariant&) override;
-      virtual QVariant propertyDefault(P_ID) const override;
-      virtual PropertyStyle propertyStyle(P_ID) const override;
-      virtual void resetProperty(P_ID id) override;
-      virtual void styleChanged() override;
 
       friend class Pedal;
       };
@@ -47,27 +41,21 @@ class PedalSegment : public TextLineSegment {
 //   @@ Pedal
 //---------------------------------------------------------
 
-class Pedal : public TextLine {
-      Q_OBJECT
+class Pedal final : public TextLineBase {
 
-      PropertyStyle lineWidthStyle;
-      PropertyStyle lineStyleStyle;
+      virtual Sid getPropertyStyle(Pid) const override;
 
    protected:
-      QPointF linePos(GripLine, System**) const override;
+      QPointF linePos(Grip, System**) const override;
 
    public:
       Pedal(Score* s);
-      virtual Pedal* clone() const override       { return new Pedal(*this); }
-      virtual Element::Type type() const override { return Element::Type::PEDAL; }
+      virtual Pedal* clone() const override     { return new Pedal(*this);   }
+      virtual ElementType type() const override { return ElementType::PEDAL; }
       virtual void read(XmlReader&) override;
+      virtual void write(XmlWriter& xml) const override;
       LineSegment* createLineSegment();
-      virtual void setYoff(qreal) override;
-      virtual bool setProperty(P_ID propertyId, const QVariant& val) override;
-      virtual QVariant propertyDefault(P_ID propertyId) const override;
-      virtual PropertyStyle propertyStyle(P_ID id) const override;
-      virtual void resetProperty(P_ID id) override;
-      virtual void styleChanged() override;
+      virtual QVariant propertyDefault(Pid propertyId) const override;
 
       friend class PedalLine;
       };

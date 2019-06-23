@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2002-2011 Werner Schweer
+//  Copyright (C) 2002-2016 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -13,202 +13,70 @@
 #ifndef __SLUR_H__
 #define __SLUR_H__
 
-#include "mscore.h"
-#include "spanner.h"
-
-class QPainter;
+#include "slurtie.h"
 
 namespace Ms {
 
-class Note;
-class Chord;
-class System;
-class SlurTie;
-class Score;
-class MuseScoreView;
-class ChordRest;
-struct SlurPos;
-
-enum class GripSlurSegment : char {
-      START, BEZIER1, SHOULDER, BEZIER2, DRAG, END,
-      GRIPS
-      };
-
-//---------------------------------------------------------
-//   SlurPos
-//---------------------------------------------------------
-
-struct SlurPos {
-      QPointF p1;             // start point of slur
-      System* system1;        // start system of slur
-      QPointF p2;             // end point of slur
-      System* system2;        // end system of slur
-      };
-
-//---------------------------------------------------------
-//   UP
-//---------------------------------------------------------
-
-struct UP {
-      QPointF p;            // layout position relative to pos()
-      QPointF off;          // user offset in spatium units
-
-      bool operator!=(const UP& up) const {
-            return p != up.p || off != up.off;
-            }
-      };
-
-struct SlurOffsets {
-      QPointF o[4];
-      };
-
 //---------------------------------------------------------
 //   @@ SlurSegment
-///    also used for Tie
+///    a single segment of slur; also used for Tie
 //---------------------------------------------------------
 
-class SlurSegment : public SpannerSegment {
-      Q_OBJECT
+class SlurSegment final : public SlurTieSegment {
 
    protected:
-      struct UP ups[int(GripSlurSegment::GRIPS)];
-
-      QPainterPath path;
-      QPainterPath shapePath;
-      QPointF autoAdjustOffset;
-
-      void computeBezier();
-      void changeAnchor(MuseScoreView*, int curGrip, Element*);
-      void setAutoAdjust(const QPointF& offset);
-      void setAutoAdjust(qreal x, qreal y)      { setAutoAdjust(QPointF(x, y)); }
-      QPointF getAutoAdjust() const             { return autoAdjustOffset; }
+      qreal _extraHeight = 0.0;
+      virtual void changeAnchor(EditData&, Element*) override;
 
    public:
-      SlurSegment(Score*);
-      SlurSegment(const SlurSegment&);
-      virtual SlurSegment* clone() const { return new SlurSegment(*this); }
-      virtual Element::Type type() const { return Element::Type::SLUR_SEGMENT; }
+      SlurSegment(Score* s) : SlurTieSegment(s) {}
+      SlurSegment(const SlurSegment& ss) : SlurTieSegment(ss) {}
 
-      void layout(const QPointF& p1, const QPointF& p2);
-      virtual QPainterPath shape() const { return shapePath; }
-      virtual void draw(QPainter*) const;
+      virtual SlurSegment* clone() const override  { return new SlurSegment(*this); }
+      virtual ElementType type() const override    { return ElementType::SLUR_SEGMENT; }
+      virtual int subtype() const override         { return static_cast<int>(spanner()->type()); }
+      virtual QString subtypeName() const override { return name(spanner()->type()); }
+      virtual void draw(QPainter*) const override;
+
+      void layoutSegment(const QPointF& p1, const QPointF& p2);
 
       bool isEdited() const;
-      virtual bool isEditable() const { return true; }
-      virtual void editDrag(const EditData&);
-      virtual bool edit(MuseScoreView*, int grip, int key, Qt::KeyboardModifiers, const QString& s);
-      virtual void updateGrips(int*, int*, QRectF*) const override;
-      virtual QPointF gripAnchor(int grip) const;
-      virtual QPointF getGrip(int) const;
-      virtual void setGrip(int, const QPointF&);
+      virtual void startEdit(EditData&) override;
+      virtual bool edit(EditData&) override;
+      virtual void endEdit(EditData&) override;
+      virtual void updateGrips(EditData&) const override;
 
-      virtual void move(qreal xd, qreal yd) { move(QPointF(xd, yd)); }
-      virtual void move(const QPointF& s);
+      Slur* slur() const { return toSlur(spanner()); }
 
-      virtual QVariant getProperty(P_ID propertyId) const;
-      virtual bool setProperty(P_ID propertyId, const QVariant&);
-      virtual QVariant propertyDefault(P_ID id) const;
-
-      SlurTie* slurTie() const { return (SlurTie*)spanner(); }
-
-      void write(Xml& xml, int no) const;
-      void read(XmlReader&);
-      virtual void reset();
-      void setSlurOffset(int i, const QPointF& val) { ups[i].off = val;  }
-      QPointF slurOffset(int i) const               { return ups[i].off; }
-      const struct UP* getUps(int idx) const        { return &ups[idx]; }
-
-      friend class Tie;
-      friend class Slur;
-      friend class SlurTie;
-      };
-
-//-------------------------------------------------------------------
-//   @@ SlurTie
-//   @P lineType       int                    (0 - solid, 1 - dotted, 2 - dashed)
-//   @P slurDirection  Ms::MScore::Direction  (AUTO, UP, DOWN)
-//-------------------------------------------------------------------
-
-class SlurTie : public Spanner {
-      Q_OBJECT
-      Q_PROPERTY(int lineType                         READ lineType       WRITE undoSetLineType)
-      Q_PROPERTY(Ms::MScore::Direction slurDirection  READ slurDirection  WRITE undoSetSlurDirection)
-      Q_ENUMS(Ms::MScore::Direction)
-
-      int _lineType;    // 0 = solid, 1 = dotted, 2 = dashed
-
-      static Element* editStartElement;
-      static Element* editEndElement;
-      static QList<SlurOffsets> editUps;
-
-   protected:
-      bool _up;               // actual direction
-
-      QQueue<SlurSegment*> delSegments;   // "deleted" segments
-      MScore::Direction _slurDirection;
-      qreal firstNoteRestSegmentX(System* system);
-      void fixupSegments(unsigned nsegs);
-
-   public:
-      SlurTie(Score*);
-      SlurTie(const SlurTie&);
-      ~SlurTie();
-
-      virtual Element::Type type() const = 0;
-      bool up() const                             { return _up; }
-
-      MScore::Direction slurDirection() const     { return _slurDirection; }
-      void setSlurDirection(MScore::Direction d)  { _slurDirection = d; }
-      void undoSetSlurDirection(MScore::Direction d);
-
-      virtual void layout2(const QPointF, int, struct UP&)  {}
-      virtual bool contains(const QPointF&) const { return false; }  // not selectable
-
-      void writeProperties(Xml& xml) const;
-      bool readProperties(XmlReader&);
-
-      virtual void reset();
-
-      int lineType() const                { return _lineType; }
-      void setLineType(int val)           { _lineType = val;  }
-      void undoSetLineType(int);
-
-      SlurSegment* frontSegment() const   { return (SlurSegment*)spannerSegments().front(); }
-      SlurSegment* backSegment() const    { return (SlurSegment*)spannerSegments().back();  }
-      SlurSegment* takeLastSegment()      { return (SlurSegment*)spannerSegments().takeLast(); }
-      SlurSegment* segmentAt(int n) const { return (SlurSegment*)spannerSegments().at(n); }
-      virtual void slurPos(SlurPos*) = 0;
-      virtual void computeBezier(SlurSegment*, QPointF so = QPointF()) = 0;
-
-      virtual void startEdit(MuseScoreView*, const QPointF&) override;
-      virtual void endEdit() override;
-
-      virtual QVariant getProperty(P_ID propertyId) const;
-      virtual bool setProperty(P_ID propertyId, const QVariant&);
-      virtual QVariant propertyDefault(P_ID id) const;
+      virtual void computeBezier(QPointF so = QPointF());
       };
 
 //---------------------------------------------------------
 //   @@ Slur
 //---------------------------------------------------------
 
-class Slur : public SlurTie {
-      Q_OBJECT
+class Slur final : public SlurTie {
 
       void slurPosChord(SlurPos*);
 
    public:
       Slur(Score* = 0);
-      ~Slur();
-      virtual Slur* clone() const      { return new Slur(*this); }
-      virtual Element::Type type() const { return Element::Type::SLUR; }
-      virtual void write(Xml& xml) const;
-      virtual void read(XmlReader&);
-      virtual void layout();
-      virtual void setTrack(int val);
-      virtual void slurPos(SlurPos*);
-      virtual void computeBezier(SlurSegment*, QPointF so = QPointF());
-      friend SlurSegment;
+      ~Slur() {}
+      virtual Slur* clone() const override        { return new Slur(*this); }
+      virtual ElementType type() const override { return ElementType::SLUR; }
+      virtual void write(XmlWriter& xml) const override;
+      virtual void layout() override;
+      virtual SpannerSegment* layoutSystem(System*) override;
+      virtual void setTrack(int val) override;
+      virtual void slurPos(SlurPos*) override;
+
+      SlurSegment* frontSegment()               { return toSlurSegment(Spanner::frontSegment()); }
+      const SlurSegment* frontSegment() const   { return toSlurSegment(Spanner::frontSegment()); }
+      SlurSegment* backSegment()                { return toSlurSegment(Spanner::backSegment());  }
+      const SlurSegment* backSegment() const    { return toSlurSegment(Spanner::backSegment());  }
+      SlurSegment* segmentAt(int n)             { return toSlurSegment(Spanner::segmentAt(n));   }
+      const SlurSegment* segmentAt(int n) const { return toSlurSegment(Spanner::segmentAt(n));   }
+      virtual SlurTieSegment* newSlurTieSegment() override { return new SlurSegment(score()); }
       };
 
 }     // namespace Ms

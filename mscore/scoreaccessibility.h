@@ -1,14 +1,22 @@
 #ifndef __SCORE_ACCESSIBILITY__
 #define __SCORE_ACCESSIBILITY__
 
-#include<QStatusBar>
-#include<QAccessible>
-#include<QAccessibleWidget>
+#include <QStatusBar>
+#include <QAccessible>
+#include <QAccessibleWidget>
 #include "scoreview.h"
 
 namespace  Ms {
-class AccessibleScoreView : public QAccessibleWidget {
-public:
+
+//---------------------------------------------------------
+//   AccessibleScoreView
+//---------------------------------------------------------
+
+class AccessibleScoreView : public QObject, QAccessibleWidget {
+      Q_OBJECT
+      ScoreView* s;
+
+   public:
       AccessibleScoreView(ScoreView* c);
       int childCount() const Q_DECL_OVERRIDE;
       QAccessibleInterface* child(int /*index*/) const Q_DECL_OVERRIDE;
@@ -18,20 +26,22 @@ public:
       QString text(QAccessible::Text t) const Q_DECL_OVERRIDE;
       QWindow* window() const  Q_DECL_OVERRIDE;
       static QAccessibleInterface* ScoreViewFactory(const QString &classname, QObject *object);
-private:
-      ScoreView* s;
       };
+
+//---------------------------------------------------------
+//   ScoreAccessibility
+//---------------------------------------------------------
 
 class ScoreAccessibility : public QObject {
       Q_OBJECT
-private:
+
       static ScoreAccessibility* inst;
       QMainWindow* mainWindow;
       QLabel* statusBarLabel;
       ScoreAccessibility(QMainWindow* statusBar);
       std::pair<int, float>barbeat(Element* e);
 
-public:
+   public:
       ~ScoreAccessibility();
       void updateAccessibilityInfo();
       void clearAccessibilityInfo();

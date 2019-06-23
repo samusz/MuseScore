@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: importmidi.cpp 2721 2010-02-15 19:41:28Z wschweer $
 //
 //  Copyright (C) 2012 Werner Schweer and others
 //
@@ -25,7 +24,7 @@
 
 namespace Ms {
 
-      extern Score::FileError importPdf(Score*, const QString&);
+      extern Score::FileError importPdf(MasterScore*, const QString&);
       }
 
 #endif

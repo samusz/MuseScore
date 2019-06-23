@@ -25,18 +25,20 @@
 #include "libmscore/mcursor.h"
 #include "mtest/testutils.h"
 #include "inner_func_decl.h"
-#include "mscore/importmidi_chord.h"
-#include "mscore/importmidi_tuplet.h"
-#include "mscore/importmidi_meter.h"
-#include "mscore/importmidi_inner.h"
-#include "mscore/importmidi_quant.h"
-#include "mscore/importmidi_fraction.h"
-#include "mscore/importmidi_operations.h"
+#include "mscore/importmidi/importmidi_chord.h"
+#include "mscore/importmidi/importmidi_tuplet.h"
+#include "mscore/importmidi/importmidi_meter.h"
+#include "mscore/importmidi/importmidi_inner.h"
+#include "mscore/importmidi/importmidi_quant.h"
+#include "mscore/importmidi/importmidi_fraction.h"
+#include "mscore/importmidi/importmidi_operations.h"
+#include "mscore/importmidi/importmidi_model.h"
+#include "mscore/importmidi/importmidi_lyrics.h"
 #include "mscore/preferences.h"
 
 
 namespace Ms {
-      extern Score::FileError importMidi(Score*, const QString&);
+      extern Score::FileError importMidi(MasterScore*, const QString&);
       }
 
 using namespace Ms;
@@ -58,7 +60,7 @@ class TestImportMidi : public QObject, public MTest
                   // functions that modify default settings
       void dontSimplify(const char *file)
             {
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(file));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(file));
             auto &data = *opers.data();
@@ -66,11 +68,22 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
+            mf(file);
+            }
+      void noTempoText(const char *file)
+            {
+            auto &opers = midiImportOperations;
+            opers.addNewMidiFile(midiFilePath(file));
+            MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(file));
+            auto &data = *opers.data();
+
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(file);
             }
       void voiceSeparation(const char *file, bool simplify = false)
             {
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(file));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(file));
             auto &data = *opers.data();
@@ -78,11 +91,12 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(simplify, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_4, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(file);
             }
       void simplification(const char *file)
             {
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(file));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(file));
             auto &data = *opers.data();
@@ -90,11 +104,12 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(true, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(file);
             }
       void staffSplit(const char *file)
             {
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(file));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(file));
             auto &data = *opers.data();
@@ -102,6 +117,7 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(true, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(file);
             }
 
@@ -117,7 +133,7 @@ class TestImportMidi : public QObject, public MTest
       void quantDotted4th()
             {
             QString midiFile("quant_dotted_4th");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -131,7 +147,7 @@ class TestImportMidi : public QObject, public MTest
       void human4_4()
             {
             QString midiFile("human_4-4");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -139,13 +155,18 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
+      void humanTempo() { mf("human_tempo"); }
 
       // chord detection
-      void chordSmallError() { mf("chord_small_error"); }
-      void chordBigError() { mf("chord_big_error"); }
-      void chordLegato() { mf("chord_legato"); }
+      void chordSmallError() { noTempoText("chord_small_error"); }
+      void chordBigError() { noTempoText("chord_big_error"); }
+      void chordLegato() { noTempoText("chord_legato"); }
+      void chordCollect() { noTempoText("chord_collect"); }
+            // very short note - don't remove note but show it with min allowed duration (1/128)
+      void chordVeryShort() { dontSimplify("chord_1_tick_long"); }
 
       // test tuplet recognition functions
       void findChordInBar();
@@ -187,19 +208,20 @@ class TestImportMidi : public QObject, public MTest
             {
                         // requires 1/32 quantization
             QString midiFile("tuplet_2_voices_3_5_tuplets");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
 
             data.trackOpers.quantValue.setDefaultValue(MidiOperations::QuantValue::Q_32, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
-      void tuplet2VoicesTupletNon() { mf("tuplet_2_voices_tuplet_non"); }
+      void tuplet2VoicesTupletNon() { noTempoText("tuplet_2_voices_tuplet_non"); }
       void tuplet3_5_7tuplets()
             {
             QString midiFile("tuplet_3_5_7_tuplets");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -207,6 +229,7 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.changeClef.setDefaultValue(false, false);
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
       void tuplet5_5TupletsRests() { dontSimplify("tuplet_5_5_tuplets_rests"); }
@@ -217,7 +240,7 @@ class TestImportMidi : public QObject, public MTest
             {
                         // requires 1/64 quantization
             QString midiFile("tuplet_nonuplet_3-4");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -229,7 +252,7 @@ class TestImportMidi : public QObject, public MTest
             {
                         // requires 1/64 quantization
             QString midiFile("tuplet_nonuplet_4-4");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -248,7 +271,7 @@ class TestImportMidi : public QObject, public MTest
             {
                         // requires 1/32 quantization
             QString midiFile("tuplet_tied_3_5_tuplets");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -260,7 +283,7 @@ class TestImportMidi : public QObject, public MTest
             {
                         // requires 1/32 quantization
             QString midiFile("tuplet_tied_3_5_tuplets2");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -271,10 +294,12 @@ class TestImportMidi : public QObject, public MTest
       void tupletOffTimeOtherBar() { dontSimplify("tuplet_off_time_other_bar"); }
       void tupletOffTimeOtherBar2() { dontSimplify("tuplet_off_time_other_bar2"); }
       void tuplet16th8th() { dontSimplify("tuplet_16th_8th"); }
-      void tuplet7Staccato() { mf("tuplet_7_staccato"); }
+      void tuplet7Staccato() { noTempoText("tuplet_7_staccato"); }
       void minDuration() { dontSimplify("min_duration"); }
 
       void pickupMeasure() { dontSimplify("pickup"); }
+      void pickupMeasureLong() { noTempoText("pickup_long"); }
+      void pickupMeasureTurnOff() { noTempoText("pickup_turn_off"); }
 
       // LH/RH separation
       void LHRH_Nontuplet() { staffSplit("split_nontuplet"); }
@@ -287,7 +312,7 @@ class TestImportMidi : public QObject, public MTest
       void swingTriplets()
             {
             QString midiFile("swing_triplets");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -296,12 +321,13 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
       void swingShuffle()
             {
             QString midiFile("swing_shuffle");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -310,12 +336,13 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
       void swingClef()
             {
             QString midiFile("swing_clef");
-            auto &opers = preferences.midiImportOperations;
+            auto &opers = midiImportOperations;
             opers.addNewMidiFile(midiFilePath(midiFile));
             MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFilePath(midiFile));
             auto &data = *opers.data();
@@ -325,12 +352,20 @@ class TestImportMidi : public QObject, public MTest
             data.trackOpers.doStaffSplit.setDefaultValue(false, false);
             data.trackOpers.simplifyDurations.setDefaultValue(false, false);
             data.trackOpers.maxVoiceCount.setDefaultValue(MidiOperations::VoiceCount::V_1, false);
+            data.trackOpers.showTempoText.setDefaultValue(false);
             mf(midiFile.toStdString().c_str());
             }
 
       // percussion
-      void percDrums() { mf("perc_drums"); }
-      void percRemoveTies() { mf("perc_remove_ties"); }
+      void percDrums() { noTempoText("perc_drums"); }
+      void percRemoveTies() { noTempoText("perc_remove_ties"); }
+      void percNoGrandStaff() { noTempoText("perc_no_grand_staff"); }
+      void percTriplet() { noTempoText("perc_triplet"); }
+      void percRespectBeat() { noTempoText("perc_respect_beat"); }
+      void percTupletVoice() { noTempoText("perc_tuplet_voice"); }
+      void percTupletSimplify() { noTempoText("perc_tuplet_simplify"); }
+      void percTupletSimplify2() { noTempoText("perc_tuplet_simplify2"); }
+      void percShortNotes() { noTempoText("perc_short_notes"); }
 
       // clef changes along the score
       void clefTied() { dontSimplify("clef_tied"); }
@@ -352,6 +387,23 @@ class TestImportMidi : public QObject, public MTest
       void voiceSeparationIntersect() { voiceSeparation("voice_intersect"); }
       void voiceSeparationTuplet() { voiceSeparation("voice_tuplet", true); }
       void voiceSeparationCentral() { voiceSeparation("voice_central"); }
+
+      // division (fps and ticks per frame case)
+      void division() { mf("division"); }
+
+      // MIDI instruments and Grand Staff
+      void instrumentGrand() { mf("instrument_grand"); }
+      void instrumentGrand2() { mf("instrument_grand2"); }
+      void instrumentChannels() { mf("instrument_channels"); }
+      void instrument3StaffOrgan() { mf("instrument_3staff_organ"); }
+      void instrumentClef() { noTempoText("instrument_clef"); }
+
+      // lyrics
+      void lyricsTime0() { noTempoText("lyrics_time_0"); }
+      void lyricsVoice1() { noTempoText("lyrics_voice_1"); }
+
+      // gui - tracks model
+      void testGuiTracksModel();
       };
 
 //---------------------------------------------------------
@@ -369,10 +421,10 @@ void TestImportMidi::initTestCase()
 
 void TestImportMidi::mf(const char* name) const
       {
-      Score* score = new Score(mscore->baseStyle());
+      MasterScore* score = new MasterScore(mscore->baseStyle());
       score->setName(name);
       const QString mscorename = QString(name) + ".mscx";
-      QCOMPARE(importMidi(score,  midiFilePath(name)), Score::FileError::FILE_NO_ERROR);;
+      QCOMPARE(importMidi(score,  midiFilePath(name)), Score::FileError::FILE_NO_ERROR);
       QVERIFY(saveCompareScore(score, mscorename, DIR + mscorename));
       delete score;
       }
@@ -389,7 +441,7 @@ QString TestImportMidi::midiFilePath(const char* fileName) const
       }
 
 //---------------------------------------------------------
-//  tuplet recognition fuctions
+//  tuplet recognition functions
 //---------------------------------------------------------
 
 void TestImportMidi::findChordInBar()
@@ -518,7 +570,7 @@ void isTupletErrorAllowed(int tupletSumError,
 
 void TestImportMidi::isTupletAllowed()
       {
-      auto &opers = preferences.midiImportOperations;
+      auto &opers = midiImportOperations;
       const QString fileName = "dummy";
       opers.addNewMidiFile(fileName);
       MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, fileName);
@@ -595,7 +647,7 @@ void TestImportMidi::isTupletAllowed()
 
 void TestImportMidi::findTupletNumbers()
       {
-      auto &opers = preferences.midiImportOperations;
+      auto &opers = midiImportOperations;
       opers.addNewMidiFile("");
       MidiOperations::CurrentTrackSetter setCurrentTrack{opers, 0};
       {
@@ -804,7 +856,7 @@ void TestImportMidi::separateTupletVoices()
       std::vector<int> pitches = {74, 77};
       for (int i = 1; i != tripletNumber; ++i) {
             chords.insert({tripletNoteLen * i,
-                           chordFactory(tripletNoteLen * (i + 1), {pitches[i]})});
+                           chordFactory(tripletNoteLen * (i + 1), {pitches[i-1]})});
             }
                   // quintuplet
       const ReducedFraction quintupletLen = tupletLen;
@@ -813,7 +865,7 @@ void TestImportMidi::separateTupletVoices()
       pitches = {60, 62, 58, 60};
       for (int i = 1; i != quintupletNumber; ++i) {
             chords.insert({quintupletNoteLen * i,
-                           chordFactory(quintupletNoteLen * (i + 1), {pitches[i]})});
+                           chordFactory(quintupletNoteLen * (i + 1), {pitches[i-1]})});
             }
                   // septuplet
       const ReducedFraction septupletLen = tupletLen * 2;
@@ -822,7 +874,7 @@ void TestImportMidi::separateTupletVoices()
       pitches = {50, 52, 48, 51, 47, 47};
       for (int i = 1; i != septupletNumber; ++i) {
             chords.insert({septupletNoteLen * i,
-                           chordFactory(septupletNoteLen * (i + 1), {pitches[i]})});
+                           chordFactory(septupletNoteLen * (i + 1), {pitches[i-1]})});
             }
 
       MidiTuplet::TupletInfo tripletInfo;
@@ -1095,6 +1147,56 @@ void TestImportMidi::isSimpleDuration()
       QVERIFY(!Meter::isSimpleNoteDuration({3, 4}));
       QVERIFY(!Meter::isSimpleNoteDuration({3, 8}));
       QVERIFY(!Meter::isSimpleNoteDuration({1, 5}));
+      }
+
+static int findColByHeader(const TracksModel &model, const char *colHeader)
+      {
+      const int colCount = model.columnCount(QModelIndex());
+      for (int i = 0; i != colCount; ++i) {
+            const QString headerTitle = model.headerData(
+                                          i, Qt::Horizontal, Qt::DisplayRole).toString();
+            if (headerTitle == QObject::tr(colHeader))
+                  return i;
+            }
+      return -1;
+      }
+
+void TestImportMidi::testGuiTracksModel()
+      {
+      QString midiFile("perc_drums");
+      QString midiFileFullPath = midiFilePath(midiFile);
+      auto &opers = midiImportOperations;
+      opers.addNewMidiFile(midiFileFullPath);
+      MidiOperations::CurrentMidiFileSetter setCurrentMidiFile(opers, midiFileFullPath);
+
+      MasterScore score(mscore->baseStyle());
+      score.setName(midiFile);
+      QCOMPARE(importMidi(&score, midiFileFullPath), Score::FileError::FILE_NO_ERROR);
+
+      TracksModel model;
+      model.reset(opers.data()->trackOpers,
+                  MidiLyrics::makeLyricsListForUI(),
+                  opers.data()->trackCount,
+                  midiFileFullPath,
+                  !opers.data()->humanBeatData.beatSet.empty(),
+                  opers.data()->hasTempoText,
+                  !opers.data()->chordNames.empty());
+
+      QVERIFY(model.trackCount() == 1);
+
+      Qt::ItemFlags notEditableFlags = Qt::ItemFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+
+      const int clefChangeCol = findColByHeader(model, "Clef\nchanges");
+      QVERIFY(clefChangeCol >= 0);
+      QCOMPARE(model.flags(model.index(0, clefChangeCol)), notEditableFlags);
+
+      const int voiceCol = findColByHeader(model, "Max. voices");
+      QVERIFY(voiceCol >= 0);
+      QCOMPARE(model.flags(model.index(0, voiceCol)), notEditableFlags);
+
+      const int channelCol = findColByHeader(model, "Channel");
+      QVERIFY(channelCol >= 0);
+      QCOMPARE(model.flags(model.index(0, channelCol)), notEditableFlags);
       }
 
 

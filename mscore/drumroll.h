@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -27,6 +26,7 @@ namespace Awl {
       };
 
 #include "libmscore/pos.h"
+#include "libmscore/select.h"
 
 namespace Ms {
 
@@ -36,8 +36,6 @@ class DrumView;
 class Note;
 class Ruler;
 class Seq;
-
-enum class SelState : char;
 
 //---------------------------------------------------------
 //   DrumrollEditor
@@ -58,6 +56,7 @@ class DrumrollEditor : public QMainWindow {
 
       void updateVelocity(Note* note);
       void updateSelection();
+      void readSettings();
 
    private slots:
       void selectionChanged();

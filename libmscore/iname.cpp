@@ -12,18 +12,35 @@
 
 #include "score.h"
 #include "iname.h"
+#include "staff.h"
+#include "part.h"
+#include "undo.h"
 
 namespace Ms {
+
+//---------------------------------------------------------
+//   longInstrumentStyle
+//---------------------------------------------------------
+
+static const ElementStyle longInstrumentStyle {
+      };
+
+//---------------------------------------------------------
+//   shortInstrumentStyle
+//---------------------------------------------------------
+
+static const ElementStyle shortInstrumentStyle {
+      };
 
 //---------------------------------------------------------
 //   InstrumentName
 //---------------------------------------------------------
 
 InstrumentName::InstrumentName(Score* s)
-   : Text(s)
+   : TextBase(s, Tid::INSTRUMENT_LONG, ElementFlag::NOTHING)
       {
-      setInstrumentNameType(InstrumentNameType::SHORT);
-      _layoutPos = 0;
+      setFlag(ElementFlag::MOVABLE, false);
+      setInstrumentNameType(InstrumentNameType::LONG);
       }
 
 //---------------------------------------------------------
@@ -32,9 +49,7 @@ InstrumentName::InstrumentName(Score* s)
 
 QString InstrumentName::instrumentNameTypeName() const
       {
-      if (instrumentNameType() == InstrumentNameType::SHORT)
-            return QString("short");
-      return QString("long");
+      return instrumentNameType() == InstrumentNameType::SHORT ? "short" : "long";
       }
 
 //---------------------------------------------------------
@@ -45,19 +60,77 @@ void InstrumentName::setInstrumentNameType(const QString& s)
       {
       if (s == "short")
             setInstrumentNameType(InstrumentNameType::SHORT);
-      if (s == "long")
+      else if (s == "long")
             setInstrumentNameType(InstrumentNameType::LONG);
       else
             qDebug("InstrumentName::setSubtype: unknown <%s>", qPrintable(s));
       }
 
+//---------------------------------------------------------
+//   setInstrumentNameType
+//---------------------------------------------------------
+
 void InstrumentName::setInstrumentNameType(InstrumentNameType st)
       {
       _instrumentNameType = st;
-      if (st == InstrumentNameType::SHORT)
-            setTextStyleType(TextStyleType::INSTRUMENT_SHORT);
-      else
-            setTextStyleType(TextStyleType::INSTRUMENT_LONG);
+      if (st == InstrumentNameType::SHORT) {
+            setTid(Tid::INSTRUMENT_SHORT);
+            initElementStyle(&shortInstrumentStyle);
+            }
+      else {
+            setTid(Tid::INSTRUMENT_LONG);
+            initElementStyle(&longInstrumentStyle);
+            }
+      }
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+QVariant InstrumentName::getProperty(Pid id) const
+      {
+      switch (id) {
+            case Pid::INAME_LAYOUT_POSITION:
+                  return _layoutPos;
+            default:
+                  return TextBase::getProperty(id);
+            }
+      }
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool InstrumentName::setProperty(Pid id, const QVariant& v)
+      {
+      bool rv = true;
+      switch (id) {
+            case Pid::INAME_LAYOUT_POSITION:
+                  _layoutPos = v.toInt();
+                  break;
+            case Pid::VISIBLE:
+            case Pid::COLOR:
+                  // not supported
+                  break;
+            default:
+                  rv = TextBase::setProperty(id, v);
+                  break;
+            }
+      return rv;
+      }
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+QVariant InstrumentName::propertyDefault(Pid id) const
+      {
+      switch (id) {
+            case Pid::INAME_LAYOUT_POSITION:
+                  return 0;
+            default:
+                  return TextBase::propertyDefault(id);
+            }
       }
 
 }

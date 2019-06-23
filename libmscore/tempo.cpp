@@ -42,6 +42,11 @@ TEvent::TEvent(qreal t, qreal p, TempoType tp)
       time  = 0.0;
       }
 
+bool TEvent::valid() const
+      {
+      return !(!type);
+      }
+
 //---------------------------------------------------------
 //   TempoMap
 //---------------------------------------------------------
@@ -60,11 +65,13 @@ TempoMap::TempoMap()
 void TempoMap::setPause(int tick, qreal pause)
       {
       auto e = find(tick);
-      if (e != end())
+      if (e != end()) {
             e->second.pause = pause;
+            e->second.type |= TempoType::PAUSE;
+            }
       else {
             qreal t = tempo(tick);
-            insert(std::pair<const int, TEvent> (tick, TEvent(t, pause, TempoType::FIX)));
+            insert(std::pair<const int, TEvent> (tick, TEvent(t, pause, TempoType::PAUSE)));
             }
       normalize();
       }
@@ -78,7 +85,7 @@ void TempoMap::setTempo(int tick, qreal tempo)
       auto e = find(tick);
       if (e != end()) {
             e->second.tempo = tempo;
-            e->second.type = TempoType::FIX;
+            e->second.type |= TempoType::FIX;
             }
       else
             insert(std::pair<const int, TEvent> (tick, TEvent(tempo, 0.0, TempoType::FIX)));
@@ -95,6 +102,10 @@ void TempoMap::normalize()
       int tick    = 0;
       qreal tempo = 2.0;
       for (auto e = begin(); e != end(); ++e) {
+            // entries that represent a pause *only* (not tempo change also)
+            // need to be corrected to continue previous tempo
+            if (!(e->second.type & (TempoType::FIX|TempoType::RAMP)))
+                  e->second.tempo = tempo;
             int delta = e->first - tick;
             time += qreal(delta) / (MScore::division * tempo * _relTempo);
             time += e->second.pause;
@@ -113,8 +124,8 @@ void TempoMap::dump() const
       {
       qDebug("\nTempoMap:");
       for (auto i = begin(); i != end(); ++i)
-            qDebug("%6d tempo: %f time: %f",
-               i->first, i->second.tempo, i->second.time);
+            qDebug("%6d type: %2d tempo: %f pause: %f time: %f",
+               i->first, static_cast<int>(i->second.type), i->second.tempo, i->second.pause, i->second.time);
       }
 
 //---------------------------------------------------------
@@ -124,6 +135,22 @@ void TempoMap::dump() const
 void TempoMap::clear()
       {
       std::map<int,TEvent>::clear();
+      ++_tempoSN;
+      }
+
+//---------------------------------------------------------
+//   clearRange
+//    Clears the given range, start tick included, end tick
+//    excluded.
+//---------------------------------------------------------
+
+void TempoMap::clearRange(int tick1, int tick2)
+      {
+      iterator first = lower_bound(tick1);
+      iterator last = lower_bound(tick2);
+      if (first == last)
+            return;
+      erase(first, last);
       ++_tempoSN;
       }
 
@@ -160,7 +187,11 @@ void TempoMap::del(int tick)
             // abort();
             return;
             }
-      erase(e);
+      // don't delete event if still being used for pause
+      if (e->second.type & TempoType::PAUSE)
+            e->second.type = TempoType::PAUSE;
+      else
+            erase(e);
       normalize();
       }
 
@@ -258,6 +289,11 @@ int TempoMap::time2tick(qreal time, int* sn) const
       delta = 0.0;
       tempo = 2.0;
       for (auto e = begin(); e != end(); ++e) {
+            // if in a pause period, wait on previous tick
+            if ((time <= e->second.time) && (time > e->second.time - e->second.pause)) {
+                  delta = (time - (e->second.time - e->second.pause) + delta);
+                  break;
+                  }
             if (e->second.time >= time)
                   break;
             delta = e->second.time;

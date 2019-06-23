@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: transposedialog.h 4388 2011-06-18 13:17:58Z wschweer $
 //
 //  Copyright (C) 2008-2009 Werner Schweer and others
 //
@@ -35,6 +34,7 @@ enum class Key;
 class TransposeDialog : public QDialog, Ui::TransposeDialogBase {
       Q_OBJECT
 
+      virtual void hideEvent(QHideEvent*);
    private slots:
       void transposeByKeyToggled(bool);
       void transposeByIntervalToggled(bool);
@@ -45,6 +45,7 @@ class TransposeDialog : public QDialog, Ui::TransposeDialogBase {
       TransposeDialog(QWidget* parent = 0);
       void enableTransposeKeys(bool val)  { transposeKeys->setEnabled(val);       }
       void enableTransposeByKey(bool val);
+      void enableTransposeChordNames(bool val);
       bool getTransposeKeys() const       { return chromaticBox->isChecked()
                                                 ? transposeKeys->isChecked()
                                                 : keepDegreeAlterations->isChecked();}

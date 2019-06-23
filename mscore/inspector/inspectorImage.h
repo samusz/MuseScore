@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -24,20 +23,18 @@ namespace Ms {
 //   InspectorImage
 //---------------------------------------------------------
 
-class InspectorImage : public InspectorBase {
+class InspectorImage : public InspectorElementBase {
       Q_OBJECT
-      UiInspectorElement e;
+
       Ui::InspectorImage b;
 
-      void updateScaleFromSize(const QSizeF&);
-      void updateSizeFromScale(const QSizeF&);
+      virtual void postInit();
 
    protected slots:
-      virtual void valueChanged(int idx);
+      virtual void valueChanged(int idx) override;
 
    public:
       InspectorImage(QWidget* parent);
-      virtual void setElement(Element*);
       };
 
 

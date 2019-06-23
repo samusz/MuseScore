@@ -22,7 +22,7 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="tab">
+     <widget class="QWidget" name="tabChangeChannel">
       <attribute name="title">
        <string>Change Channel</string>
       </attribute>
@@ -61,188 +61,52 @@
         <layout class="QGridLayout" name="gridLayout">
          <item row="1" column="0">
           <widget class="QToolButton" name="voice1_1">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>1</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice1" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="1" column="1">
           <widget class="QToolButton" name="voice2_1">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>2</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice2" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="1" column="2">
           <widget class="QToolButton" name="voice3_1">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>3</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice3" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="1" column="3">
           <widget class="QToolButton" name="voice4_1">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>4</string>
            </property>
            <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="voice4" stdset="0">
             <bool>true</bool>
            </property>
           </widget>
@@ -252,188 +116,52 @@
          </item>
          <item row="2" column="0">
           <widget class="QToolButton" name="voice1_2">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>1</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice1" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="2" column="1">
           <widget class="QToolButton" name="voice2_2">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>2</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice2" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="2" column="2">
           <widget class="QToolButton" name="voice3_2">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>3</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice3" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="2" column="3">
           <widget class="QToolButton" name="voice4_2">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>4</string>
            </property>
            <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="voice4" stdset="0">
             <bool>true</bool>
            </property>
           </widget>
@@ -443,188 +171,52 @@
          </item>
          <item row="3" column="0">
           <widget class="QToolButton" name="voice1_3">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>1</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice1" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="3" column="1">
           <widget class="QToolButton" name="voice2_3">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>2</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice2" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="3" column="2">
           <widget class="QToolButton" name="voice3_3">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>3</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice3" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="3" column="3">
           <widget class="QToolButton" name="voice4_3">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>4</string>
            </property>
            <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="voice4" stdset="0">
             <bool>true</bool>
            </property>
           </widget>
@@ -634,188 +226,52 @@
          </item>
          <item row="4" column="0">
           <widget class="QToolButton" name="voice1_4">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>100</red>
-                 <green>100</green>
-                 <blue>200</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>1</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice1" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="4" column="1">
           <widget class="QToolButton" name="voice2_4">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>0</red>
-                 <green>255</green>
-                 <blue>0</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>2</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice2" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="4" column="2">
           <widget class="QToolButton" name="voice3_4">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>244</green>
-                 <blue>142</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>3</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
            </property>
+           <property name="voice3" stdset="0">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="4" column="3">
           <widget class="QToolButton" name="voice4_4">
-           <property name="palette">
-            <palette>
-             <active>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </active>
-             <inactive>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </inactive>
-             <disabled>
-              <colorrole role="Button">
-               <brush brushstyle="SolidPattern">
-                <color alpha="255">
-                 <red>255</red>
-                 <green>95</green>
-                 <blue>255</blue>
-                </color>
-               </brush>
-              </colorrole>
-             </disabled>
-            </palette>
-           </property>
            <property name="text">
             <string>4</string>
            </property>
            <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="voice4" stdset="0">
             <bool>true</bool>
            </property>
           </widget>
@@ -854,7 +310,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_2">
+     <widget class="QWidget" name="tabMIDIAction">
       <attribute name="title">
        <string>MIDI Action</string>
       </attribute>
@@ -938,7 +394,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_4">
+     <widget class="QWidget" name="tabAeolusStops">
       <attribute name="title">
        <string>Aeolus Stops</string>
       </attribute>
@@ -955,9 +411,6 @@
          </property>
          <property name="title">
           <string>Change Stops:</string>
-         </property>
-         <property name="flat">
-          <bool>true</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -991,7 +444,7 @@
                </font>
               </property>
               <property name="text">
-               <string>III</string>
+               <string notr="true">III</string>
               </property>
              </widget>
             </item>
@@ -1046,7 +499,7 @@
                </font>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 8</string>
               </property>
               <property name="checkable">
@@ -1103,7 +556,7 @@
                </palette>
               </property>
               <property name="text">
-               <string>Gemshorn
+               <string notr="true">Gemshorn
 8</string>
               </property>
               <property name="checkable">
@@ -1157,7 +610,7 @@
                </palette>
               </property>
               <property name="text">
-               <string>Quinta-
+               <string notr="true">Quinta-
 dena 8</string>
               </property>
               <property name="checkable">
@@ -1211,7 +664,7 @@ dena 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Suabile
+               <string notr="true">Suabile
 8</string>
               </property>
               <property name="checkable">
@@ -1265,7 +718,7 @@ dena 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Rohrflöte
+               <string notr="true">Rohrflöte
 8</string>
               </property>
               <property name="checkable">
@@ -1319,7 +772,7 @@ dena 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Dulzflöte
+               <string notr="true">Dulzflöte
 4</string>
               </property>
               <property name="checkable">
@@ -1373,7 +826,7 @@ dena 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Quintflöte
+               <string notr="true">Quintflöte
 2 2/3</string>
               </property>
               <property name="checkable">
@@ -1447,7 +900,7 @@ dena 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Super-
+               <string notr="true">Super-
 octave 2</string>
               </property>
               <property name="checkable">
@@ -1501,7 +954,7 @@ octave 2</string>
                </palette>
               </property>
               <property name="text">
-               <string>Sifflet
+               <string notr="true">Sifflet
 1</string>
               </property>
               <property name="checkable">
@@ -1555,7 +1008,7 @@ octave 2</string>
                </palette>
               </property>
               <property name="text">
-               <string>Cymbel
+               <string notr="true">Cymbel
 VI</string>
               </property>
               <property name="checkable">
@@ -1609,7 +1062,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Oboe</string>
+               <string notr="true">Oboe</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -1689,7 +1142,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Tremulant</string>
+               <string notr="true">Tremulant</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -1746,7 +1199,7 @@ VI</string>
                </font>
               </property>
               <property name="text">
-               <string>II</string>
+               <string notr="true">II</string>
               </property>
              </widget>
             </item>
@@ -1801,7 +1254,7 @@ VI</string>
                </font>
               </property>
               <property name="text">
-               <string>Rohrflöte
+               <string notr="true">Rohrflöte
 8</string>
               </property>
               <property name="checkable">
@@ -1858,7 +1311,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Harmonic
+               <string notr="true">Harmonic
 Flute 8</string>
               </property>
               <property name="checkable">
@@ -1912,7 +1365,7 @@ Flute 8</string>
                </palette>
               </property>
               <property name="text">
-               <string>Flauto
+               <string notr="true">Flauto
 Dolce 4</string>
               </property>
               <property name="checkable">
@@ -1966,7 +1419,7 @@ Dolce 4</string>
                </palette>
               </property>
               <property name="text">
-               <string>Nasard
+               <string notr="true">Nasard
 2 2/3</string>
               </property>
               <property name="checkable">
@@ -2020,7 +1473,7 @@ Dolce 4</string>
                </palette>
               </property>
               <property name="text">
-               <string>Ottavina
+               <string notr="true">Ottavina
 2</string>
               </property>
               <property name="checkable">
@@ -2074,7 +1527,7 @@ Dolce 4</string>
                </palette>
               </property>
               <property name="text">
-               <string>Tertia
+               <string notr="true">Tertia
 1 3/5</string>
               </property>
               <property name="checkable">
@@ -2128,7 +1581,7 @@ Dolce 4</string>
                </palette>
               </property>
               <property name="text">
-               <string>Sesqui
+               <string notr="true">Sesqui
 altera</string>
               </property>
               <property name="checkable">
@@ -2207,7 +1660,7 @@ altera</string>
                </font>
               </property>
               <property name="text">
-               <string>Septime</string>
+               <string notr="true">Septime</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2263,7 +1716,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>None</string>
+               <string notr="true">None</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2316,7 +1769,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Krumhorn</string>
+               <string notr="true">Krumhorn</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2369,7 +1822,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Melodia</string>
+               <string notr="true">Melodia</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2449,7 +1902,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Tremulant</string>
+               <string notr="true">Tremulant</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2529,7 +1982,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>II+III</string>
+               <string notr="true">II+III</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -2559,101 +2012,6 @@ altera</string>
             <property name="frameShadow">
              <enum>QFrame::Sunken</enum>
             </property>
-            <widget class="QWidget" name="layoutWidget_2">
-             <property name="geometry">
-              <rect>
-               <x>20</x>
-               <y>30</y>
-               <width>731</width>
-               <height>51</height>
-              </rect>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_5">
-              <item>
-               <widget class="QLabel" name="label_6">
-                <property name="font">
-                 <font>
-                  <family>DejaVu Serif</family>
-                  <pointsize>12</pointsize>
-                  <weight>75</weight>
-                  <bold>true</bold>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>III</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_20">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="font">
-                 <font>
-                  <family>DejaVu Serif</family>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Principal
-8</string>
-                </property>
-                <property name="checkable">
-                 <bool>true</bool>
-                </property>
-                <property name="flat">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_21">
-                <property name="text">
-                 <string>Gemshorn
-8</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_22">
-                <property name="text">
-                 <string>PushButton</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_23">
-                <property name="text">
-                 <string>PushButton</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_24">
-                <property name="text">
-                 <string>PushButton</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_25">
-                <property name="text">
-                 <string>PushButton</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_26">
-                <property name="text">
-                 <string>PushButton</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
            </widget>
           </item>
           <item>
@@ -2681,7 +2039,7 @@ altera</string>
                </font>
               </property>
               <property name="text">
-               <string>I</string>
+               <string notr="true">I</string>
               </property>
              </widget>
             </item>
@@ -2736,7 +2094,7 @@ altera</string>
                </font>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 8</string>
               </property>
               <property name="checkable">
@@ -2793,7 +2151,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 4</string>
               </property>
               <property name="checkable">
@@ -2847,7 +2205,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Octave
+               <string notr="true">Octave
 2</string>
               </property>
               <property name="checkable">
@@ -2901,7 +2259,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Octave
+               <string notr="true">Octave
 1</string>
               </property>
               <property name="checkable">
@@ -2955,7 +2313,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Quint
+               <string notr="true">Quint
 5 1/3</string>
               </property>
               <property name="checkable">
@@ -3009,7 +2367,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Quint
+               <string notr="true">Quint
 2 2/3</string>
               </property>
               <property name="checkable">
@@ -3063,7 +2421,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Tibia
+               <string notr="true">Tibia
 8</string>
               </property>
               <property name="checkable">
@@ -3117,7 +2475,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Celesta
+               <string notr="true">Celesta
 8</string>
               </property>
               <property name="checkable">
@@ -3196,7 +2554,7 @@ altera</string>
                </font>
               </property>
               <property name="text">
-               <string>Flöte
+               <string notr="true">Flöte
 8</string>
               </property>
               <property name="checkable">
@@ -3253,7 +2611,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Flöte
+               <string notr="true">Flöte
 4</string>
               </property>
               <property name="checkable">
@@ -3307,7 +2665,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Flöte
+               <string notr="true">Flöte
 2</string>
               </property>
               <property name="checkable">
@@ -3361,7 +2719,7 @@ altera</string>
                </palette>
               </property>
               <property name="text">
-               <string>Cymbel
+               <string notr="true">Cymbel
 VI</string>
               </property>
               <property name="checkable">
@@ -3415,7 +2773,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Mixtur</string>
+               <string notr="true">Mixtur</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -3468,7 +2826,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Trumpet</string>
+               <string notr="true">Trumpet</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -3548,7 +2906,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>I+II</string>
+               <string notr="true">I+II</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -3628,7 +2986,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>I+III</string>
+               <string notr="true">I+III</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -3685,7 +3043,7 @@ VI</string>
                </font>
               </property>
               <property name="text">
-               <string>P</string>
+               <string notr="true">P</string>
               </property>
              </widget>
             </item>
@@ -3740,7 +3098,7 @@ VI</string>
                </font>
               </property>
               <property name="text">
-               <string>Subbass
+               <string notr="true">Subbass
 16</string>
               </property>
               <property name="checkable">
@@ -3797,7 +3155,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 16</string>
               </property>
               <property name="checkable">
@@ -3851,7 +3209,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 8</string>
               </property>
               <property name="checkable">
@@ -3905,7 +3263,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Principal
+               <string notr="true">Principal
 4</string>
               </property>
               <property name="checkable">
@@ -3959,7 +3317,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Octave
+               <string notr="true">Octave
 2</string>
               </property>
               <property name="checkable">
@@ -4013,7 +3371,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Octave
+               <string notr="true">Octave
 1</string>
               </property>
               <property name="checkable">
@@ -4067,7 +3425,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Quint
+               <string notr="true">Quint
 5 1/3</string>
               </property>
               <property name="checkable">
@@ -4121,7 +3479,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Quint
+               <string notr="true">Quint
 2 2/3</string>
               </property>
               <property name="checkable">
@@ -4200,7 +3558,7 @@ VI</string>
                </font>
               </property>
               <property name="text">
-               <string>Mixtur</string>
+               <string notr="true">Mixtur</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -4256,7 +3614,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Fagott
+               <string notr="true">Fagott
 16</string>
               </property>
               <property name="checkable">
@@ -4310,7 +3668,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Trombone
+               <string notr="true">Trombone
 16</string>
               </property>
               <property name="checkable">
@@ -4364,7 +3722,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Bombarde
+               <string notr="true">Bombarde
 32</string>
               </property>
               <property name="checkable">
@@ -4418,7 +3776,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>Trumpet</string>
+               <string notr="true">Trumpet</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -4498,7 +3856,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>P+I</string>
+               <string notr="true">P+I</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -4578,7 +3936,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>P+II</string>
+               <string notr="true">P+II</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -4658,7 +4016,7 @@ VI</string>
                </palette>
               </property>
               <property name="text">
-               <string>P+III</string>
+               <string notr="true">P+III</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -4685,7 +4043,7 @@ VI</string>
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_3">
+     <widget class="QWidget" name="tabSwingSettings">
       <attribute name="title">
        <string>Swing Settings</string>
       </attribute>
@@ -4737,7 +4095,7 @@ VI</string>
               <bool>true</bool>
              </property>
              <property name="text">
-              <string>Eighth Note</string>
+              <string>Eighth note</string>
              </property>
              <property name="checked">
               <bool>true</bool>
@@ -4750,7 +4108,7 @@ VI</string>
               <bool>true</bool>
              </property>
              <property name="text">
-              <string>Sixteenth Note</string>
+              <string>Sixteenth note</string>
              </property>
             </widget>
            </item>
@@ -4795,6 +4153,114 @@ VI</string>
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="tabCapoSettings">
+      <attribute name="title">
+       <string>Capo Settings</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="capoVerticalLayout">
+       <item>
+        <widget class="QGroupBox" name="setCapoBox">
+         <property name="title">
+          <string>Capo Settings</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <widget class="QWidget" name="capoHorizontalLayoutWidget">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>20</y>
+            <width>601</width>
+            <height>31</height>
+           </rect>
+          </property>
+          <layout class="QHBoxLayout" name="capoHorizontalLayout">
+           <item>
+            <widget class="QLabel" name="capoLabel">
+             <property name="text">
+              <string>Capo fret:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+             <widget class="QComboBox" name="fretList">
+              <item>
+               <property name="text">
+                <string>No capo</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>1</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>2</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>8</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>9</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>10</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>11</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>12</string>
+               </property>
+              </item>
+             </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
@@ -4809,6 +4275,94 @@ VI</string>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>voice1_1</tabstop>
+  <tabstop>voice2_1</tabstop>
+  <tabstop>voice3_1</tabstop>
+  <tabstop>voice4_1</tabstop>
+  <tabstop>channelCombo1</tabstop>
+  <tabstop>voice1_2</tabstop>
+  <tabstop>voice2_2</tabstop>
+  <tabstop>voice3_2</tabstop>
+  <tabstop>voice4_2</tabstop>
+  <tabstop>channelCombo2</tabstop>
+  <tabstop>voice1_3</tabstop>
+  <tabstop>voice2_3</tabstop>
+  <tabstop>voice3_3</tabstop>
+  <tabstop>voice4_3</tabstop>
+  <tabstop>channelCombo3</tabstop>
+  <tabstop>voice1_4</tabstop>
+  <tabstop>voice2_4</tabstop>
+  <tabstop>voice3_4</tabstop>
+  <tabstop>voice4_4</tabstop>
+  <tabstop>channelCombo4</tabstop>
+  <tabstop>channelList</tabstop>
+  <tabstop>actionList</tabstop>
+  <tabstop>changeStops</tabstop>
+  <tabstop>stop_3_0</tabstop>
+  <tabstop>stop_3_1</tabstop>
+  <tabstop>stop_3_2</tabstop>
+  <tabstop>stop_3_3</tabstop>
+  <tabstop>stop_3_4</tabstop>
+  <tabstop>stop_3_5</tabstop>
+  <tabstop>stop_3_6</tabstop>
+  <tabstop>stop_3_7</tabstop>
+  <tabstop>stop_3_8</tabstop>
+  <tabstop>stop_3_9</tabstop>
+  <tabstop>stop_3_10</tabstop>
+  <tabstop>stop_3_11</tabstop>
+  <tabstop>stop_2_0</tabstop>
+  <tabstop>stop_2_1</tabstop>
+  <tabstop>stop_2_2</tabstop>
+  <tabstop>stop_2_3</tabstop>
+  <tabstop>stop_2_4</tabstop>
+  <tabstop>stop_2_5</tabstop>
+  <tabstop>stop_2_6</tabstop>
+  <tabstop>stop_2_7</tabstop>
+  <tabstop>stop_2_8</tabstop>
+  <tabstop>stop_2_9</tabstop>
+  <tabstop>stop_2_10</tabstop>
+  <tabstop>stop_2_11</tabstop>
+  <tabstop>stop_2_12</tabstop>
+  <tabstop>stop_1_0</tabstop>
+  <tabstop>stop_1_1</tabstop>
+  <tabstop>stop_1_2</tabstop>
+  <tabstop>stop_1_3</tabstop>
+  <tabstop>stop_1_4</tabstop>
+  <tabstop>stop_1_5</tabstop>
+  <tabstop>stop_1_6</tabstop>
+  <tabstop>stop_1_7</tabstop>
+  <tabstop>stop_1_8</tabstop>
+  <tabstop>stop_1_9</tabstop>
+  <tabstop>stop_1_10</tabstop>
+  <tabstop>stop_1_11</tabstop>
+  <tabstop>stop_1_12</tabstop>
+  <tabstop>stop_1_13</tabstop>
+  <tabstop>stop_1_14</tabstop>
+  <tabstop>stop_1_15</tabstop>
+  <tabstop>setSwingBox</tabstop>
+  <tabstop>SwingOff</tabstop>
+  <tabstop>swingEighth</tabstop>
+  <tabstop>swingSixteenth</tabstop>
+  <tabstop>swingBox</tabstop>
+  <tabstop>stop_p_5</tabstop>
+  <tabstop>stop_p_6</tabstop>
+  <tabstop>stop_p_7</tabstop>
+  <tabstop>stop_p_8</tabstop>
+  <tabstop>stop_p_9</tabstop>
+  <tabstop>stop_p_10</tabstop>
+  <tabstop>stop_p_11</tabstop>
+  <tabstop>stop_p_12</tabstop>
+  <tabstop>stop_p_13</tabstop>
+  <tabstop>stop_p_14</tabstop>
+  <tabstop>stop_p_15</tabstop>
+  <tabstop>stop_p_0</tabstop>
+  <tabstop>stop_p_1</tabstop>
+  <tabstop>stop_p_2</tabstop>
+  <tabstop>stop_p_3</tabstop>
+  <tabstop>stop_p_4</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

@@ -104,7 +104,7 @@ QString HChord::name(int tpc) const
       static const HChord C0(0,3,6,9);
       static const HChord C1(0,3);
 
-      QString buf = tpc2name(tpc, NoteSpellingType::STANDARD, false);
+      QString buf = tpc2name(tpc, NoteSpellingType::STANDARD, NoteCaseType::AUTO, false);
       HChord c(*this);
 
       int key = tpc2pitch(tpc);
@@ -281,7 +281,7 @@ void HChord::add(const QList<HDegree>& degreeList)
                         }
                   }
             else
-                  qDebug("degree type %hhd not supported", d.type());
+                  qDebug("degree type %d not supported", static_cast<int>(d.type()));
 
 // qDebug("  HCHord::added  "); print();
             }
@@ -326,7 +326,7 @@ static void readRenderList(QString val, QList<RenderAction>& renderList)
 //   writeRenderList
 //---------------------------------------------------------
 
-static void writeRenderList(Xml& xml, const QList<RenderAction>* al, const QString& name)
+static void writeRenderList(XmlWriter& xml, const QList<RenderAction>* al, const QString& name)
       {
       QString s;
 
@@ -388,7 +388,7 @@ void ChordToken::read(XmlReader& e)
 //  write
 //---------------------------------------------------------
 
-void ChordToken::write(Xml& xml) const
+void ChordToken::write(XmlWriter& xml) const
       {
       QString t = "token";
       switch (tokenClass) {
@@ -437,7 +437,7 @@ void ParsedChord::configure(const ChordList* cl)
       lower << "b" << "-" << "dim";
       raise << "#" << "+" << "aug";
       mod1 << "sus" << "alt";
-      mod2 << "sus" << "add" << "no" << "omit";
+      mod2 << "sus" << "add" << "no" << "omit" << "^";
       symbols << "t" << "^" << "-" << "+" << "o" << "0";
       }
 
@@ -809,9 +809,11 @@ bool ParsedChord::parse(const QString& s, const ChordList* cl, bool syntaxOnly, 
             // eat spaces
             while (i < len && s[i] == ' ')
                   ++i;
-            // get second token - up to first non-digit
+            // get second token - a number <= 13
             for (j = 0, tok2 = ""; i < len; ++i) {
                   if (!s[i].isDigit())
+                        break;
+                  if (j == 1 && (tok2[0] != '1' || s[i] > '3'))
                         break;
                   tok2[j++] = s[i];
                   }
@@ -887,6 +889,8 @@ bool ParsedChord::parse(const QString& s, const ChordList* cl, bool syntaxOnly, 
                         d = 0;
                   else
                         d = tok2L.toInt();
+                  if (d > 13)
+                        d = 13;
                   QString degree;
                   bool alter = false;
                   if (tok1L == "add") {
@@ -947,6 +951,10 @@ bool ParsedChord::parse(const QString& s, const ChordList* cl, bool syntaxOnly, 
                         _xmlText = tok1 + tok2;
                         if (_extension == "7" || _extension == "9" || _extension == "11" || _extension == "13") {
                               _xmlDegrees += (_quality == "major") ? "add#7" : "add7";
+                              // hack for programs that cannot assemble names well
+                              // even though the kind is suspended, set text to also include the extension
+                              // in export, we will set the degree text to null
+                              _xmlText = _extension + _xmlText;
                               degree = "";
                               }
                         else if (_extension != "")
@@ -1100,14 +1108,14 @@ bool ParsedChord::parse(const QString& s, const ChordList* cl, bool syntaxOnly, 
                   if (_xmlDegrees.removeAll(unalt) > 0) {
                         QString alt(d);
                         alt.replace("alt","add");
-                        int i = _xmlDegrees.indexOf(d);
-                        _xmlDegrees.replace(i,alt);
+                        int i1 = _xmlDegrees.indexOf(d);
+                        _xmlDegrees.replace(i1, alt);
                         }
                   }
             }
 
       // construct handle
-      if (!_modifierList.isEmpty()) {
+      if (!_modifierList.empty()) {
             _modifierList.sort();
             _modifiers = "<" + _modifierList.join("><") + ">";
             }
@@ -1139,7 +1147,7 @@ QString ParsedChord::fromXml(const QString& rawKind, const QString& rawKindText,
       {
       QString kind = rawKind;
       QString kindText = rawKindText;
-      bool symbols = (useSymbols == "yes");
+      bool syms = (useSymbols == "yes");
       bool parens = (useParens == "yes");
       bool implied = false;
       bool extend = false;
@@ -1174,8 +1182,10 @@ QString ParsedChord::fromXml(const QString& rawKind, const QString& rawKindText,
             _quality = "augmented";
       else if (kind == "half-diminished") {
             _quality = "half-diminished";
-            extension = 7;
-            extend = true;
+            if (syms) {
+                  extension = 7;
+                  extend = true;
+                  }
             }
       else if (kind == "diminished-seventh") {
             _quality = "diminished";
@@ -1285,7 +1295,7 @@ QString ParsedChord::fromXml(const QString& rawKind, const QString& rawKindText,
       if (kind == "minor-seventh" && _modifierList.size() == 1 && _modifierList.front() == "b5")
             kind = "half-diminished";
       // force parens where necessary)
-      if (!parens && extension == 0 && !_modifierList.isEmpty()) {
+      if (!parens && extension == 0 && !_modifierList.empty()) {
             QString firstMod = _modifierList.front();
             if (firstMod != "" && (firstMod.startsWith('#') || firstMod.startsWith('b')))
                   parens = true;
@@ -1296,11 +1306,11 @@ QString ParsedChord::fromXml(const QString& rawKind, const QString& rawKindText,
             _extension = QString("%1").arg(extension);
 
       // validate kindText
-      if (kindText != "" && kind != "none") {
+      if (kindText != "" && kind != "none" && kind != "other") {
             ParsedChord validate;
             validate.parse(kindText, cl, false);
             // kindText should parse to produce same kind, no degrees
-            if (validate._xmlKind != kind || !validate._xmlDegrees.isEmpty())
+            if (validate._xmlKind != kind || !validate._xmlDegrees.empty())
                   kindText = "";
             }
 
@@ -1317,15 +1327,15 @@ QString ParsedChord::fromXml(const QString& rawKind, const QString& rawKindText,
             _name = _extension;
       else {
             if (_quality == "major")
-                  _name = symbols ? "^" : "maj";
+                  _name = syms ? "^" : "maj";
             else if (_quality == "minor")
-                  _name = symbols ? "-" : "m";
+                  _name = syms ? "-" : "m";
             else if (_quality == "augmented")
-                  _name = symbols ? "+" : "aug";
+                  _name = syms ? "+" : "aug";
             else if (_quality == "diminished")
-                  _name = symbols ? "o" : "dim";
+                  _name = syms ? "o" : "dim";
             else if (_quality == "half-diminished")
-                  _name = symbols ? "0" : "m7b5";
+                  _name = syms ? "0" : "m7b5";
             else
                   _name = _quality;
             _name += _extension;
@@ -1368,7 +1378,7 @@ const QList<RenderAction>& ParsedChord::renderList(const ChordList* cl)
       {
       // generate anew on each call,
       // in case chord list has changed since last time
-      if (!_renderList.isEmpty())
+      if (!_renderList.empty())
             _renderList.clear();
       foreach (ChordToken tok, _tokenList) {
             QString n = tok.names.first();
@@ -1377,15 +1387,15 @@ const QList<RenderAction>& ParsedChord::renderList(const ChordList* cl)
             bool found = false;
             // potential definitions for token
             if (cl) {
-                  foreach (ChordToken ct, cl->chordTokenList) {
-                        foreach (QString ctn, ct.names) {
+                  for (ChordToken ct : cl->chordTokenList) {
+                        for (QString ctn : ct.names) {
                               if (ctn == n)
                                     definedTokens += ct;
                               }
                         }
                   }
             // find matching class, fallback on ChordTokenClass::ALL
-            foreach (ChordToken matchingTok, definedTokens) {
+            for (ChordToken matchingTok : definedTokens) {
                   if (tok.tokenClass == matchingTok.tokenClass) {
                         rl = matchingTok.renderList;
                         found = true;
@@ -1466,12 +1476,12 @@ void ChordDescription::complete(ParsedChord* pc, const ChordList* cl)
             // generate parsed chord for its rendering & semantic (xml) info
             pc = &tempPc;
             QString n;
-            if (!names.isEmpty())
+            if (!names.empty())
                   n = names.front();
             pc->parse(n, cl);
             }
       parsedChords.append(*pc);
-      if (renderList.isEmpty() || renderListGenerated) {
+      if (renderList.empty() || renderListGenerated) {
             renderList = pc->renderList(cl);
             renderListGenerated = true;
             }
@@ -1524,7 +1534,7 @@ void ChordDescription::read(XmlReader& e)
 //   write
 //---------------------------------------------------------
 
-void ChordDescription::write(Xml& xml) const
+void ChordDescription::write(XmlWriter& xml) const
       {
       if (generated && !exportOk)
             return;
@@ -1561,6 +1571,8 @@ void ChordList::read(XmlReader& e)
             if (tag == "font") {
                   ChordFont f;
                   f.family = e.attribute("family", "default");
+                  if (f.family == "MuseJazz")
+                        f.family = "MuseJazz Text";
                   f.mag    = 1.0;
                   while (e.readNextStartElement()) {
                         if (e.name() == "sym") {
@@ -1573,8 +1585,22 @@ void ChordList::read(XmlReader& e)
                               code       = e.attribute("code");
                               symClass   = e.attribute("class");
                               if (code != "") {
-                                    cs.code = code.toInt(0, 0);
-                                    cs.value = QString(cs.code);
+                                    bool ok = true;
+                                    int val = code.toInt(&ok, 0);
+                                    if (!ok) {
+                                          cs.code = 0;
+                                          cs.value = code;
+                                          }
+                                    else if (val & 0xffff0000) {
+                                          cs.code = 0;
+                                          QChar high = QChar(QChar::highSurrogate(val));
+                                          QChar low = QChar(QChar::lowSurrogate(val));
+                                          cs.value = QString("%1%2").arg(high).arg(low);
+                                          }
+                                    else {
+                                          cs.code = val;
+                                          cs.value = QString(cs.code);
+                                          }
                                     }
                               else
                                     cs.code = 0;
@@ -1630,13 +1656,13 @@ void ChordList::read(XmlReader& e)
 //   write
 //---------------------------------------------------------
 
-void ChordList::write(Xml& xml) const
+void ChordList::write(XmlWriter& xml) const
       {
       int fontIdx = 0;
-      foreach (ChordFont f, fonts) {
+      for (ChordFont f : fonts) {
             xml.stag(QString("font id=\"%1\" family=\"%2\"").arg(fontIdx).arg(f.family));
             xml.tag("mag", f.mag);
-            foreach(ChordSymbol s, symbols) {
+            for (ChordSymbol s : symbols) {
                   if (s.fontIdx == fontIdx) {
                         if (s.code.isNull())
                               xml.tagE(QString("sym name=\"%1\" value=\"%2\"").arg(s.name).arg(s.value));
@@ -1649,12 +1675,12 @@ void ChordList::write(Xml& xml) const
             }
       foreach (ChordToken t, chordTokenList)
             t.write(xml);
-      if (!renderListRoot.isEmpty())
+      if (!renderListRoot.empty())
             writeRenderList(xml, &renderListRoot, "renderRoot");
-      if (!renderListBase.isEmpty())
+      if (!renderListBase.empty())
             writeRenderList(xml, &renderListBase, "renderBase");
-      foreach(const ChordDescription& d, *this)
-            d.write(xml);
+      for (const ChordDescription& cd : *this)
+            cd.write(xml);
       }
 
 //---------------------------------------------------------
@@ -1698,7 +1724,6 @@ bool ChordList::read(const QString& name)
             return false;
             }
       XmlReader e(&f);
-      docName = f.fileName();
 
       while (e.readNextStartElement()) {
             if (e.name() == "museScore") {
@@ -1729,18 +1754,18 @@ bool ChordList::write(const QString& name) const
       QFile f(info.filePath());
 
       if (!f.open(QIODevice::WriteOnly)) {
-            MScore::lastError = QObject::tr("Open Chord Description\n%1\nfailed: %2").arg(f.fileName()).arg(f.errorString());
+            MScore::lastError = QObject::tr("Open chord description\n%1\nfailed: %2").arg(f.fileName()).arg(f.errorString());
             return false;
             }
 
-      Xml xml(&f);
+      XmlWriter xml(0, &f);
       xml.header();
       xml.stag("museScore version=\"" MSC_VERSION "\"");
 
       write(xml);
       xml.etag();
       if (f.error() != QFile::NoError) {
-            MScore::lastError = QObject::tr("Write Chord Description failed: %1").arg(f.errorString());
+            MScore::lastError = QObject::tr("Write chord description failed: %1").arg(f.errorString());
             }
       return true;
       }
@@ -1755,7 +1780,7 @@ bool ChordList::loaded() const
       // since chords.xml really doesn't load enough to stand alone,
       // we need a way to track when a "real" chord list has been loaded
       // for lack of anything better, key off renderListRoot
-      return !renderListRoot.isEmpty();
+      return !renderListRoot.empty();
       }
 
 //---------------------------------------------------------
@@ -1770,6 +1795,20 @@ void ChordList::unload()
       renderListRoot.clear();
       renderListBase.clear();
       chordTokenList.clear();
+      }
+
+//---------------------------------------------------------
+//   print
+//    only for debugging
+//---------------------------------------------------------
+
+void RenderAction::print() const
+      {
+      static const char* names[] = {
+            "SET", "MOVE", "PUSH", "POP",
+            "NOTE", "ACCIDENTAL"
+            };
+      qDebug("%10s <%s> %f %f", names[int(type)], qPrintable(text), movex, movey);
       }
 
 

@@ -16,54 +16,25 @@
 #include "text.h"
 #include "part.h"
 #include "staff.h"
+#include "stafftextbase.h"
 
 namespace Ms {
 
 //---------------------------------------------------------
-//   ChannelActions
+//   StaffText
 //---------------------------------------------------------
 
-struct ChannelActions {
-      int channel;
-      QStringList midiActionNames;
-      };
-
-//---------------------------------------------------------
-//   @@ StaffText
-//---------------------------------------------------------
-
-class StaffText : public Text  {
-      Q_OBJECT
-
-      QString _channelNames[4];
-      QList<ChannelActions> _channelActions;
-      SwingParameters _swingParameters;
-      bool _setAeolusStops;
-      int aeolusStops[4];
-      bool _swing;
+class StaffText final : public StaffTextBase  {
+      virtual Sid getPropertyStyle(Pid) const override;
+      virtual QVariant propertyDefault(Pid id) const override;
 
    public:
-      StaffText(Score* = 0);
-      virtual StaffText* clone() const   { return new StaffText(*this); }
-      virtual Element::Type type() const { return Element::Type::STAFF_TEXT; }
-      virtual void write(Xml& xml) const;
-      virtual void read(XmlReader&);
-      virtual int subtype() const         { return (int) textStyleType(); }
-      virtual QString subtypeName() const { return textStyle().name(); }
-      QString channelName(int voice) const                { return _channelNames[voice]; }
-      void setChannelName(int v, const QString& s)        { _channelNames[v] = s;        }
-      void setSwingParameters(int unit, int ratio)        {  _swingParameters.swingUnit = unit; _swingParameters.swingRatio = ratio; }
-      const QList<ChannelActions>* channelActions() const { return &_channelActions;    }
-      QList<ChannelActions>* channelActions()             { return &_channelActions;    }
-      const SwingParameters* swingParameters() const      { return &_swingParameters;   }
-      void clearAeolusStops();
-      void setAeolusStop(int group, int idx, bool val);
-      bool getAeolusStop(int group, int idx) const;
-      void setSetAeolusStops(bool val) { _setAeolusStops = val; }
-      void setSwing(bool checked)      { _swing = checked; }
-      bool setAeolusStops() const      { return _setAeolusStops; }
-      bool swing() const               { return _swing; }
+      StaffText(Score* s = 0, Tid = Tid::STAFF);
+      virtual StaffText* clone() const override       { return new StaffText(*this); }
+      virtual ElementType type() const override       { return ElementType::STAFF_TEXT; }
+      virtual void layout() override;
       };
+
 
 }     // namespace Ms
 #endif

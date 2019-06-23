@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2002-2011 Werner Schweer
 //
@@ -25,22 +24,97 @@
 #include "libmscore/chord.h"
 #include "libmscore/icon.h"
 #include "libmscore/xml.h"
+#include "libmscore/stafflines.h"
 #include "musescore.h"
 #include "scoreview.h"
 #include "continuouspanel.h"
+#include "tourhandler.h"
 
 namespace Ms {
 
 //---------------------------------------------------------
-//   moveElement
+//   setDropTarget
 //---------------------------------------------------------
 
-static void moveElement(void* data, Element* e)
+void ScoreView::setDropTarget(const Element* el)
       {
-      QPointF* pos = (QPointF*)data;
-      e->score()->addRefresh(e->canvasBoundingRect());
-      e->setPos(*pos);
-      e->score()->addRefresh(e->canvasBoundingRect());
+      if (dropTarget != el) {
+            if (dropTarget) {
+                  dropTarget->setDropTarget(false);
+                  dropTarget = 0;
+                  }
+            dropTarget = el;
+            if (dropTarget) {
+                  dropTarget->setDropTarget(true);
+                  }
+            }
+      if (!dropAnchor.isNull()) {
+            QRectF r;
+            r.setTopLeft(dropAnchor.p1());
+            r.setBottomRight(dropAnchor.p2());
+            dropAnchor = QLineF();
+            }
+      if (dropRectangle.isValid()) {
+            dropRectangle = QRectF();
+            }
+      update();
+      }
+
+//---------------------------------------------------------
+//   setDropRectangle
+//---------------------------------------------------------
+
+void ScoreView::setDropRectangle(const QRectF& r)
+      {
+      if (dropRectangle.isValid())
+            _score->addRefresh(dropRectangle);
+      dropRectangle = r;
+      if (dropTarget) {
+            dropTarget->setDropTarget(false);
+            _score->addRefresh(dropTarget->canvasBoundingRect());
+            dropTarget = 0;
+            }
+      else if (!dropAnchor.isNull()) {
+            QRectF rf;
+            rf.setTopLeft(dropAnchor.p1());
+            rf.setBottomRight(dropAnchor.p2());
+            _score->addRefresh(rf.normalized());
+            dropAnchor = QLineF();
+            }
+//      _score->addRefresh(r);
+      update();
+      }
+
+//---------------------------------------------------------
+//   setDropAnchor
+//---------------------------------------------------------
+
+void ScoreView::setDropAnchor(const QLineF& l)
+      {
+      if (!dropAnchor.isNull()) {
+            qreal w = 2 / _matrix.m11();
+            QRectF r;
+            r.setTopLeft(dropAnchor.p1());
+            r.setBottomRight(dropAnchor.p2());
+            r = r.normalized();
+            r.adjust(-w, -w, 2*w, 2*w);
+//            _score->addRefresh(r);
+            }
+      if (dropRectangle.isValid()) {
+//            _score->addRefresh(dropRectangle);
+            dropRectangle = QRectF();
+            }
+      dropAnchor = l;
+      if (!dropAnchor.isNull()) {
+            qreal w = 2 / _matrix.m11();
+            QRectF r;
+            r.setTopLeft(dropAnchor.p1());
+            r.setBottomRight(dropAnchor.p2());
+            r = r.normalized();
+            r.adjust(-w, -w, 2*w, 2*w);
+//            _score->addRefresh(r);
+            }
+      update();
       }
 
 //---------------------------------------------------------
@@ -66,6 +140,7 @@ void ScoreView::setViewRect(const QRectF& r)
 //---------------------------------------------------------
 //   dragTimeAnchorElement
 //    pos is in canvas coordinates
+//    return true if there is a valid target
 //---------------------------------------------------------
 
 bool ScoreView::dragTimeAnchorElement(const QPointF& pos)
@@ -73,18 +148,20 @@ bool ScoreView::dragTimeAnchorElement(const QPointF& pos)
       int staffIdx;
       Segment* seg;
       MeasureBase* mb = _score->pos2measure(pos, &staffIdx, 0, &seg, 0);
-      if (mb && mb->type() == Element::Type::MEASURE) {
-            Measure* m = static_cast<Measure*>(mb);
+      int track  = staffIdx * VOICES;
+
+      if (mb && mb->isMeasure() && seg->element(track)) {
+            Measure* m = toMeasure(mb);
             System* s  = m->system();
             qreal y    = s->staff(staffIdx)->y() + s->pos().y() + s->page()->pos().y();
             QPointF anchor(seg->canvasBoundingRect().x(), y);
             setDropAnchor(QLineF(pos, anchor));
-            dragElement->score()->addRefresh(dragElement->canvasBoundingRect());
-            dragElement->setTrack(staffIdx * VOICES);
-            dragElement->score()->addRefresh(dragElement->canvasBoundingRect());
+            editData.dropElement->score()->addRefresh(editData.dropElement->canvasBoundingRect());
+            editData.dropElement->setTrack(track);
+            editData.dropElement->score()->addRefresh(editData.dropElement->canvasBoundingRect());
             return true;
             }
-      dragElement->score()->addRefresh(dragElement->canvasBoundingRect());
+      editData.dropElement->score()->addRefresh(editData.dropElement->canvasBoundingRect());
       setDropTarget(0);
       return false;
       }
@@ -107,7 +184,7 @@ bool ScoreView::dragMeasureAnchorElement(const QPointF& pos)
             setDropAnchor(QLineF(pos, anchor));
             return true;
             }
-      dragElement->score()->addRefresh(dragElement->canvasBoundingRect());
+      editData.dropElement->score()->addRefresh(editData.dropElement->canvasBoundingRect());
       setDropTarget(0);
       return false;
       }
@@ -118,97 +195,115 @@ bool ScoreView::dragMeasureAnchorElement(const QPointF& pos)
 
 void ScoreView::dragEnterEvent(QDragEnterEvent* event)
       {
-      if (MScore::debugMode)
-            qDebug("dragEnterEvent");
       double _spatium = score()->spatium();
-      dragElement = 0;
+      editData.dropElement = 0;
 
-      const QMimeData* data = event->mimeData();
+      const QMimeData* dta = event->mimeData();
 
-      if (data->hasFormat(mimeSymbolListFormat)
-         || data->hasFormat(mimeStaffListFormat)) {
-            event->acceptProposedAction();
+      if (dta->hasFormat(mimeSymbolListFormat) || dta->hasFormat(mimeStaffListFormat)) {
+            event->accept();
             return;
             }
 
-      if (data->hasFormat(mimeSymbolFormat)) {
-            event->acceptProposedAction();
+      if (dta->hasFormat(mimeSymbolFormat)) {
+            event->accept();
 
-            QByteArray a = data->data(mimeSymbolFormat);
+            QByteArray a = dta->data(mimeSymbolFormat);
 
             if (MScore::debugMode)
                   qDebug("ScoreView::dragEnterEvent Symbol: <%s>", a.data());
 
             XmlReader e(a);
-            dragOffset = QPoint();
+            editData.dragOffset = QPoint();
             Fraction duration;  // dummy
-            Element::Type type = Element::readType(e, &dragOffset, &duration);
+            ElementType type = Element::readType(e, &editData.dragOffset, &duration);
 
             Element* el = Element::create(type, score());
             if (el) {
-                  if (type == Element::Type::BAR_LINE || type == Element::Type::ARPEGGIO || type == Element::Type::BRACKET)
+                  if (type == ElementType::BAR_LINE || type == ElementType::ARPEGGIO || type == ElementType::BRACKET)
                         el->setHeight(_spatium * 5);
-                  dragElement = el;
-                  dragElement->setParent(0);
-                  dragElement->read(e);
-                  dragElement->layout();
+                  editData.dropElement = el;
+                  editData.dropElement->setParent(0);
+                  editData.dropElement->read(e);
+                  editData.dropElement->layout();
                   }
             return;
             }
 
-      if (data->hasUrls()) {
-            QList<QUrl>ul = data->urls();
-            foreach(const QUrl& u, ul) {
-                  if (MScore::debugMode)
-                        qDebug("drag Url: %s", qPrintable(u.toString()));
-                  if (u.scheme() == "file") {
-                        QFileInfo fi(u.path());
-                        QString suffix = fi.suffix().toLower();
-                        if (suffix == "svg"
-                           || suffix == "jpg"
-                           || suffix == "jpeg"
-                           || suffix == "png"
-                           ) {
-                              event->acceptProposedAction();
-                              break;
-                              }
+      if (dta->hasUrls()) {
+            QList<QUrl>ul = dta->urls();
+            QUrl u = ul.front();
+
+            QMimeDatabase db;
+            if (!QImageReader::supportedMimeTypes().contains(db.mimeTypeForUrl(u).name().toLatin1())) {
+                  event->ignore();
+                  return;
+                  }
+
+            Image* image = 0;
+            if (u.scheme() == "file") {
+                  QFileInfo fi(u.path());
+                  image = new Image(score());
+                  QString str(u.toLocalFile());
+                  image->load(str);
+                  }
+            else if (u.scheme() == "http" || u.scheme() == "https") {
+                  QNetworkAccessManager manager;
+                  QNetworkReply* reply = manager.get(QNetworkRequest(u));
+
+                  // TODO:
+                  //    feed progress bar in loop
+                  //    implement timeout/abort
+
+                  QMutex mutex;
+                  QWaitCondition wc;
+                  while (!reply->isFinished()) {
+                        mutex.lock();
+                        wc.wait(&mutex, 100);
+                        qApp->processEvents();
+                        mutex.unlock();
                         }
+                  QByteArray ba = reply->readAll();
+
+                  image = new Image(score());
+                  image->loadFromData(u.path(), ba);
+                  delete reply;
+                  }
+            if (image) {
+                  editData.dropElement = image;
+                  editData.dropElement->setParent(0);
+                  editData.dropElement->layout();
+                  event->accept();
                   }
             return;
             }
-      QStringList formats = data->formats();
       qDebug("unknown drop format: formats:");
-      foreach(const QString& s, formats)
+      for (const QString& s : dta->formats())
             qDebug("  <%s>", qPrintable(s));
+      event->ignore();
       }
 
 //---------------------------------------------------------
-//   dragSymbol
-//    drag SYMBOL and IMAGE elements
+//   getDropTarget
 //---------------------------------------------------------
 
-void ScoreView::dragSymbol(const QPointF& pos)
+Element* ScoreView::getDropTarget(EditData& ed)
       {
-      const QList<Element*> el = elementsAt(pos);
-      const Element* e = el.isEmpty() ? 0 : el[0];
-      if (e && (e->type() == Element::Type::NOTE || e->type() == Element::Type::SYMBOL
-         || e->type() == Element::Type::IMAGE || e->type() == Element::Type::TEXT)) {
-            DropData dropData;
-            dropData.view       = this;
-            dropData.pos        = pos;
-            dropData.element    = dragElement;
-            dropData.modifiers  = 0;
-
-            if (e->acceptDrop(dropData)) {
-                  setDropTarget(e);
-                  return;
+      QList<Element*> el = elementsAt(ed.pos);
+      setDropTarget(0);
+      for (Element* e : el) {
+            if (e->isStaffLines()) {
+                  if (el.size() > 2)      // is not first class drop target
+                        continue;
+                  e = toStaffLines(e)->measure();
                   }
-            else {
-                  setDropTarget(0);
-                  return;
+            if (e->acceptDrop(ed)) {
+                  if (!e->isMeasure())
+                        setDropTarget(e);
+                  return e;
                   }
             }
-      dragTimeAnchorElement(pos);
+      return nullptr;
       }
 
 //---------------------------------------------------------
@@ -220,145 +315,85 @@ void ScoreView::dragMoveEvent(QDragMoveEvent* event)
       // we always accept the drop action
       // to get a "drop" Event:
 
-      event->acceptProposedAction();
-      if (mscore->state() == STATE_PLAY)  // no editing during play
+      if (MScore::debugMode) {
+            if (!editData.dropElement)
+                  qDebug("no drop element");
+            else
+                  qDebug("<%s>", editData.dropElement->name());
+            }
+
+      if (!editData.dropElement || mscore->state() == STATE_PLAY) {  // no editing during play
+            event->ignore();
             return;
+            }
 
       // convert window to canvas position
       QPointF pos(imatrix.map(QPointF(event->pos())));
+      editData.pos       = pos;
+      editData.modifiers = event->keyboardModifiers();
 
-      DropData dropData;
-      dropData.view       = this;
-      dropData.pos        = pos;
-      dropData.dragOffset = dragOffset;
-      dropData.element    = dragElement;
-      dropData.modifiers  = event->keyboardModifiers();
-
-      if (dragElement) {
-            switch(dragElement->type()) {
-                  case Element::Type::VOLTA:
-                        dragMeasureAnchorElement(pos);
-                        break;
-                  case Element::Type::PEDAL:
-                  case Element::Type::DYNAMIC:
-                  case Element::Type::OTTAVA:
-                  case Element::Type::TRILL:
-                  case Element::Type::HAIRPIN:
-                  case Element::Type::TEXTLINE:
-                  case Element::Type::FRET_DIAGRAM:
-                        dragTimeAnchorElement(pos);
-                        break;
-                  case Element::Type::IMAGE:
-                  case Element::Type::SYMBOL:
-                        dragSymbol(pos);
-                        break;
-                  case Element::Type::KEYSIG:
-                  case Element::Type::CLEF:
-                  case Element::Type::TIMESIG:
-                  case Element::Type::BAR_LINE:
-                  case Element::Type::ARPEGGIO:
-                  case Element::Type::BREATH:
-                  case Element::Type::GLISSANDO:
-                  case Element::Type::BRACKET:
-                  case Element::Type::ARTICULATION:
-                  case Element::Type::CHORDLINE:
-                  case Element::Type::BEND:
-                  case Element::Type::ACCIDENTAL:
-                  case Element::Type::TEXT:
-                  case Element::Type::FINGERING:
-                  case Element::Type::TEMPO_TEXT:
-                  case Element::Type::STAFF_TEXT:
-                  case Element::Type::NOTEHEAD:
-                  case Element::Type::TREMOLO:
-                  case Element::Type::LAYOUT_BREAK:
-                  case Element::Type::MARKER:
-                  case Element::Type::STAFF_STATE:
-                  case Element::Type::INSTRUMENT_CHANGE:
-                  case Element::Type::REHEARSAL_MARK:
-                  case Element::Type::JUMP:
-                  case Element::Type::REPEAT_MEASURE:
-                  case Element::Type::ICON:
-                  case Element::Type::CHORD:
-                  case Element::Type::SPACER:
-                  case Element::Type::SLUR:
-                  case Element::Type::HARMONY:
-                  case Element::Type::BAGPIPE_EMBELLISHMENT:
-                  case Element::Type::AMBITUS:
-                        {
-                        QList<Element*> el = elementsAt(pos);
-                        bool found = false;
-                        foreach(const Element* e, el) {
-                              if (e->acceptDrop(dropData)) {
-                                    if (e->type() != Element::Type::MEASURE)
-                                          setDropTarget(const_cast<Element*>(e));
-                                    found = true;
-                                    break;
-                                    }
-                              }
-                        if (!found)
-                              setDropTarget(0);
-                        }
-                        break;
-                  default:
-                        break;
-                  }
-
-            dragElement->scanElements(&pos, moveElement, false);
-            _score->end();
-            return;
+      switch (editData.dropElement->type()) {
+            case ElementType::VOLTA:
+            case ElementType::PEDAL:
+            case ElementType::LET_RING:
+            case ElementType::VIBRATO:
+            case ElementType::PALM_MUTE:
+            case ElementType::OTTAVA:
+            case ElementType::TRILL:
+            case ElementType::HAIRPIN:
+            case ElementType::TEXTLINE:
+                  event->setAccepted(dragTimeAnchorElement(pos));
+                  break;
+            case ElementType::IMAGE:
+            case ElementType::SYMBOL:
+            case ElementType::DYNAMIC:
+            case ElementType::KEYSIG:
+            case ElementType::CLEF:
+            case ElementType::TIMESIG:
+            case ElementType::BAR_LINE:
+            case ElementType::ARPEGGIO:
+            case ElementType::BREATH:
+            case ElementType::GLISSANDO:
+            case ElementType::BRACKET:
+            case ElementType::ARTICULATION:
+            case ElementType::FERMATA:
+            case ElementType::CHORDLINE:
+            case ElementType::BEND:
+            case ElementType::ACCIDENTAL:
+            case ElementType::TEXT:
+            case ElementType::FINGERING:
+            case ElementType::TEMPO_TEXT:
+            case ElementType::STAFF_TEXT:
+            case ElementType::SYSTEM_TEXT:
+            case ElementType::NOTEHEAD:
+            case ElementType::TREMOLO:
+            case ElementType::LAYOUT_BREAK:
+            case ElementType::MARKER:
+            case ElementType::STAFF_STATE:
+            case ElementType::INSTRUMENT_CHANGE:
+            case ElementType::REHEARSAL_MARK:
+            case ElementType::JUMP:
+            case ElementType::REPEAT_MEASURE:
+            case ElementType::ICON:
+            case ElementType::CHORD:
+            case ElementType::SPACER:
+            case ElementType::SLUR:
+            case ElementType::HARMONY:
+            case ElementType::BAGPIPE_EMBELLISHMENT:
+            case ElementType::AMBITUS:
+            case ElementType::TREMOLOBAR:
+            case ElementType::FIGURED_BASS:
+            case ElementType::LYRICS:
+            case ElementType::FRET_DIAGRAM:
+            case ElementType::STAFFTYPE_CHANGE:
+                  event->setAccepted(getDropTarget(editData));
+                  break;
+            default:
+                  if (MScore::debugMode)
+                        qDebug("no target");
+                  event->ignore();
+                  break;
             }
-
-      if (event->mimeData()->hasUrls()) {
-            QList<QUrl>ul = event->mimeData()->urls();
-            QUrl u = ul.front();
-            if (u.scheme() == "file") {
-                  QFileInfo fi(u.path());
-                  QString suffix(fi.suffix().toLower());
-                  if (suffix != "svg"
-                     && suffix != "jpg"
-                     && suffix != "jpeg"
-                     && suffix != "png"
-                     )
-                        return;
-                  //
-                  // special drop target Note
-                  //
-                  Element* el = elementAt(pos);
-                  if (el && (el->type() == Element::Type::NOTE || el->type() == Element::Type::REST))
-                        setDropTarget(el);
-                  else
-                        setDropTarget(0);
-                  }
-            _score->end();
-            return;
-            }
-      const QMimeData* md = event->mimeData();
-      QByteArray data;
-      Element::Type etype;
-      if (md->hasFormat(mimeSymbolListFormat)) {
-            etype = Element::Type::ELEMENT_LIST;
-            data = md->data(mimeSymbolListFormat);
-            }
-      else if (md->hasFormat(mimeStaffListFormat)) {
-            etype = Element::Type::STAFF_LIST;
-            data = md->data(mimeStaffListFormat);
-            }
-      else {
-            _score->end();
-            return;
-            }
-      Element* el = elementAt(pos);
-      if (el == 0 || el->type() != Element::Type::MEASURE) {
-            _score->end();
-            return;
-            }
-      else if (etype == Element::Type::ELEMENT_LIST) {
-            qDebug("accept drop element list");
-            }
-      else if (etype == Element::Type::STAFF_LIST || etype == Element::Type::MEASURE_LIST) {
-//TODO            el->acceptDrop(this, pos, etype, e);
-            }
-      _score->end();
       }
 
 //---------------------------------------------------------
@@ -367,63 +402,74 @@ void ScoreView::dragMoveEvent(QDragMoveEvent* event)
 
 void ScoreView::dropEvent(QDropEvent* event)
       {
+      if (state == ViewState::PLAY) {
+            event->ignore();
+            return;
+            }
       QPointF pos(imatrix.map(QPointF(event->pos())));
 
-      DropData dropData;
-      dropData.view       = this;
-      dropData.pos        = pos;
-      dropData.dragOffset = dragOffset;
-      dropData.element    = dragElement;
-      dropData.modifiers  = event->keyboardModifiers();
+      editData.pos       = pos;
+      editData.modifiers = event->keyboardModifiers();
 
-      if (dragElement) {
+      if (editData.dropElement) {
+            bool applyUserOffset = false;
+            bool triggerSpannerDropApplyTour = editData.dropElement->isSpanner();
+            editData.dropElement->styleChanged();
             _score->startCmd();
-            dragElement->setScore(_score);      // CHECK: should already be ok
-            _score->addRefresh(dragElement->canvasBoundingRect());
-            switch(dragElement->type()) {
-                  case Element::Type::VOLTA:
-                  case Element::Type::OTTAVA:
-                  case Element::Type::TRILL:
-                  case Element::Type::PEDAL:
-                  case Element::Type::HAIRPIN:
-                  case Element::Type::TEXTLINE:
+            Q_ASSERT(editData.dropElement->score() == score());
+            _score->addRefresh(editData.dropElement->canvasBoundingRect());
+            switch (editData.dropElement->type()) {
+                  case ElementType::VOLTA:
+                  case ElementType::OTTAVA:
+                  case ElementType::TRILL:
+                  case ElementType::PEDAL:
+                  case ElementType::LET_RING:
+                  case ElementType::VIBRATO:
+                  case ElementType::PALM_MUTE:
+                  case ElementType::HAIRPIN:
+                  case ElementType::TEXTLINE:
                         {
-                        dragElement->setScore(score());
-                        Spanner* spanner = static_cast<Spanner*>(dragElement);
+                        Spanner* spanner = static_cast<Spanner*>(editData.dropElement);
                         score()->cmdAddSpanner(spanner, pos);
+                        score()->setUpdateAll();
                         event->acceptProposedAction();
                         }
                         break;
-                  case Element::Type::SYMBOL:
-                  case Element::Type::IMAGE:
-                  case Element::Type::DYNAMIC:
-                  case Element::Type::FRET_DIAGRAM:
-                  case Element::Type::HARMONY:
+                  case ElementType::SYMBOL:
+                  case ElementType::IMAGE:
+                        applyUserOffset = true;
+                        // fall-thru
+                  case ElementType::DYNAMIC:
+                  case ElementType::FRET_DIAGRAM:
+                  case ElementType::HARMONY:
                         {
                         Element* el = elementAt(pos);
-                        if (el == 0 || el->type() == Element::Type::MEASURE) {
+                        if (el == 0 || el->type() == ElementType::STAFF_LINES) {
                               int staffIdx;
                               Segment* seg;
-                              el = _score->pos2measure(pos, &staffIdx, 0, &seg, 0);
-                              if (el && el->type() == Element::Type::MEASURE) {
-                                    dragElement->setTrack(staffIdx * VOICES);
-                                    dragElement->setParent(seg);
-                                    score()->undoAddElement(dragElement);
+                              QPointF offset;
+                              el = _score->pos2measure(pos, &staffIdx, 0, &seg, &offset);
+                              if (el && el->isMeasure()) {
+                                    editData.dropElement->setTrack(staffIdx * VOICES);
+                                    editData.dropElement->setParent(seg);
+                                    if (applyUserOffset)
+                                          editData.dropElement->setOffset(offset);
+                                    score()->undoAddElement(editData.dropElement);
                                     }
                               else {
                                     qDebug("cannot drop here");
-                                    delete dragElement;
+                                    delete editData.dropElement;
                                     }
                               }
                         else {
                               _score->addRefresh(el->canvasBoundingRect());
-                              _score->addRefresh(dragElement->canvasBoundingRect());
+                              _score->addRefresh(editData.dropElement->canvasBoundingRect());
 
-                              if (!el->acceptDrop(dropData)) {
-                                    qDebug("drop %s onto %s not accepted", dragElement->name(), el->name());
+                              if (!el->acceptDrop(editData)) {
+                                    qDebug("drop %s onto %s not accepted", editData.dropElement->name(), el->name());
                                     break;
                                     }
-                              Element* dropElement = el->drop(dropData);
+                              Element* dropElement = el->drop(editData);
                               _score->addRefresh(el->canvasBoundingRect());
                               if (dropElement) {
                                     _score->select(dropElement, SelectType::SINGLE, 0);
@@ -433,63 +479,64 @@ void ScoreView::dropEvent(QDropEvent* event)
                         }
                         event->acceptProposedAction();
                         break;
-                  case Element::Type::KEYSIG:
-                  case Element::Type::CLEF:
-                  case Element::Type::TIMESIG:
-                  case Element::Type::BAR_LINE:
-                  case Element::Type::ARPEGGIO:
-                  case Element::Type::BREATH:
-                  case Element::Type::GLISSANDO:
-                  case Element::Type::BRACKET:
-                  case Element::Type::ARTICULATION:
-                  case Element::Type::CHORDLINE:
-                  case Element::Type::BEND:
-                  case Element::Type::ACCIDENTAL:
-                  case Element::Type::TEXT:
-                  case Element::Type::FINGERING:
-                  case Element::Type::TEMPO_TEXT:
-                  case Element::Type::STAFF_TEXT:
-                  case Element::Type::NOTEHEAD:
-                  case Element::Type::TREMOLO:
-                  case Element::Type::LAYOUT_BREAK:
-                  case Element::Type::MARKER:
-                  case Element::Type::STAFF_STATE:
-                  case Element::Type::INSTRUMENT_CHANGE:
-                  case Element::Type::REHEARSAL_MARK:
-                  case Element::Type::JUMP:
-                  case Element::Type::REPEAT_MEASURE:
-                  case Element::Type::ICON:
-                  case Element::Type::NOTE:
-                  case Element::Type::CHORD:
-                  case Element::Type::SPACER:
-                  case Element::Type::SLUR:
-                  case Element::Type::BAGPIPE_EMBELLISHMENT:
-                  case Element::Type::AMBITUS:
-                        {
-                        Element* el = 0;
-                        for (const Element* e : elementsAt(pos)) {
-                              if (e->acceptDrop(dropData)) {
-                                    el = const_cast<Element*>(e);
-                                    break;
-                                    }
-                              }
+                  case ElementType::HBOX:
+                  case ElementType::VBOX:
+                  case ElementType::KEYSIG:
+                  case ElementType::CLEF:
+                  case ElementType::TIMESIG:
+                  case ElementType::BAR_LINE:
+                  case ElementType::ARPEGGIO:
+                  case ElementType::BREATH:
+                  case ElementType::GLISSANDO:
+                  case ElementType::BRACKET:
+                  case ElementType::ARTICULATION:
+                  case ElementType::FERMATA:
+                  case ElementType::CHORDLINE:
+                  case ElementType::BEND:
+                  case ElementType::ACCIDENTAL:
+                  case ElementType::TEXT:
+                  case ElementType::FINGERING:
+                  case ElementType::TEMPO_TEXT:
+                  case ElementType::STAFF_TEXT:
+                  case ElementType::SYSTEM_TEXT:
+                  case ElementType::NOTEHEAD:
+                  case ElementType::TREMOLO:
+                  case ElementType::LAYOUT_BREAK:
+                  case ElementType::MARKER:
+                  case ElementType::STAFF_STATE:
+                  case ElementType::INSTRUMENT_CHANGE:
+                  case ElementType::REHEARSAL_MARK:
+                  case ElementType::JUMP:
+                  case ElementType::REPEAT_MEASURE:
+                  case ElementType::ICON:
+                  case ElementType::NOTE:
+                  case ElementType::CHORD:
+                  case ElementType::SPACER:
+                  case ElementType::SLUR:
+                  case ElementType::BAGPIPE_EMBELLISHMENT:
+                  case ElementType::AMBITUS:
+                  case ElementType::TREMOLOBAR:
+                  case ElementType::FIGURED_BASS:
+                  case ElementType::LYRICS:
+                  case ElementType::STAFFTYPE_CHANGE: {
+                        Element* el = getDropTarget(editData);
                         if (!el) {
-                              if (!dropCanvas(dragElement)) {
-                                    qDebug("cannot drop %s(%p) to canvas", dragElement->name(), dragElement);
-                                    delete dragElement;
+                              if (!dropCanvas(editData.dropElement)) {
+                                    qDebug("cannot drop %s(%p) to canvas", editData.dropElement->name(), editData.dropElement);
+                                    delete editData.dropElement;
                                     }
                               break;
                               }
                         _score->addRefresh(el->canvasBoundingRect());
 
                         // HACK ALERT!
-                        if (el->type() == Element::Type::MEASURE && dragElement->type() == Element::Type::LAYOUT_BREAK) {
-                              Measure* m = static_cast<Measure*>(el);
+                        if (el->isMeasure() && editData.dropElement->isLayoutBreak()) {
+                              Measure* m = toMeasure(el);
                               if (m->isMMRest())
                                     el = m->mmRestLast();
                               }
 
-                        Element* dropElement = el->drop(dropData);
+                        Element* dropElement = el->drop(editData);
                         _score->addRefresh(el->canvasBoundingRect());
                         if (dropElement) {
                               if (!_score->noteEntryMode())
@@ -500,94 +547,67 @@ void ScoreView::dropEvent(QDropEvent* event)
                         }
                         break;
                   default:
-                        delete dragElement;
+                        delete editData.dropElement;
                         break;
                   }
-
-            dragElement = 0;
+            editData.dropElement = 0;
             setDropTarget(0); // this also resets dropRectangle and dropAnchor
             score()->endCmd();
-            mscore->endCmd();
+            // update input cursor position (must be done after layout)
+            if (noteEntryMode())
+                  moveCursor();
+            if (triggerSpannerDropApplyTour)
+                  TourHandler::startTour("spanner-drop-apply");
             return;
             }
 
-      if (event->mimeData()->hasUrls()) {
-            QList<QUrl>ul = event->mimeData()->urls();
-            QUrl u = ul.front();
-            if (u.scheme() == "file") {
-                  QFileInfo fi(u.path());
-                  Image* s = new Image(score());
-                  _score->startCmd();
-                  QString str(u.toLocalFile());
-                  s->load(str);
-                  qDebug("drop image <%s> <%s>", qPrintable(str), qPrintable(str));
-
-                  Element* el = elementAt(pos);
-                  if (el) {
-                        dropData.element = s;
-                        if (el->acceptDrop(dropData)) {
-                              dropData.element = s;
-                              el->drop(dropData);
-                              }
-                        }
-                  event->acceptProposedAction();
-                  score()->endCmd();
-                  mscore->endCmd();
-                  setDropTarget(0); // this also resets dropRectangle and dropAnchor
-                  return;
-                  }
-            return;
-            }
-
-      dragElement = 0;
+      editData.dropElement = 0;
       const QMimeData* md = event->mimeData();
-      QByteArray data;
-      Element::Type etype;
+      QByteArray dta;
+      ElementType etype;
       if (md->hasFormat(mimeSymbolListFormat)) {
-            etype = Element::Type::ELEMENT_LIST;
-            data = md->data(mimeSymbolListFormat);
+            etype = ElementType::ELEMENT_LIST;
+            dta = md->data(mimeSymbolListFormat);
             }
       else if (md->hasFormat(mimeStaffListFormat)) {
-            etype = Element::Type::STAFF_LIST;
-            data = md->data(mimeStaffListFormat);
+            etype = ElementType::STAFF_LIST;
+            dta = md->data(mimeStaffListFormat);
             }
       else {
             qDebug("cannot drop this object: unknown mime type");
             QStringList sl = md->formats();
-            foreach(QString s, sl)
+            for (const QString& s : sl)
                   qDebug("  %s", qPrintable(s));
-            _score->end();
+            _score->update();
             return;
             }
 
-// qDebug("drop <%s>", data.data());
+qDebug("drop <%s>", dta.data());
 
       Element* el = elementAt(pos);
-      if (el == 0 || el->type() != Element::Type::MEASURE) {
+      if (el == 0 || el->type() != ElementType::MEASURE) {
             setDropTarget(0);
             return;
             }
       Measure* measure = (Measure*) el;
 
-      if (etype == Element::Type::ELEMENT_LIST) {
+      if (etype == ElementType::ELEMENT_LIST) {
             qDebug("drop element list");
             }
-      else if (etype == Element::Type::MEASURE_LIST || etype == Element::Type::STAFF_LIST) {
+      else if (etype == ElementType::MEASURE_LIST || etype == ElementType::STAFF_LIST) {
             _score->startCmd();
-            XmlReader xml(data);
+            XmlReader xml(dta);
             System* s = measure->system();
             int idx   = s->y2staff(pos.y());
             if (idx != -1) {
                   Segment* seg = measure->first();
                   // assume there is always a ChordRest segment
-                  while (seg->segmentType() != Segment::Type::ChordRest)
+                  while (!seg->isChordRestType())
                         seg = seg->next();
                   score()->pasteStaff(xml, seg, idx);
                   }
             event->acceptProposedAction();
-            _score->setLayoutAll(true);
             _score->endCmd();
-            mscore->endCmd();
             }
       setDropTarget(0); // this also resets dropRectangle and dropAnchor
       }
@@ -598,13 +618,11 @@ void ScoreView::dropEvent(QDropEvent* event)
 
 void ScoreView::dragLeaveEvent(QDragLeaveEvent*)
       {
-      if (dragElement) {
-            _score->setLayoutAll(false);
-//            _score->addRefresh(dragElement->canvasBoundingRect());
-            _score->setUpdateAll(true);
-            delete dragElement;
-            dragElement = 0;
-            _score->end();
+      if (editData.dropElement) {
+            _score->setUpdateAll();
+            delete editData.dropElement;
+            editData.dropElement = 0;
+            _score->update();
             }
       setDropTarget(0);
       }
@@ -615,22 +633,22 @@ void ScoreView::dragLeaveEvent(QDragLeaveEvent*)
 
 bool ScoreView::dropCanvas(Element* e)
       {
-      if (e->type() == Element::Type::ICON) {
-            switch(static_cast<Icon*>(e)->iconType()) {
+      if (e->isIcon()) {
+            switch (toIcon(e)->iconType()) {
                   case IconType::VFRAME:
-                        score()->insertMeasure(Element::Type::VBOX, 0);
+                        score()->insertMeasure(ElementType::VBOX, 0);
                         break;
                   case IconType::HFRAME:
-                        score()->insertMeasure(Element::Type::HBOX, 0);
+                        score()->insertMeasure(ElementType::HBOX, 0);
                         break;
                   case IconType::TFRAME:
-                        score()->insertMeasure(Element::Type::TBOX, 0);
+                        score()->insertMeasure(ElementType::TBOX, 0);
                         break;
                   case IconType::FFRAME:
-                        score()->insertMeasure(Element::Type::FBOX, 0);
+                        score()->insertMeasure(ElementType::FBOX, 0);
                         break;
                   case IconType::MEASURE:
-                        score()->insertMeasure(Element::Type::MEASURE, 0);
+                        score()->insertMeasure(ElementType::MEASURE, 0);
                         break;
                   default:
                         return false;

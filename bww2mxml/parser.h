@@ -2,7 +2,6 @@
 //  BWW to MusicXML converter
 //  Part of MusE Score
 //  Linux Music Score Editor
-//  $Id: parser.h 4873 2011-10-19 19:33:04Z lvinken $
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -104,8 +103,8 @@ namespace Bww {
     int tempo;                          ///< Tune tempo read from the header
     int beat;                           ///< Beat type, read from the clef line
     int beats;                          ///< Number of beats, read from the clef line
-    bool inMeasure;                     ///< State: writing the notes in a measure
-    int measureNr;                      ///< Current measure number
+    //bool inMeasure;                     ///< State: writing the notes in a measure
+    //int measureNr;                      ///< Current measure number
     bool tieStart;                      ///< Tie start pending
     bool inTie;                         ///< In a tie
     bool tripletStart;                  ///< Triplet start pending

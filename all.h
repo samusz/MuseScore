@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE
 //  Linux Music Score Editor
-//  $Id: allqt.h,v 1.24 2006/03/02 17:08:30 wschweer Exp $
 //
 //  Copyright (C) 2004-2011 Werner Schweer (ws@seh.de)
 //
@@ -21,25 +20,61 @@
 #ifndef __ALLQT_H__
 #define __ALLQT_H__
 
+#ifndef NDEBUG
+#define ABORTN(n) { static int k = 0; ++k; if (k == n) abort(); }
+#else
+#define ABORTN(a)
+#endif
+
+#if defined __cplusplus
+
+#if (defined (_MSCVER) || defined (_MSC_VER))
+   // Define to opt-in to deprecated features (bind2nd, mem_fun) removed in VS2017 c++17 mode.
+   #undef _HAS_AUTO_PTR_ETC
+   #define _HAS_AUTO_PTR_ETC 1
+#endif
+
 #include <stdio.h>
 #include <limits.h>
 #include <map>
+#include <set>
+#include <deque>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
+// VStudio does not have <unistd.h>, <io.h> & <process.h> replace many functions from it...
+#if (defined (_MSCVER) || defined (_MSC_VER))
+   #include <io.h>
+   #include <process.h>
+#else
+   #include <unistd.h>
+#endif
 #include <math.h>
+#include <array>
+#include <functional>
+#include <memory>
+
+// Disable warning C4127: conditional expression is constant in VS2017 (generated in header file qvector.h)
+#if (defined (_MSCVER) || defined (_MSC_VER))
+   #pragma warning ( push )
+   #pragma warning ( disable: 4127)
+#endif
 
 #include <QtGui>
+#include <QLoggingCategory>
 #include <QModelIndex>
 
-#include <QWebView>
-#include <QWebFrame>
+#ifdef QT_WEBENGINE_LIB
+// no precompiled QtWebEngine in Qt 5.6 windows gcc
+#include <QWebEngineView>
+#include <QWebEngineUrlRequestInterceptor>
+#include <QWebEngineProfile>
+#endif
 
 #include <QtXml>
 #include <QAbstractMessageHandler>
 #include <QXmlSchema>
 #include <QXmlSchemaValidator>
-// #include <QXmlStreamReader>
+#include <QXmlStreamReader>
 
 #include <QPointF>
 #include <QVariant>
@@ -82,14 +117,16 @@
 #include <QToolBar>
 #include <QTreeWidget>
 #include <QFileDialog>
+#ifdef QT_PRINTSUPPORT_LIB
 #include <QPrintDialog>
+#include <QPrinter>
+#endif
 #include <QColorDialog>
 #include <QDockWidget>
 #include <QStackedWidget>
 #include <QStackedLayout>
 #include <QListWidget>
 #include <QMessageBox>
-#include <QPrinter>
 #include <QComboBox>
 #include <QMainWindow>
 #include <QMenu>
@@ -114,10 +151,12 @@
 #include <QProgressBar>
 #include <QProgressDialog>
 #include <QRadioButton>
+#include <QButtonGroup>
 #include <QSplashScreen>
 #include <QFontComboBox>
 #include <QApplication>
 #include <QStatusBar>
+#include <QStyle>
 #include <QStylePainter>
 #include <QStyleOptionButton>
 #include <QHeaderView>
@@ -156,5 +195,32 @@
 #include <QQuickItem>
 #include <QQuickPaintedItem>
 #include <QQuickView>
+#include <QQuickWidget>
+
+#include <QHelpEngine>
+#include <QWidgetAction>
+#include <QHelpIndexModel>
+#include <QTextBrowser>
+
+#include <QJsonDocument>
+
+
+// change Q_ASSERT to NOP if not debugging
+
+#ifdef QT_NO_DEBUG
+#undef Q_ASSERT_X
+#define Q_ASSERT_X(a,b,c)
+#undef Q_ASSERT
+#define Q_ASSERT(a)
+#endif
+
+#if (defined (_MSCVER) || defined (_MSC_VER))
+   // Undefined problematic #def'd macros in Microsoft headers
+   #undef STRING_NONE
+   #undef small
+#endif
+
+#endif  // __cplusplus
+
 #endif
 

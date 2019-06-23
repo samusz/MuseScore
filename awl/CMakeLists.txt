@@ -1,9 +1,8 @@
 #=============================================================================
 #  MusE
 #  Linux Music Editor
-#  $Id:$
 #
-#  Copyright (C) 2002-2006 by Werner Schweer and others
+#  Copyright (C) 2002-2016 by Werner Schweer and others
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License version 2.
@@ -20,34 +19,14 @@
 
 include (${PROJECT_SOURCE_DIR}/build/gch.cmake)
 
-QT4_WRAP_CPP (mocs
-      aslider.h
-      knob.h
-      panknob.h
-      volknob.h
-      midipanknob.h
-      colorlabel.h
-      slider.h
-      volslider.h
-      mslider.h
-      pitchedit.h
-      pitchlabel.h
-      poslabel.h
-      denomspinbox.h
-      )
-
-if (APPLE)
-        file(GLOB_RECURSE INCS "*.h")
-else (APPLE)
-        set(INCS "")
-endif (APPLE)
+if (NOT MSVC)
+   set(_all_h_file "${PROJECT_BINARY_DIR}/all.h")
+else (NOT MSVC)
+   set(_all_h_file "${PROJECT_SOURCE_DIR}/all.h")
+endif (NOT MSVC)
 
 add_library (
       awl STATIC
-      ${PROJECT_BINARY_DIR}/all.h
-      ${PCH}
-      ${mocs}
-      ${INCS}
       aslider.cpp
       knob.cpp
       panknob.cpp
@@ -55,49 +34,46 @@ add_library (
       midipanknob.cpp
       colorlabel.cpp
       slider.cpp
+      styledslider.cpp
       volslider.cpp
       mslider.cpp
       pitchedit.cpp
       pitchlabel.cpp
       poslabel.cpp
-#      posedit.cpp
       utils.cpp
       denomspinbox.cpp
+      aslider.h colorlabel.h denomspinbox.h fastlog.h
+      knob.h midipanknob.h mslider.h panknob.h pitchedit.h pitchlabel.h
+      poslabel.h slider.h styledslider.h
+      utils.h volknob.h volslider.h
       )
-set_target_properties (
+if (NOT MSVC)
+   set_target_properties (
       awl
       PROPERTIES
          COMPILE_FLAGS "${PCH_INCLUDE} -g -Wall -Wextra -Winvalid-pch"
       )
+else (NOT MSVC)
+   set_target_properties (
+      awl
+      PROPERTIES
+         COMPILE_FLAGS "${PCH_INCLUDE}"
+      )
+endif (NOT MSVC)   
 
 xcode_pch(awl all)
 
-ADD_DEPENDENCIES(awl mops1)
-ADD_DEPENDENCIES(awl mops2)
+# Use MSVC pre-compiled headers
+vstudio_pch( awl )
 
-# if (NOT MINGW AND NOT APPLE)
-if (FALSE)
-QT4_WRAP_CPP (mocs2
-      aslider.h
-      knob.h
-      panknob.h
-      volknob.h
-      midipanknob.h
-      awlplugin.h
-      colorlabel.h
-      slider.h
-      volslider.h
-      mslider.h
-      denomspinbox.h
-      pitchedit.h
-      pitchlabel.h
-      awlplugin.h
-      )
+# MSVC does not depend on mops1 & mops2 for PCH
+if (NOT MSVC)
+   ADD_DEPENDENCIES(awl mops1 mops2)
+endif (NOT MSVC)
 
 add_library (
       awlplugin SHARED
-      ${PROJECT_BINARY_DIR}/all.h
-      ${mocs2}
+      ${_all_h_file}
       awlplugin.cpp
       aslider.cpp
       knob.cpp
@@ -106,6 +82,7 @@ add_library (
       midipanknob.cpp
       colorlabel.cpp
       slider.cpp
+      styledslider.cpp
       volslider.cpp
       mslider.cpp
       denomspinbox.cpp
@@ -117,20 +94,28 @@ add_library (
 ##  "-D_GNU_SOURCE -D_REENTRANT -DHAVE_CONFIG_H -DQT_PLUGIN -DQT_SHARED -DQT_NO_DEBUG -include ${PROJECT_SOURCE_DIR}/all.h"
 
 #
-# we cannot use our precompiled headers because of -fPIC
+# We cannot use our precompiled headers because of -fPIC
 #
-set_target_properties(awlplugin
+if (NOT MSVC)
+   set_target_properties(awlplugin
       PROPERTIES
       COMPILE_FLAGS
          "-fPIC -D_GNU_SOURCE -D_REENTRANT -DHAVE_CONFIG_H -DQT_PLUGIN -DQT_SHARED -DQT_NO_DEBUG -include ${PROJECT_SOURCE_DIR}/all.h"
       )
+else (NOT MSVC)
+   # x86 archictecture does not support position-independent code, the -fPIC option is not relevant for this processor.
+   set_target_properties (
+      awlplugin
+      PROPERTIES
+         COMPILE_FLAGS "${PCH_INCLUDE} -D_GNU_SOURCE -D_REENTRANT -DHAVE_CONFIG_H -DQT_PLUGIN -DQT_SHARED -DQT_NO_DEBUG"
+      )
+endif (NOT MSVC)   
 
-# dont install awlplugin on default
-# install( TARGETS awlplugin DESTINATION ${QT_PLUGINS_DIR}/designer/ )
+# Don't install awlplugin on default
+#install( TARGETS awlplugin DESTINATION ${designerPlugins}/plugins/designer/ )
 
 #add_executable(ltest ltest.cpp)
 #target_link_libraries (ltest awlplugin msynth al ${QT_LIBRARIES})
 
+set_target_properties(awlplugin PROPERTIES EXCLUDE_FROM_ALL 1)
 
-# endif (NOT MINGW AND NOT APPLE)
-endif (FALSE)

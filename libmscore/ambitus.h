@@ -13,11 +13,9 @@
 #ifndef __AMBITUS_H__
 #define __AMBITUS_H__
 
-#include "accidental.h"
 #include "element.h"
 #include "note.h"
-
-class QPainter;
+#include "accidental.h"
 
 namespace Ms {
 
@@ -25,14 +23,12 @@ namespace Ms {
 //   @@ Ambitus
 //---------------------------------------------------------
 
-class Ambitus : public Element {
-      Q_OBJECT
-
+class Ambitus final : public Element {
       NoteHead::Group     _noteHeadGroup;
       NoteHead::Type      _noteHeadType;
       MScore::DirectionH  _dir;
       bool  _hasLine;
-      qreal _lineWidth;                     // in spatium
+      Spatium _lineWidth;
       Accidental  _topAccid, _bottomAccid;
       int   _topPitch, _bottomPitch;
       int   _topTpc, _bottomTpc;
@@ -45,19 +41,22 @@ class Ambitus : public Element {
       void  normalize();
 
    public:
-
       Ambitus(Score* s);
-      virtual Ambitus* clone() const                    { return new Ambitus(*this); }
+      virtual Ambitus* clone() const override         { return new Ambitus(*this); }
+
+      virtual qreal mag() const override;
+
+      void initFrom(Ambitus* a);
 
       // getters and setters
-      virtual Element::Type type() const              { return Element::Type::AMBITUS;    }
+      virtual ElementType type() const override       { return ElementType::AMBITUS; }
       NoteHead::Group noteHeadGroup() const           { return _noteHeadGroup;}
       NoteHead::Type noteHeadType() const             { return _noteHeadType; }
-      MScore::DirectionH direction() const                    { return _dir;          }
+      MScore::DirectionH direction() const            { return _dir;          }
       bool hasLine() const                            { return _hasLine;      }
-      qreal lineWidth() const                         { return _lineWidth;    }
-      int topOctave() const                           { return _topPitch / 12;}
-      int bottomOctave() const                        { return _bottomPitch / 12;}
+      Spatium lineWidth() const                       { return _lineWidth;    }
+      int topOctave() const                           { return (_topPitch / 12) - 1; }
+      int bottomOctave() const                        { return (_bottomPitch / 12) - 1; }
       int topPitch() const                            { return _topPitch;     }
       int bottomPitch() const                         { return _bottomPitch;  }
       int topTpc() const                              { return _topTpc;       }
@@ -67,7 +66,7 @@ class Ambitus : public Element {
       void setNoteHeadType (NoteHead::Type val)       { _noteHeadType  = val; }
       void setDirection    (MScore::DirectionH val)   { _dir = val;           }
       void setHasLine      (bool val)                 { _hasLine = val;       }
-      void setLineWidth    (qreal val)                { _lineWidth = val;     }
+      void setLineWidth    (Spatium val)              { _lineWidth = val;     }
       void setTopPitch     (int val);
       void setBottomPitch  (int val);
       void setTopTpc       (int val);
@@ -80,23 +79,23 @@ class Ambitus : public Element {
       void  updateRange();                // scan staff up to next section break and update range pitches
 
       // re-implemented virtual functions
-      virtual void      draw(QPainter*) const;
-      virtual void      layout();
-      virtual QPointF   pagePos() const;      ///< position in page coordinates
-      virtual void      read(XmlReader&);
-      virtual void      scanElements(void* data, void (*func)(void*, Element*), bool all=true);
-      virtual void      setTrack(int val);
-      virtual Space     space() const;
-      virtual void      write(Xml&) const;
-      virtual QString   accessibleInfo() override;
-      virtual QString   screenReaderInfo() override;
+      virtual void      draw(QPainter*) const override;
+      virtual void      layout() override;
+      virtual QPointF   pagePos() const override;      ///< position in page coordinates
+      virtual void      read(XmlReader&) override;
+      virtual void      scanElements(void* data, void (*func)(void*, Element*), bool all=true) override;
+      virtual void      setTrack(int val) override;
+      virtual void      write(XmlWriter&) const override;
+      virtual bool      readProperties(XmlReader&) override;
+      virtual QString   accessibleInfo() const override;
 
       // properties
-      QVariant getProperty(P_ID ) const;
-      bool setProperty(P_ID propertyId, const QVariant&);
-      QVariant propertyDefault(P_ID id) const;
-      virtual Element* nextElement() override;
-      virtual Element* prevElement() override;
+      QVariant getProperty(Pid ) const;
+      bool setProperty(Pid propertyId, const QVariant&);
+      QVariant propertyDefault(Pid id) const;
+
+      virtual Element* nextSegmentElement() override;
+      virtual Element* prevSegmentElement() override;
       };
 
 

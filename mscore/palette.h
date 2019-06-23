@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: palette.h 5395 2012-02-28 18:09:57Z wschweer $
 //
 //  Copyright (C) 2002-2011 Werner Schweer and others
 //
@@ -29,7 +28,7 @@ namespace Ms {
 
 class Element;
 class Sym;
-class Xml;
+class XmlWriter;
 class XmlReader;
 class Palette;
 
@@ -43,6 +42,7 @@ struct PaletteCell {
       Element* element { 0 };
       QString name;           // used for tool tip
       QString tag;
+
       bool drawStaff { false };
       double x       { 0.0   };
       double y       { 0.0   };
@@ -61,7 +61,7 @@ class PaletteProperties : public QDialog, private Ui::PaletteProperties {
 
       Palette* palette;
       virtual void accept();
-
+      virtual void hideEvent(QHideEvent*);
    public:
       PaletteProperties(Palette* p, QWidget* parent = 0);
       };
@@ -75,7 +75,7 @@ class PaletteCellProperties : public QDialog, private Ui::PaletteCellProperties 
 
       PaletteCell* cell;
       virtual void accept();
-
+      virtual void hideEvent(QHideEvent*);
    public:
       PaletteCellProperties(PaletteCell* p, QWidget* parent = 0);
       };
@@ -89,6 +89,9 @@ class PaletteScrollArea : public QScrollArea {
       bool _restrictHeight;
 
       virtual void resizeEvent(QResizeEvent*);
+
+   protected:
+      virtual void keyPressEvent(QKeyEvent* event) override;
 
    public:
       PaletteScrollArea(Palette* w, QWidget* parent = 0);
@@ -105,55 +108,63 @@ class Palette : public QWidget {
 
       QString _name;
       QList<PaletteCell*> cells;
+      QList<PaletteCell*> dragCells;  // used for filter & backup
 
-      int hgrid, vgrid;
+      int hgrid;
+      int vgrid;
       int currentIdx;
       int dragIdx;
       int selectedIdx;
       QPoint dragStartPosition;
-      int dragSrcIdx;
 
       qreal extraMag;
       bool _drawGrid;
       bool _selectable;
+      bool _disableDoubleClick { false };
       bool _readOnly;
       bool _systemPalette;
-      qreal _yOffset;         // in spatium units of "gscore"
+      qreal _yOffset;                // in spatium units of "gscore"
+      bool filterActive { false };   // bool if filter is active
 
       bool _moreElements;
+      bool _showContextMenu { true };
 
-      void redraw(const QRect&);
-      virtual void paintEvent(QPaintEvent*);
-      virtual void mousePressEvent(QMouseEvent*);
-      virtual void mouseDoubleClickEvent(QMouseEvent*);
-      virtual void mouseMoveEvent(QMouseEvent*);
-      virtual void leaveEvent(QEvent*);
-      virtual bool event(QEvent*);
-      virtual void resizeEvent(QResizeEvent*);
+      virtual void paintEvent(QPaintEvent*) override;
+      virtual void mousePressEvent(QMouseEvent*) override;
+      virtual void mouseDoubleClickEvent(QMouseEvent*) override;
+      virtual void mouseMoveEvent(QMouseEvent*) override;
+      virtual void leaveEvent(QEvent*) override;
+      virtual bool event(QEvent*) override;
+      virtual void resizeEvent(QResizeEvent*) override;
+      void applyPaletteElement(PaletteCell* cell, Qt::KeyboardModifiers modifiers = 0);
 
-      virtual void dragEnterEvent(QDragEnterEvent*);
-      virtual void dragMoveEvent(QDragMoveEvent*);
-      virtual void dropEvent(QDropEvent*);
-      virtual void contextMenuEvent(QContextMenuEvent*);
+      virtual void dragEnterEvent(QDragEnterEvent*) override;
+      virtual void dragMoveEvent(QDragMoveEvent*) override;
+      virtual void dropEvent(QDropEvent*) override;
+      virtual void contextMenuEvent(QContextMenuEvent*) override;
 
-      int idx(const QPoint&) const;
-      QRect idxRect(int);
-      void layoutCell(PaletteCell*);
+      int idx2(const QPoint&) const;
+      QRect idxRect(int) const;
+
+      const QList<PaletteCell*>* ccp() const { return filterActive ? &dragCells : &cells; }
+      QPixmap pixmap(int cellIdx) const;
+
 
    private slots:
       void actionToggled(bool val);
 
    signals:
-      void startDragElement(Element*);
       void boxClicked(int);
       void changed();
-      void moreButtonClicked();
       void displayMore(const QString& paletteName);
 
    public:
       Palette(QWidget* parent = 0);
       virtual ~Palette();
 
+      void nextPaletteElement();
+      void prevPaletteElement();
+      void applyPaletteElement();
       PaletteCell* append(Element*, const QString& name, QString tag = QString(),
          qreal mag = 1.0);
       PaletteCell* add(int idx, Element*, const QString& name,
@@ -167,7 +178,7 @@ class Palette : public QWidget {
       bool read(const QString& path);
       void write(const QString& path);
       void read(XmlReader&);
-      void write(Xml&) const;
+      void write(XmlWriter&) const;
       bool read(QFile*);
       void clear();
       void setSelectable(bool val)   { _selectable = val;  }
@@ -176,27 +187,36 @@ class Palette : public QWidget {
       void setSelected(int idx)      { selectedIdx = idx;  }
       bool readOnly() const          { return _readOnly;   }
       void setReadOnly(bool val);
+      void setDisableDoubleClick(bool val) { _disableDoubleClick = val; }
 
       bool systemPalette() const     { return _systemPalette; }
       void setSystemPalette(bool val);
 
-      void setMag(qreal val)         { extraMag = val;     }
+      void setMag(qreal val);
       qreal mag() const              { return extraMag;    }
       void setYOffset(qreal val)     { _yOffset = val;     }
       qreal yOffset() const          { return _yOffset;        }
       int columns() const            { return width() / hgrid; }
       int rows() const;
-      int size() const               { return cells.size(); }
-      void setCellReadOnly(int c, bool v) { cells[c]->readOnly = v; }
+      int size() const               { return filterActive ? dragCells.size() : cells.size(); }
+      PaletteCell* cellAt(int index) const { return ccp()->value(index); }
+      void setCellReadOnly(int c, bool v)  { cells[c]->readOnly = v;   }
       QString name() const           { return _name;        }
       void setName(const QString& s) { _name = s;           }
       int gridWidth() const          { return hgrid;        }
       int gridHeight() const         { return vgrid;        }
       bool moreElements() const      { return _moreElements; }
       void setMoreElements(bool val);
+      bool filter(const QString& text);
+      void setShowContextMenu(bool val) { _showContextMenu = val; }
 
+      int getCurrentIdx() { return currentIdx; }
+      void setCurrentIdx(int i) { currentIdx = i; }
+      bool isFilterActive() { return filterActive == true; }
+      QList<PaletteCell*> getDragCells() { return dragCells; }
       virtual int heightForWidth(int) const;
       virtual QSize sizeHint() const;
+      int idx(const QPoint&) const;
       };
 
 

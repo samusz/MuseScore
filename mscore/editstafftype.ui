@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>629</width>
-    <height>595</height>
+    <width>662</width>
+    <height>605</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>MuseScore: Edit Staff Type</string>
+   <string>Edit Staff Type</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
    <item>
@@ -104,9 +104,6 @@
          <property name="text">
           <string>Lines:</string>
          </property>
-         <property name="margin">
-          <number>5</number>
-         </property>
          <property name="buddy">
           <cstring>lines</cstring>
          </property>
@@ -141,12 +138,6 @@
          </property>
          <property name="text">
           <string>Line distance:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="margin">
-          <number>5</number>
          </property>
          <property name="buddy">
           <cstring>lineDistance</cstring>
@@ -191,9 +182,6 @@
        </property>
        <item row="0" column="0">
         <widget class="QCheckBox" name="genClef">
-         <property name="toolTip">
-          <string/>
-         </property>
          <property name="text">
           <string>Show clef</string>
          </property>
@@ -227,10 +215,10 @@
         <number>0</number>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page">
-        <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0">
+        <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0">
          <property name="spacing">
           <number>5</number>
          </property>
@@ -269,7 +257,63 @@
              </property>
             </widget>
            </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="noteHeadScheme"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Notehead scheme:</string>
+             </property>
+            </widget>
+           </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupPreviewStandard">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>80</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>Preview</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_49">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="Ms::ExampleView" name="standardPreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="lineWidth" stdset="0">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </item>
          <item>
           <spacer name="verticalSpacer_2">
@@ -308,7 +352,7 @@
            <item row="0" column="0">
             <widget class="QCheckBox" name="genKeysigPercussion">
              <property name="text">
-              <string>Show Key signature</string>
+              <string>Show key signature</string>
              </property>
             </widget>
            </item>
@@ -397,9 +441,6 @@
                       <property name="text">
                        <string>Font:</string>
                       </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
                       <property name="buddy">
                        <cstring>fretFontName</cstring>
                       </property>
@@ -416,12 +457,6 @@
                      <widget class="QLabel" name="fretFontSizeLabel">
                       <property name="text">
                        <string>Size:</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
-                      <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                       </property>
                       <property name="buddy">
                        <cstring>fretFontSize</cstring>
@@ -453,12 +488,6 @@
                       <property name="text">
                        <string>Vertical offset:</string>
                       </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
-                      <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                      </property>
                       <property name="buddy">
                        <cstring>fretY</cstring>
                       </property>
@@ -486,7 +515,7 @@
                 </item>
                 <item>
                  <layout class="QGridLayout" name="gridLayout">
-                  <item row="2" column="0">
+                  <item row="1" column="0">
                    <widget class="QLabel" name="onStringsLabel">
                     <property name="minimumSize">
                      <size>
@@ -502,7 +531,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="1">
+                  <item row="1" column="1">
                    <widget class="QRadioButton" name="onLinesRadio">
                     <property name="minimumSize">
                      <size>
@@ -519,9 +548,12 @@
                     <property name="autoExclusive">
                      <bool>true</bool>
                     </property>
+                    <attribute name="buttonGroup">
+                     <string notr="true">OnAboveLinesButtGroup</string>
+                    </attribute>
                    </widget>
                   </item>
-                  <item row="4" column="1">
+                  <item row="2" column="1">
                    <widget class="QRadioButton" name="linesThroughRadio">
                     <property name="minimumSize">
                      <size>
@@ -538,9 +570,12 @@
                     <property name="autoExclusive">
                      <bool>true</bool>
                     </property>
+                    <attribute name="buttonGroup">
+                     <string notr="true">ContinuousBrokenLinesbuttGroup</string>
+                    </attribute>
                    </widget>
                   </item>
-                  <item row="4" column="0">
+                  <item row="2" column="0">
                    <widget class="QLabel" name="linesThroughLabel">
                     <property name="minimumSize">
                      <size>
@@ -574,7 +609,7 @@
                      <bool>true</bool>
                     </property>
                     <attribute name="buttonGroup">
-                     <string notr="true">buttonGroup</string>
+                     <string notr="true">NumLettersButtGroup</string>
                     </attribute>
                    </widget>
                   </item>
@@ -603,11 +638,11 @@
                      <bool>true</bool>
                     </property>
                     <attribute name="buttonGroup">
-                     <string notr="true">buttonGroup</string>
+                     <string notr="true">NumLettersButtGroup</string>
                     </attribute>
                    </widget>
                   </item>
-                  <item row="2" column="2">
+                  <item row="1" column="2">
                    <widget class="QRadioButton" name="aboveLinesRadio">
                     <property name="text">
                      <string>Above lines</string>
@@ -615,9 +650,12 @@
                     <property name="autoExclusive">
                      <bool>true</bool>
                     </property>
+                    <attribute name="buttonGroup">
+                     <string notr="true">OnAboveLinesButtGroup</string>
+                    </attribute>
                    </widget>
                   </item>
-                  <item row="4" column="2">
+                  <item row="2" column="2">
                    <widget class="QRadioButton" name="linesBrokenRadio">
                     <property name="text">
                      <string>Broken</string>
@@ -628,7 +666,41 @@
                     <property name="autoExclusive">
                      <bool>true</bool>
                     </property>
+                    <attribute name="buttonGroup">
+                     <string notr="true">ContinuousBrokenLinesbuttGroup</string>
+                    </attribute>
                    </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_3">
+                  <item>
+                   <widget class="QCheckBox" name="showBackTied">
+                    <property name="text">
+                     <string>Show back-tied fret marks</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="showTabFingering">
+                    <property name="text">
+                     <string>Show fingering in tablature</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="horizontalSpacer_6">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
                   </item>
                  </layout>
                 </item>
@@ -748,12 +820,15 @@
                     <widget class="QLabel" name="durSymLabel">
                      <property name="minimumSize">
                       <size>
-                       <width>120</width>
+                       <width>115</width>
                        <height>0</height>
                       </size>
                      </property>
                      <property name="text">
                       <string>Shown as:</string>
+                     </property>
+                     <property name="textFormat">
+                      <enum>Qt::PlainText</enum>
                      </property>
                      <property name="buddy">
                       <cstring>noteValuesNone</cstring>
@@ -764,7 +839,7 @@
                     <widget class="QRadioButton" name="noteValuesNone">
                      <property name="minimumSize">
                       <size>
-                       <width>110</width>
+                       <width>100</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -817,6 +892,105 @@
                   <property name="frameShadow">
                    <enum>QFrame::Plain</enum>
                   </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_5_2">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="valuesRepeatLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>115</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>Repeat:</string>
+                     </property>
+                     <property name="buddy">
+                      <cstring>valuesRepeatNever</cstring>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="valuesRepeatNever">
+                     <property name="minimumSize">
+                      <size>
+                       <width>100</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>Never</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="valuesRepeatSystem">
+                     <property name="minimumSize">
+                      <size>
+                       <width>120</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>At new system</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="valuesRepeatMeasure">
+                     <property name="minimumSize">
+                      <size>
+                       <width>110</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>At new meas.</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="valuesRepeatAlways">
+                     <property name="text">
+                      <string>Always</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_13_2">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QFrame" name="frame_6">
+                  <property name="frameShape">
+                   <enum>QFrame::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Plain</enum>
+                  </property>
                   <layout class="QHBoxLayout" name="horizontalLayout_17">
                    <property name="leftMargin">
                     <number>0</number>
@@ -834,7 +1008,7 @@
                     <widget class="QLabel" name="stemStyleLabel">
                      <property name="minimumSize">
                       <size>
-                       <width>120</width>
+                       <width>115</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -850,7 +1024,7 @@
                     <widget class="QRadioButton" name="stemBesideRadio">
                      <property name="minimumSize">
                       <size>
-                       <width>110</width>
+                       <width>100</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -883,7 +1057,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QFrame" name="frame_6">
+                 <widget class="QFrame" name="frame_7">
                   <property name="frameShape">
                    <enum>QFrame::NoFrame</enum>
                   </property>
@@ -907,7 +1081,7 @@
                     <widget class="QLabel" name="stemPosLabel">
                      <property name="minimumSize">
                       <size>
-                       <width>120</width>
+                       <width>115</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -923,7 +1097,7 @@
                     <widget class="QRadioButton" name="stemAboveRadio">
                      <property name="minimumSize">
                       <size>
-                       <width>110</width>
+                       <width>100</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -956,7 +1130,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QFrame" name="frame_7">
+                 <widget class="QFrame" name="frame_8">
                   <property name="frameShape">
                    <enum>QFrame::NoFrame</enum>
                   </property>
@@ -980,7 +1154,7 @@
                     <widget class="QLabel" name="minimLabels">
                      <property name="minimumSize">
                       <size>
-                       <width>120</width>
+                       <width>115</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -999,7 +1173,7 @@
                      </property>
                      <property name="minimumSize">
                       <size>
-                       <width>110</width>
+                       <width>100</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -1087,7 +1261,7 @@
          <item>
           <widget class="QGroupBox" name="groupPreview">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1102,8 +1276,30 @@
             <string>Preview</string>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_9">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
             <item>
-             <widget class="Ms::ScoreView" name="preview" native="true"/>
+             <widget class="Ms::ExampleView" name="tabPreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="lineWidth" stdset="0">
+               <number>2</number>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -1133,7 +1329,7 @@
        <item>
         <widget class="QPushButton" name="templateReset">
          <property name="text">
-          <string>&lt; Reset to template</string>
+          <string>&lt; Reset to Template</string>
          </property>
         </widget>
        </item>
@@ -1198,9 +1394,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>Ms::ScoreView</class>
+   <class>Ms::ExampleView</class>
    <extends>QWidget</extends>
-   <header>scoreview.h</header>
+   <header>exampleview.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -1228,12 +1424,17 @@
   <tabstop>aboveLinesRadio</tabstop>
   <tabstop>linesThroughRadio</tabstop>
   <tabstop>linesBrokenRadio</tabstop>
+  <tabstop>showBackTied</tabstop>
   <tabstop>durFontName</tabstop>
   <tabstop>durFontSize</tabstop>
   <tabstop>durY</tabstop>
   <tabstop>noteValuesNone</tabstop>
   <tabstop>noteValuesSymb</tabstop>
   <tabstop>noteValuesStems</tabstop>
+  <tabstop>valuesRepeatNever</tabstop>
+  <tabstop>valuesRepeatSystem</tabstop>
+  <tabstop>valuesRepeatMeasure</tabstop>
+  <tabstop>valuesRepeatAlways</tabstop>
   <tabstop>stemBesideRadio</tabstop>
   <tabstop>stemThroughRadio</tabstop>
   <tabstop>stemAboveRadio</tabstop>
@@ -1282,6 +1483,8 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
+  <buttongroup name="NumLettersButtGroup"/>
+  <buttongroup name="OnAboveLinesButtGroup"/>
+  <buttongroup name="ContinuousBrokenLinesbuttGroup"/>
  </buttongroups>
 </ui>

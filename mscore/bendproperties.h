@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -36,6 +35,8 @@ class BendProperties : public QDialog, public Ui::BendDialog {
       Q_OBJECT
       Bend* bend;
       QButtonGroup* bendTypes;
+
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       void bendTypeChanged(int);

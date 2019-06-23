@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2009 by Werner Schweer and others
 //
@@ -30,7 +29,6 @@
 #include "pitchlabel.h"
 
 #include <QtCore/QtPlugin>
-#include <QtDesigner/QDesignerCustomWidgetInterface>
 
 QWidget* KnobPlugin::createWidget(QWidget* parent)
 	{
@@ -102,5 +100,5 @@ QList<QDesignerCustomWidgetInterface*> AwlPlugins::customWidgets() const
       return plugins;
 	}
 
-Q_EXPORT_PLUGIN(AwlPlugins)
+// Q_EXPORT_PLUGIN(AwlPlugins)
 

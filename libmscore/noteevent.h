@@ -15,7 +15,7 @@
 
 namespace Ms {
 
-class Xml;
+class XmlWriter;
 class XmlReader;
 
 //---------------------------------------------------------
@@ -28,11 +28,13 @@ class NoteEvent {
       int _len;     // 1/1000 of nominal note len
 
    public:
-      NoteEvent() : _pitch(0), _ontime(0), _len(1000) {}
+      constexpr static int NOTE_LENGTH = 1000;
+
+      NoteEvent() : _pitch(0), _ontime(0), _len(NOTE_LENGTH) {}
       NoteEvent(int a, int b, int c) : _pitch(a), _ontime(b), _len(c) {}
 
       void read(XmlReader&);
-      void write(Xml& xml) const;
+      void write(XmlWriter&) const;
 
       int  pitch() const     { return _pitch; }
       int ontime() const     { return _ontime; }
@@ -51,6 +53,8 @@ class NoteEvent {
 class NoteEventList : public QList<NoteEvent> {
    public:
       NoteEventList();
+
+      int offtime() { return empty() ? 0 : std::max_element(cbegin(), cend(), [](const NoteEvent& n1, const NoteEvent& n2) { return n1.offtime() < n2.offtime(); })->offtime(); }
       };
 
 

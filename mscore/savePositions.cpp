@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -18,6 +17,10 @@
 #include "libmscore/system.h"
 #include "libmscore/xml.h"
 #include "mscore/globals.h"
+#include "mscore/preferences.h"
+#include "mscore/musescore.h"
+
+
 
 namespace Ms {
 
@@ -27,12 +30,12 @@ static QHash<void*, int> segs;
 //   saveMeasureEvents
 //---------------------------------------------------------
 
-static void saveMeasureEvents(Xml& xml, Measure* m, int offset)
+static void saveMeasureEvents(XmlWriter& xml, Measure* m, int offset)
       {
-      for (Segment* s = m->first(Segment::Type::ChordRest); s; s = s->next(Segment::Type::ChordRest)) {
-            int tick = s->tick() + offset;
+      for (Segment* s = m->first(SegmentType::ChordRest); s; s = s->next(SegmentType::ChordRest)) {
+            int tick = s->tick().ticks() + offset;
             int id = segs[(void*)s];
-            int time = lrint(m->score()->repeatList()->utick2utime(tick) * 1000);
+            int time = lrint(m->score()->repeatList().utick2utime(tick) * 1000);
             xml.tagE(QString("event elid=\"%1\" position=\"%2\"")
                .arg(id)
                .arg(time)
@@ -45,24 +48,19 @@ static void saveMeasureEvents(Xml& xml, Measure* m, int offset)
 //    output in 100 dpi
 //---------------------------------------------------------
 
-bool savePositions(Score* score, const QString& name, bool segments)
+bool MuseScore::savePositions(Score* score, QIODevice* device, bool segments)
       {
       segs.clear();
-      QFile fp(name);
-      if (!fp.open(QIODevice::WriteOnly)) {
-            qDebug("Open <%s> failed", qPrintable(name));
-            return false;
-            }
-      Xml xml(&fp);
+      XmlWriter xml(score, device);
       xml.header();
       xml.stag("score");
       xml.stag("elements");
       int id = 0;
 
-      qreal ndpi = ((qreal)converterDpi / MScore::DPI) * 12.0;
+      qreal ndpi = ((qreal) preferences.getDouble(PREF_EXPORT_PNG_RESOLUTION) / DPI) * 12.0;
       if (segments) {
-            for (Segment* s = score->firstMeasure()->first(Segment::Type::ChordRest);
-               s; s = s->next1(Segment::Type::ChordRest)) {
+            for (Segment* s = score->firstMeasureMM()->first(SegmentType::ChordRest);
+               s; s = s->next1MM(SegmentType::ChordRest)) {
                   qreal sx   = 0;
                   int tracks = score->nstaves() * VOICES;
                   for (int track = 0; track < tracks; track++) {
@@ -117,24 +115,24 @@ bool savePositions(Score* score, const QString& name, bool segments)
             }
 
       xml.stag("events");
-      score->updateRepeatList(true);
-      foreach(const RepeatSegment* rs, *score->repeatList()) {
+      score->masterScore()->setExpandRepeats(true);
+      for (const RepeatSegment* rs : score->repeatList()) {
             int startTick  = rs->tick;
-            int endTick    = startTick + rs->len;
+            int endTick    = startTick + rs->len();
             int tickOffset = rs->utick - rs->tick;
-            for (Measure* m = score->tick2measureMM(startTick); m; m = m->nextMeasureMM()) {
+            for (Measure* m = score->tick2measureMM(Fraction::fromTicks(startTick)); m; m = m->nextMeasureMM()) {
                         if (segments)
                               saveMeasureEvents(xml, m, tickOffset);
                         else {
-                              int tick = m->tick() + tickOffset;
-                              int id = segs[(void*)m];
-                              int time = lrint(m->score()->repeatList()->utick2utime(tick) * 1000);
+                              int tick = m->tick().ticks() + tickOffset;
+                              int i = segs[(void*)m];
+                              int time = lrint(m->score()->repeatList().utick2utime(tick) * 1000);
                               xml.tagE(QString("event elid=\"%1\" position=\"%2\"")
-                                 .arg(id)
+                                 .arg(i)
                                  .arg(time)
                                  );
                               }
-                  if (m->tick() + m->ticks() >= endTick)
+                  if (m->endTick().ticks() >= endTick)
                         break;
                   }
             }
@@ -142,6 +140,16 @@ bool savePositions(Score* score, const QString& name, bool segments)
 
       xml.etag(); // score
       return true;
+      }
+
+bool MuseScore::savePositions(Score* score, const QString& name, bool segments)
+      {
+      QFile fp(name);
+      if (!fp.open(QIODevice::WriteOnly)) {
+            qDebug("Open <%s> failed", qPrintable(name));
+            return false;
+            }
+      return savePositions(score, &fp, segments);
       }
 }
 

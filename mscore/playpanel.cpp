@@ -1,9 +1,8 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: playpanel.cpp 4775 2011-09-12 14:25:31Z wschweer $
 //
-//  Copyright (C) 2002-2011 Werner Schweer and others
+//  Copyright (C) 2002-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -26,35 +25,29 @@
 #include "musescore.h"
 #include "libmscore/measure.h"
 
+
+
 namespace Ms {
-
-#if 0 // yet(?) unused
-const int MIN_VOL = -60;
-const int MAX_VOL = 10;
-#endif
-
-static const int DEFAULT_POS_X  = 300;
-static const int DEFAULT_POS_Y  = 100;
 
 //---------------------------------------------------------
 //   PlayPanel
 //---------------------------------------------------------
 
 PlayPanel::PlayPanel(QWidget* parent)
-   : QWidget(parent, Qt::Dialog)
+    : QDockWidget("Play Panel", parent)
       {
       cachedTickPosition = -1;
       cachedTimePosition = -1;
       cs                 = 0;
       tempoSliderIsPressed = false;
       setupUi(this);
+      setWindowFlags(Qt::Tool);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
-
-      QSettings settings;
-      restoreGeometry(settings.value("playPanel/geometry").toByteArray());
-      move(settings.value("playPanel/pos", QPoint(DEFAULT_POS_X, DEFAULT_POS_Y)).toPoint());
+      setAllowedAreas(Qt::DockWidgetAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea));
+      MuseScore::restoreGeometry(this);
 
       setScore(0);
+
       playButton->setDefaultAction(getAction("play"));
       rewindButton->setDefaultAction(getAction("rewind"));
       countInButton->setDefaultAction(getAction("countin"));
@@ -62,25 +55,37 @@ PlayPanel::PlayPanel(QWidget* parent)
       loopButton->setDefaultAction(getAction("loop"));
       loopInButton->setDefaultAction(getAction("loop-in"));
       loopOutButton->setDefaultAction(getAction("loop-out"));
+      enablePlay = new EnablePlayForWidget(this);
+
+      volLabel();
+      volSpinBox->setRange(-80,0);
+      volSpinBox->setValue(-40.0);
+
+      tempoSlider->setDclickValue1(100.0);
+      tempoSlider->setDclickValue2(100.0);
+      tempoSlider->setUseActualValue(true);
+      mgainSlider->setValue(seq->metronomeGain());
+      mgainSlider->setDclickValue1(seq->metronomeGain() - 10.75f);
+      mgainSlider->setDclickValue2(seq->metronomeGain() - 10.75f);
 
       connect(volumeSlider, SIGNAL(valueChanged(double,int)), SLOT(volumeChanged(double,int)));
+      connect(mgainSlider,  SIGNAL(valueChanged(double,int)), SLOT(metronomeGainChanged(double,int)));
       connect(posSlider,    SIGNAL(sliderMoved(int)),         SLOT(setPos(int)));
       connect(tempoSlider,  SIGNAL(valueChanged(double,int)), SLOT(relTempoChanged(double,int)));
       connect(tempoSlider,  SIGNAL(sliderPressed(int)),       SLOT(tempoSliderPressed(int)));
       connect(tempoSlider,  SIGNAL(sliderReleased(int)),      SLOT(tempoSliderReleased(int)));
-      connect(relTempoBox,  SIGNAL(editingFinished()),        SLOT(relTempoChanged()));
-      connect(seq,          SIGNAL(heartBeat(int,int,int)),   SLOT(heartBeat(int,int,int)));
+      connect(relTempoBox,  SIGNAL(valueChanged(double)),     SLOT(relTempoChanged()));
+      connect(volSpinBox,  SIGNAL(valueChanged(double)),     SLOT(volSpinBoxEdited()));
+      connect(seq,          SIGNAL(heartBeat(int,int,int)),   SLOT(heartBeat(int,int,int)));                
       }
 
 PlayPanel::~PlayPanel()
       {
-      QSettings settings;
       // if widget is visible, store geometry and pos into settings
       // if widget is not visible/closed, pos is not reliable (and anyway
       // has been stored into settings when the widget has been hidden)
       if (isVisible()) {
-            settings.setValue("playPanel/pos", pos());
-            settings.setValue("playPanel/geometry", saveGeometry());
+            MuseScore::saveGeometry(this);
             }
       }
 
@@ -92,7 +97,10 @@ void PlayPanel::relTempoChanged(double d, int)
       {
       double relTempo = d * .01;
       emit relTempoChanged(relTempo);
-
+      // Snap tempo slider to 100% when it gets close
+      if (relTempo < 1.01 && relTempo > 0.99) {
+            relTempo = 1.00;
+            }
       setTempo(seq->curTempo() * relTempo);
       setRelTempo(relTempo);
       }
@@ -105,7 +113,7 @@ void PlayPanel::relTempoChanged()
       {
       double v = relTempoBox->value();
       tempoSlider->setValue(v);
-      emit relTempoChanged(v * .01);
+      relTempoChanged(v, 0);
       }
 
 //---------------------------------------------------------
@@ -132,10 +140,39 @@ void PlayPanel::closeEvent(QCloseEvent* ev)
 
 void PlayPanel::hideEvent(QHideEvent* ev)
       {
-      QSettings settings;
-      settings.setValue("playPanel/pos", pos());
-      settings.setValue("playPanel/geometry", saveGeometry());
+      MuseScore::saveGeometry(this);
       QWidget::hideEvent(ev);
+      }
+
+//---------------------------------------------------------
+//   showEvent
+//---------------------------------------------------------
+
+void PlayPanel::showEvent(QShowEvent* e)
+      {
+      enablePlay->showEvent(e);
+      QWidget::showEvent(e);
+      activateWindow();
+      setFocus();
+      }
+
+//---------------------------------------------------------
+//   eventFilter
+//---------------------------------------------------------
+
+bool PlayPanel::eventFilter(QObject* obj, QEvent* e)
+      {
+      if (enablePlay->eventFilter(obj, e))
+            return true;
+      return QWidget::eventFilter(obj, e);
+      }
+
+void PlayPanel::keyPressEvent(QKeyEvent* ev) {
+      if (ev->key() == Qt::Key_Escape && ev->modifiers() == Qt::NoModifier) {
+            close();
+            return;
+            }
+      QWidget::keyPressEvent(ev);
       }
 
 //---------------------------------------------------------
@@ -154,12 +191,12 @@ void PlayPanel::setScore(Score* s)
       if (cs && seq && seq->canStart()) {
             setTempo(cs->tempomap()->tempo(0));
             setRelTempo(cs->tempomap()->relTempo());
-            setEndpos(cs->repeatList()->ticks());
-            int tick = cs->pos(POS::CURRENT);
-            heartBeat(tick, tick, 0);
+            setEndpos(cs->repeatList().ticks());
+            Fraction tick = cs->pos(POS::CURRENT);
+            heartBeat(tick.ticks(), tick.ticks(), 0);
             }
       else {
-            setTempo(120.0);
+            setTempo(2.0);
             setRelTempo(1.0);
             setEndpos(0);
             heartBeat(0, 0, 0);
@@ -184,7 +221,7 @@ void PlayPanel::setEndpos(int val)
 void PlayPanel::setTempo(double val)
       {
       int tempo = lrint(val * 60.0);
-      tempoLabel->setText(QString("%1 bpm").arg(tempo, 3, 10, QLatin1Char(' ')));
+      tempoLabel->setText(tr("Tempo\n%1 BPM").arg(tempo, 3, 10, QLatin1Char(' ')));
       }
 
 //---------------------------------------------------------
@@ -194,7 +231,6 @@ void PlayPanel::setTempo(double val)
 void PlayPanel::setRelTempo(qreal val)
       {
       val *= 100;
-      //relTempo->setText(QString("%1 %").arg(val, 3, 'f', 0));
       relTempoBox->setValue(val);
       tempoSlider->setValue(val);
       }
@@ -208,6 +244,7 @@ void PlayPanel::setGain(float val)
       volumeSlider->setValue(val);
       }
 
+
 //---------------------------------------------------------
 //   volumeChanged
 //---------------------------------------------------------
@@ -215,6 +252,17 @@ void PlayPanel::setGain(float val)
 void PlayPanel::volumeChanged(double val, int)
       {
       emit gainChange(val);
+      vol = val;
+      volLabel();
+      }
+
+//---------------------------------------------------------
+//   metronomeGainChanged
+//---------------------------------------------------------
+
+void PlayPanel::metronomeGainChanged(double val, int)
+      {
+      emit metronomeGainChanged(val);
       }
 
 //---------------------------------------------------------
@@ -258,9 +306,23 @@ void PlayPanel::updateTimeLabel(int sec)
       sec                = sec % 60;
       int h              = m / 60;
       m                  = m % 60;
-      char buffer[32];
-      sprintf(buffer, "%d:%02d:%02d", h, m, sec);
-      timeLabel->setText(QString(buffer));
+      
+      // time is displayed in three separate labels
+      // this prevents jitter as width of time grows and shrinks
+      // alternative would be to use a monospaced font and a
+      // single label
+      char hourBuffer[8];
+      sprintf(hourBuffer, "%d", h);
+      hourLabel->setText(QString(hourBuffer));
+
+      char minBuffer[8];
+      sprintf(minBuffer, "%02d", m);
+      minuteLabel->setText(QString(minBuffer));
+      
+      char secondBuffer[8];
+      sprintf(secondBuffer, "%02d", sec);
+      secondLabel->setText(QString(secondBuffer));
+          
       }
 
 //---------------------------------------------------------
@@ -275,14 +337,24 @@ void PlayPanel::updatePosLabel(int utick)
       int t = 0;
       int tick = 0;
       if (cs) {
-            tick = cs->repeatList()->utick2tick(utick);
+            tick = cs->repeatList().utick2tick(utick);
             cs->sigmap()->tickValues(tick, &bar, &beat, &t);
             double tpo = cs->tempomap()->tempo(tick) * cs->tempomap()->relTempo();
             setTempo(tpo);
             }
-      char buffer[32];
-      sprintf(buffer, "%03d.%02d", bar+1, beat+1);
-      posLabel->setText(QString(buffer));
+     
+      // position is displayed in two separate labels
+      // this prevents jitter as width of time grows and shrinks
+      // alternative would be to use a monospaced font and a
+      // single label
+          
+      char barBuffer[8];
+      sprintf(barBuffer, "%d", bar+1);// sprintf(barBuffer, "%03d", bar+1);
+      measureLabel->setText(QString(barBuffer));
+      
+      char beatBuffer[8];
+      sprintf(beatBuffer, "%02d", beat+1);
+      beatLabel->setText(QString(beatBuffer));
       }
 
 //---------------------------------------------------------
@@ -293,6 +365,31 @@ void PlayPanel::tempoSliderPressed(int)
       {
       tempoSliderIsPressed = true;
       }
+//---------------------------------------------------------
+//   setVolume
+//---------------------------------------------------------
+      
+void PlayPanel::volLabel()
+      {
+      if (vol == MUTE)
+            vol = -80.0;
+      else
+            vol = ((N * std::log10(vol)) - N);
+      volSpinBox->setValue(vol);
+      volSpinBox->setSuffix(" dB");
+      }
+
+
+void PlayPanel::volSpinBoxEdited()
+      {
+     svol = volSpinBox->value();
+      if (svol == -80 )
+            svol = MUTE;
+      else
+            svol = pow(10, ((svol + N) / N ));
+      volumeChanged(svol, 1);
+      }
+
 
 //---------------------------------------------------------
 //   tempoSliderReleased
@@ -302,5 +399,17 @@ void PlayPanel::tempoSliderReleased(int)
       {
       tempoSliderIsPressed = false;
       }
+
+//---------------------------------------------------------
+//   changeEvent
+//---------------------------------------------------------
+
+void PlayPanel::changeEvent(QEvent *event)
+      {
+      QWidget::changeEvent(event);
+      if (event->type() == QEvent::LanguageChange)
+            retranslate();
+      }
+
 }
 

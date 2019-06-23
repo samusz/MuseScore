@@ -25,14 +25,15 @@ enum class InstrumentNameType : char {
 //   InstrumentName
 //---------------------------------------------------------
 
-class InstrumentName : public Text  {
+class InstrumentName final : public TextBase  {
       InstrumentNameType _instrumentNameType;
-      int _layoutPos;
+      int _layoutPos { 0 };
 
    public:
       InstrumentName(Score*);
-      virtual InstrumentName* clone() const { return new InstrumentName(*this); }
-      virtual Element::Type type() const    { return Element::Type::INSTRUMENT_NAME; }
+      virtual InstrumentName* clone() const override { return new InstrumentName(*this); }
+      virtual ElementType type() const override    { return ElementType::INSTRUMENT_NAME; }
+
       int layoutPos() const      { return _layoutPos; }
       void setLayoutPos(int val) { _layoutPos = val;  }
 
@@ -40,6 +41,11 @@ class InstrumentName : public Text  {
       InstrumentNameType instrumentNameType() const { return _instrumentNameType; }
       void setInstrumentNameType(InstrumentNameType v);
       void setInstrumentNameType(const QString& s);
+
+      virtual bool isEditable() const override { return false; }
+      virtual QVariant getProperty(Pid propertyId) const override;
+      virtual bool setProperty(Pid propertyId, const QVariant&) override;
+      virtual QVariant propertyDefault(Pid) const override;
       };
 
 

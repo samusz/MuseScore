@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -35,8 +34,8 @@ using namespace Ms;
 class TestChordSymbol : public QObject, public MTest {
       Q_OBJECT
 
-      Score* test_pre(const char* p);
-      void test_post(Score* score, const char* p);
+      MasterScore* test_pre(const char* p);
+      void test_post(MasterScore* score, const char* p);
 
    private slots:
       void initTestCase();
@@ -45,6 +44,8 @@ class TestChordSymbol : public QObject, public MTest {
       void testAddLink();
       void testAddPart();
       void testNoSystem();
+      void testTranspose();
+      void testTransposePart();
       };
 
 //---------------------------------------------------------
@@ -60,18 +61,18 @@ void TestChordSymbol::initTestCase()
 //   chordsymbol
 //---------------------------------------------------------
 
-Score* TestChordSymbol::test_pre(const char* p)
+MasterScore* TestChordSymbol::test_pre(const char* p)
       {
       QString p1 = DIR + p + ".mscx";
-      Score* score = readScore(p1);
+      MasterScore* score = readScore(p1);
       score->doLayout();
       return score;
       }
 
-void TestChordSymbol::test_post(Score* score, const char* p)
+void TestChordSymbol::test_post(MasterScore* score, const char* p)
       {
       QString p1 = p;
-      p1 += ".mscx";
+      p1 += "-test.mscx";
       QString p2 = DIR + p + "-ref.mscx";
       QVERIFY(saveCompareScore(score, p1, p2));
       delete score;
@@ -79,9 +80,9 @@ void TestChordSymbol::test_post(Score* score, const char* p)
 
 void TestChordSymbol::testExtend()
       {
-      Score* score = test_pre("extend");
+      MasterScore* score = test_pre("extend");
       Measure* m = score->firstMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
+      Segment* s = m->first(SegmentType::ChordRest);
       ChordRest* cr = s->cr(0);
       score->changeCRlen(cr, TDuration::DurationType::V_WHOLE);
       score->doLayout();
@@ -90,7 +91,7 @@ void TestChordSymbol::testExtend()
 
 void TestChordSymbol::testClear()
       {
-      Score* score = test_pre("clear");
+      MasterScore* score = test_pre("clear");
       Measure* m = score->firstMeasure();
       score->select(m, SelectType::SINGLE, 0);
       score->cmdDeleteSelection();
@@ -100,8 +101,8 @@ void TestChordSymbol::testClear()
 
 void TestChordSymbol::testAddLink()
       {
-      Score* score = test_pre("add-link");
-      Segment* seg = score->firstSegment(Segment::Type::ChordRest);
+      MasterScore* score = test_pre("add-link");
+      Segment* seg = score->firstSegment(SegmentType::ChordRest);
       ChordRest* cr = seg->cr(0);
       Harmony* harmony = new Harmony(score);
       harmony->setHarmony("C7");
@@ -114,8 +115,8 @@ void TestChordSymbol::testAddLink()
 
 void TestChordSymbol::testAddPart()
       {
-      Score* score = test_pre("add-part");
-      Segment* seg = score->firstSegment(Segment::Type::ChordRest);
+      MasterScore* score = test_pre("add-part");
+      Segment* seg = score->firstSegment(SegmentType::ChordRest);
       ChordRest* cr = seg->cr(0);
       Harmony* harmony = new Harmony(score);
       harmony->setHarmony("C7");
@@ -128,22 +129,26 @@ void TestChordSymbol::testAddPart()
 
 void TestChordSymbol::testNoSystem()
       {
-      Score* score = test_pre("no-system");
+      MasterScore* score = test_pre("no-system");
 
       //
       // create first part
       //
       QList<Part*> parts;
       parts.append(score->parts().at(0));
-
       Score* nscore = new Score(score);
-      score->undo(new AddExcerpt(nscore));
 
-      ::createExcerpt(nscore, parts);
+      Excerpt* ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      Excerpt::createExcerpt(ex);
       QVERIFY(nscore);
 
-      nscore->setName(parts.front()->partName());
-      nscore->style()->set(StyleIdx::createMultiMeasureRests, true);
+//      nscore->setTitle(parts.front()->partName());
+      nscore->style().set(Sid::createMultiMeasureRests, true);
 
       //
       // create second part
@@ -151,15 +156,42 @@ void TestChordSymbol::testNoSystem()
       parts.clear();
       parts.append(score->parts().at(1));
       nscore = new Score(score);
-      score->undo(new AddExcerpt(nscore));
-      ::createExcerpt(nscore, parts);
+
+      ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      Excerpt::createExcerpt(ex);
       QVERIFY(nscore);
 
-      nscore->setName(parts.front()->partName());
-      nscore->style()->set(StyleIdx::createMultiMeasureRests, true);
+//      nscore->setTitle(parts.front()->partName());
+      nscore->style().set(Sid::createMultiMeasureRests, true);
 
+      score->setExcerptsChanged(true);
       score->doLayout();
       test_post(score, "no-system");
+      }
+
+void TestChordSymbol::testTranspose()
+      {
+      MasterScore* score = test_pre("transpose");
+      score->startCmd();
+      score->cmdSelectAll();
+      score->transpose(TransposeMode::BY_INTERVAL, TransposeDirection::UP, Key::C, 4, false, true, true);
+      score->endCmd();
+      test_post(score, "transpose");
+      }
+
+void TestChordSymbol::testTransposePart()
+      {
+      MasterScore* score = test_pre("transpose-part");
+      score->startCmd();
+      score->cmdSelectAll();
+      score->transpose(TransposeMode::BY_INTERVAL, TransposeDirection::UP, Key::C, 4, false, true, true);
+      score->endCmd();
+      test_post(score, "transpose-part");
       }
 
 QTEST_MAIN(TestChordSymbol)

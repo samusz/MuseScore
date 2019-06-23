@@ -24,21 +24,18 @@ namespace Ms {
 //   InspectorAmbitus
 //---------------------------------------------------------
 
-class InspectorAmbitus : public InspectorBase {
+class InspectorAmbitus : public InspectorElementBase {
       Q_OBJECT
 
-      UiInspectorElement   b;
       Ui::InspectorAmbitus r;
       Ui::InspectorSegment s;
 
    public:
       InspectorAmbitus(QWidget* parent);
-//      virtual void setElement();
 
    protected slots:
       void updateRange();
-      virtual void valueChanged(int idx);
-
+      virtual void valueChanged(int idx) override;
       };
 
 

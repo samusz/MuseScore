@@ -15,8 +15,6 @@
 
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Chord;
@@ -29,43 +27,50 @@ enum class ArpeggioType : char {
 //   @@ Arpeggio
 //---------------------------------------------------------
 
-class Arpeggio : public Element {
-      Q_OBJECT
-
+class Arpeggio final : public Element {
       ArpeggioType _arpeggioType;
       qreal _userLen1;
       qreal _userLen2;
       qreal _height;
       int _span;              // spanning staves
-      QString symbols;
+      std::vector<SymId> symbols;
+      bool _playArpeggio;
+
+      qreal _stretch;
+
+      bool _hidden = false; // set in layout, will skip draw if true
 
       void symbolLine(SymId start, SymId fill);
       void symbolLine2(SymId end, SymId fill);
 
-      virtual void spatiumChanged(qreal /*oldValue*/, qreal /*newValue*/);
-      virtual QLineF dragAnchor() const;
-      virtual QPointF gripAnchor(int) const;
-      virtual void startEdit(MuseScoreView*, const QPointF&);
+      virtual void spatiumChanged(qreal /*oldValue*/, qreal /*newValue*/) override;
+      virtual QLineF dragAnchor() const override;
+      virtual QPointF gripAnchor(Grip) const override;
+      virtual void startEdit(EditData&) override;
 
    public:
       Arpeggio(Score* s);
-      virtual Arpeggio* clone() const      { return new Arpeggio(*this); }
-      virtual Element::Type type() const   { return Element::Type::ARPEGGIO; }
+      virtual Arpeggio* clone() const override    { return new Arpeggio(*this); }
+      virtual ElementType type() const override   { return ElementType::ARPEGGIO; }
+
       ArpeggioType arpeggioType() const    { return _arpeggioType; }
       void setArpeggioType(ArpeggioType v) { _arpeggioType = v;    }
 
       Chord* chord() const                 { return (Chord*)parent(); }
-      virtual bool acceptDrop(const DropData&) const override;
-      virtual Element* drop(const DropData&);
-      virtual void layout();
-      virtual void draw(QPainter*) const;
-      virtual bool isEditable() const { return true; }
-      virtual void editDrag(const EditData&);
-      virtual void updateGrips(int*, int*, QRectF*) const override;
-      virtual bool edit(MuseScoreView*, int curGrip, int key, Qt::KeyboardModifiers modifiers, const QString&);
 
-      void read(XmlReader& e);
-      void write(Xml& xml) const;
+      virtual bool acceptDrop(EditData&) const override;
+      virtual Element* drop(EditData&) override;
+      virtual void layout() override;
+      virtual void draw(QPainter*) const override;
+      virtual bool isEditable() const override { return true; }
+      virtual void editDrag(EditData&) override;
+      virtual void updateGrips(EditData&) const override;
+      virtual bool edit(EditData&) override;
+
+      virtual void read(XmlReader& e) override;
+      virtual void write(XmlWriter& xml) const override;
+      virtual void reset() override;
+
       int span() const      { return _span; }
       void setSpan(int val) { _span = val; }
       void setHeight(qreal);
@@ -75,8 +80,16 @@ class Arpeggio : public Element {
       void setUserLen1(qreal v) { _userLen1 = v; }
       void setUserLen2(qreal v) { _userLen2 = v; }
 
-      virtual QVariant getProperty(P_ID propertyId) const;
-      virtual bool setProperty(P_ID propertyId, const QVariant&);
+      bool playArpeggio()       { return _playArpeggio; }
+      void setPlayArpeggio(bool p) { _playArpeggio = p; }
+
+      qreal Stretch() const             { return _stretch; }
+      void setStretch(qreal val)        { _stretch = val;  }
+
+      virtual QVariant getProperty(Pid propertyId) const override;
+      virtual bool setProperty(Pid propertyId, const QVariant&) override;
+      virtual QVariant propertyDefault(Pid propertyId) const override;
+      virtual Pid propertyId(const QStringRef& xmlName) const override;
       };
 
 

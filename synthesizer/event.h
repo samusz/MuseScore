@@ -18,7 +18,9 @@
 namespace Ms {
 
 class Note;
-class Xml;
+class XmlWriter;
+
+enum class BeatType : char;
 
 //---------------------------------------------------------
 //   Event types
@@ -75,7 +77,8 @@ enum {
       META_EOT             = 0x2f,  // end of track
       META_TEMPO           = 0x51,
       META_TIME_SIGNATURE  = 0x58,
-      META_KEY_SIGNATURE   = 0x59
+      META_KEY_SIGNATURE   = 0x59,
+      META_SPECIFIC        = 0x7F   // sequencer specific
       };
 
 //---------------------------------------------------------
@@ -96,6 +99,8 @@ enum {
       CTRL_LRPN               = 0x64,
 
       CTRL_MODULATION         = 0x01,
+      CTRL_BREATH             = 0x02,
+      CTRL_FOOT               = 0x04,
       CTRL_PORTAMENTO_TIME    = 0x05,
       CTRL_VOLUME             = 0x07,
       CTRL_PANPOT             = 0x0a,
@@ -123,7 +128,7 @@ enum {
       // controller
       //
       CTRL_PROGRAM   = 0x81,
-      CTRL_PITCH     = 0x82,
+      /*             = 0x82,*/
       CTRL_PRESS     = 0x83,
       CTRL_POLYAFTER = 0x84
       };
@@ -176,7 +181,7 @@ class MidiCoreEvent {
       void setData(int t, int a, int b) { _type = t; _a = a; _b = b; }
 
       bool isChannelEvent() const;
-      void write(Xml&) const;
+      void write(XmlWriter&) const;
       bool operator==(const MidiCoreEvent& e) const {
             return e._type == _type && e._channel == _channel && e._a == _a && e._b == _b;
             }
@@ -232,14 +237,23 @@ class PlayEvent : public MidiCoreEvent {
 
 class NPlayEvent : public PlayEvent {
       const Note* _note = 0;
+      int _origin = -1;
+      int _discard = 0;
 
    public:
       NPlayEvent() : PlayEvent() {}
       NPlayEvent(uchar t, uchar c, uchar a, uchar b)
          : PlayEvent(t, c, a, b) {}
       NPlayEvent(const MidiCoreEvent& e) : PlayEvent(e) {}
+      NPlayEvent(BeatType beatType);
+
       const Note* note() const       { return _note; }
       void setNote(const Note* v)    { _note = v; }
+
+      int getOriginatingStaff() const { return _origin; }
+      void setOriginatingStaff(int i) { _origin = i; }
+      void setDiscard(int d) { _discard = d; }
+      int discard() const { return _discard; }
       };
 
 //---------------------------------------------------------
@@ -266,7 +280,7 @@ class Event : public PlayEvent {
       ~Event();
       bool operator==(const Event&) const;
 
-      void write(Xml&) const;
+      void write(XmlWriter&) const;
       void dump() const;
 
 
@@ -307,7 +321,12 @@ class EventList : public QList<Event> {
       void insertNote(int channel, Note*);
       };
 
-class EventMap : public std::multimap<int, NPlayEvent> {};
+class EventMap : public std::multimap<int, NPlayEvent> {
+      int _highestChannel = 15;
+   public:
+      void fixupMIDI();
+      void registerChannel(int c) { if (c > _highestChannel) _highestChannel = c; }
+      };
 
 typedef EventList::iterator iEvent;
 typedef EventList::const_iterator ciEvent;

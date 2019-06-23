@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010 Werner Schweer and others
 //
@@ -19,9 +18,7 @@
 //=============================================================================
 
 #include "drumroll.h"
-
 #include "config.h"
-#include "drumroll.h"
 #include "piano.h"
 #include "ruler.h"
 #include "drumview.h"
@@ -41,8 +38,6 @@
 
 namespace Ms {
 
-extern bool useFactorySettings;
-
 //---------------------------------------------------------
 //   DrumrollEditor
 //---------------------------------------------------------
@@ -50,6 +45,7 @@ extern bool useFactorySettings;
 DrumrollEditor::DrumrollEditor(QWidget* parent)
    : QMainWindow(parent)
       {
+      setObjectName("Drumroll");
       setWindowTitle(QString("MuseScore"));
 //      setIconSize(QSize(preferences.iconWidth, preferences.iconHeight));
 
@@ -58,16 +54,22 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       mainWidget->setLayout(layout);
       layout->setSpacing(0);
 
-      QToolBar* tb = addToolBar(tr("toolbar 1"));
-      tb->addAction(getAction("undo"));
-      tb->addAction(getAction("redo"));
+      QToolBar* tb = addToolBar("Toolbar 1");
+      if (qApp->layoutDirection() == Qt::LayoutDirection::LeftToRight) {
+            tb->addAction(getAction("undo"));
+            tb->addAction(getAction("redo"));
+            }
+      else {
+            tb->addAction(getAction("redo"));
+            tb->addAction(getAction("undo"));
+            }
       tb->addSeparator();
 #ifdef HAS_MIDI
       tb->addAction(getAction("midi-on"));
 #endif
       QAction* a = getAction("follow");
       a->setCheckable(true);
-      a->setChecked(preferences.followSong);
+      a->setChecked(preferences.getBool(PREF_APP_PLAYBACK_FOLLOWSONG));
 
       tb->addAction(a);
 
@@ -77,7 +79,7 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       tb->addSeparator();
 
       //-------------
-      tb = addToolBar(tr("toolbar 3"));
+      tb = addToolBar("Toolbar 2");
       layout->addWidget(tb, 1, 0, 1, 2);
 
       for (int i = 0; i < VOICES; ++i) {
@@ -86,8 +88,8 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
             QPalette p(b->palette());
             p.setColor(QPalette::Base, MScore::selectColor[i]);
             b->setPalette(p);
-            QAction* a = getAction(voiceActions[i]);
-            b->setDefaultAction(a);
+            QAction* aa = getAction(voiceActions[i]);
+            b->setDefaultAction(aa);
             tb->addWidget(b);
             }
 
@@ -101,8 +103,8 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       tb->addSeparator();
       tb->addWidget(new QLabel(tr("Velocity:")));
       veloType = new QComboBox;
-      veloType->addItem(tr("offset"), int(Note::ValueType::OFFSET_VAL));
-      veloType->addItem(tr("user"),   int(Note::ValueType::USER_VAL));
+      veloType->addItem(tr("Offset"), int(Note::ValueType::OFFSET_VAL));
+      veloType->addItem(tr("User"),   int(Note::ValueType::USER_VAL));
       tb->addWidget(veloType);
 
       velocity = new QSpinBox;
@@ -162,13 +164,7 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       addActions(ag->actions());
       connect(ag, SIGNAL(triggered(QAction*)), SLOT(cmd(QAction*)));
 
-      if (!useFactorySettings) {
-            QSettings settings;
-            settings.beginGroup("Drumroll");
-            resize(settings.value("size", QSize(900, 500)).toSize());
-            move(settings.value("pos", QPoint(10, 10)).toPoint());
-            settings.endGroup();
-            }
+      readSettings();
       }
 
 //---------------------------------------------------------
@@ -177,11 +173,16 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
 
 void DrumrollEditor::writeSettings()
       {
-      QSettings settings;
-      settings.beginGroup("Drumroll");
-      settings.setValue("size", size());
-      settings.setValue("pos", QWidget::pos());
-      settings.endGroup();
+      MuseScore::saveGeometry(this);
+      }
+
+//---------------------------------------------------------
+//   readSettings
+//---------------------------------------------------------
+
+void DrumrollEditor::readSettings()
+      {
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -192,7 +193,7 @@ void DrumrollEditor::setStaff(Staff* st)
       {
       staff = st;
       _score = staff->score();
-      setWindowTitle(QString(tr("MuseScore: <%1> Staff: %2")).arg(_score->name()).arg(st->idx()));
+      setWindowTitle(tr("<%1> Staff: %2").arg(_score->masterScore()->fileInfo()->completeBaseName()).arg(st->idx()));
       TempoMap* tl = _score->tempomap();
       TimeSigMap*  sl = _score->sigmap();
       for (int i = 0; i < 3; ++i)
@@ -271,7 +272,7 @@ void DrumrollEditor::selectionChanged()
                   }
             }
       _score->setUpdateAll();
-      _score->end();
+      _score->update();
 //      _score->blockSignals(false);
       }
 
@@ -281,7 +282,7 @@ void DrumrollEditor::selectionChanged()
 
 void DrumrollEditor::changeSelection(SelState)
       {
-//      gv->scene()->blockSignals(true);
+      gv->scene()->blockSignals(true);
       gv->scene()->clearSelection();
       QList<QGraphicsItem*> il = gv->scene()->items();
       foreach(QGraphicsItem* item, il) {
@@ -289,7 +290,7 @@ void DrumrollEditor::changeSelection(SelState)
             if (note)
                   item->setSelected(note->selected());
             }
-//      gv->scene()->blockSignals(false);
+      gv->scene()->blockSignals(false);
       }
 
 //---------------------------------------------------------
@@ -306,9 +307,9 @@ void DrumrollEditor::veloTypeChanged(int val)
       if ((note == 0) || (Note::ValueType(val) == note->veloType()))
             return;
 
-      _score->undo()->beginMacro();
+      _score->startCmd();
       _score->undo(new ChangeVelocity(note, Note::ValueType(val), note->veloOffset()));
-      _score->undo()->endMacro(_score->undo()->current()->childCount() == 0);
+      _score->endCmd();
       updateVelocity(note);
       }
 
@@ -355,18 +356,18 @@ void DrumrollEditor::velocityChanged(int val)
       if (vt == Note::ValueType::OFFSET_VAL)
             return;
 
-      _score->undo()->beginMacro();
+      _score->startCmd();
       _score->undo(new ChangeVelocity(note, vt, val));
-      _score->undo()->endMacro(_score->undo()->current()->childCount() == 0);
+      _score->endCmd();
       }
 
 //---------------------------------------------------------
 //   keyPressed
 //---------------------------------------------------------
 
-void DrumrollEditor::keyPressed(int pitch)
+void DrumrollEditor::keyPressed(int p)
       {
-      seq->startNote(staff->part()->instr()->channel(0).channel, pitch, 80, 0, 0.0);
+      seq->startNote(staff->part()->instrument()->channel(0)->channel(), p, 80, 0, 0.0);
       }
 
 //---------------------------------------------------------
@@ -382,14 +383,14 @@ void DrumrollEditor::keyReleased(int /*pitch*/)
 //   heartBeat
 //---------------------------------------------------------
 
-void DrumrollEditor::heartBeat(Seq* seq)
+void DrumrollEditor::heartBeat(Seq* s)
       {
-      unsigned t = seq->getCurTick();
+      unsigned t = s->getCurTick();
       if (locator[0].tick() != t) {
             locator[0].setTick(t);
             gv->moveLocator(0);
             ruler->update();
-            if (preferences.followSong)
+            if (preferences.getBool(PREF_APP_PLAYBACK_FOLLOWSONG))
                   gv->ensureVisible(t);
             }
       }
@@ -424,7 +425,6 @@ void DrumrollEditor::cmd(QAction* a)
             }
 
       gv->setStaff(staff, locator);
-      score()->endCmd();
       }
 }
 

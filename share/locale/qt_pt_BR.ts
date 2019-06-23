@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="pt">
+<TS version="2.0" language="pt_BR">
 <context>
     <name>MAC_APPLICATION_MENU</name>
     <message>
@@ -938,6 +938,13 @@ para
     </message>
 </context>
 <context>
+    <name>QCocoaTheme</name>
+    <message>
+        <source>Don&apos;t Save</source>
+        <translation>Não Salvar</translation>
+    </message>
+</context>
+<context>
     <name>QPlatformTheme</name>
     <message>
         <source>OK</source>
@@ -970,10 +977,6 @@ para
     <message>
         <source>Help</source>
         <translation>Ajuda</translation>
-    </message>
-    <message>
-        <source>Don&apos;t Save</source>
-        <translation>Não Salvar</translation>
     </message>
     <message>
         <source>Discard</source>

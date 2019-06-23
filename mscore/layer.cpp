@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: mscore.cpp 4220 2011-04-22 10:31:26Z wschweer $
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -31,9 +30,11 @@ namespace Ms {
 LayerManager::LayerManager(Score* s, QWidget* parent)
    : QDialog(parent)
       {
-      score = s;
+      setObjectName("LayerManager");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+      score = s;
 
       for (int i = 0; i < 31; ++i) {
             QTableWidgetItem* item = new QTableWidgetItem(score->layerTags()[i+1]);
@@ -61,10 +62,13 @@ LayerManager::LayerManager(Score* s, QWidget* parent)
             ++row;
             }
       layers->setCurrentCell(score->currentLayer(), 0);
+
       connect(createButton, SIGNAL(clicked()), SLOT(createClicked()));
       connect(deleteButton, SIGNAL(clicked()), SLOT(deleteClicked()));
       connect(addTagButton, SIGNAL(clicked()), SLOT(addTagClicked()));
       connect(deleteTagButton, SIGNAL(clicked()), SLOT(deleteTagClicked()));
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -127,7 +131,7 @@ void LayerManager::addTagClicked()
             return;
             }
       bool ok;
-      QString item = QInputDialog::getItem(this, tr("MuseScore: select layer tag"), tr("layer tag"),
+      QString item = QInputDialog::getItem(this, tr("Select layer tag"), tr("layer tag"),
          items, 0, false, &ok);
       if (ok && !item.isEmpty()) {
 //            uint tagBits = 0;
@@ -160,7 +164,7 @@ void LayerManager::deleteTagClicked()
       QString s = item->text();
       QStringList items = s.split(",");
       bool ok;
-      QString tag = QInputDialog::getItem(this, tr("MuseScore: select layer tag"), tr("layer tag"),
+      QString tag = QInputDialog::getItem(this, tr("Select layer tag"), tr("layer tag"),
          items, 0, false, &ok);
       if (ok && !tag.isEmpty()) {
             items.removeOne(tag);
@@ -169,7 +173,7 @@ void LayerManager::deleteTagClicked()
       }
 
 //---------------------------------------------------------
-//   closeEvent
+//   accept
 //---------------------------------------------------------
 
 void LayerManager:: accept()
@@ -194,8 +198,8 @@ void LayerManager:: accept()
             l.name           = layers->item(i, 0)->text();
             l.tags           = 1;
             QString ts       = layers->item(i, 1)->text();
-            QStringList tags = ts.split(",");
-            foreach (QString tag, tags) {
+            QStringList tgs  = ts.split(",");
+            foreach (QString tag, tgs) {
                   for (int idx = 0; idx < 32; ++idx) {
                         if (tag == score->layerTags()[idx]) {
                               l.tags |= 1 << idx;
@@ -207,12 +211,21 @@ void LayerManager:: accept()
                   l.tags |= 1;
             layer.append(l);
             }
-      score->setDirty(true);
-      score->setLayoutAll(true);
+      score->setLayoutAll();
       score->endCmd();
       if (enableExperimental)
       	mscore->updateLayer();
       QDialog::accept();
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void LayerManager::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
       }
 
 }

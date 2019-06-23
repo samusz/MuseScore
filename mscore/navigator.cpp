@@ -46,11 +46,25 @@ NScrollArea::NScrollArea(QWidget* w)
       {
       setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
       setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
       setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
       setMinimumHeight(40);
-      setMaximumHeight(140);
       setLineWidth(0);
+      }
+
+//---------------------------------------------------------
+//   orientationChanged
+//---------------------------------------------------------
+
+void NScrollArea::orientationChanged()
+      {
+      if (MScore::verticalOrientation()) {
+            setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+            }
+      else {
+            setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+            setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            }
       }
 
 //---------------------------------------------------------
@@ -59,8 +73,14 @@ NScrollArea::NScrollArea(QWidget* w)
 
 void NScrollArea::resizeEvent(QResizeEvent* ev)
       {
+      if (widget()) {
+            widget()->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+            widget()->setMinimumSize(0, 0);
+            }
       if (widget() && (ev->size().height() != ev->oldSize().height()))
             widget()->resize(widget()->width(), ev->size().height());
+      if (widget() && (ev->size().width() != ev->oldSize().width()))
+            widget()->resize(ev->size().width(), widget()->height());
       QScrollArea::resizeEvent(ev);
       }
 
@@ -94,6 +114,7 @@ void ViewRect::paintEvent(QPaintEvent* ev)
 Navigator::Navigator(NScrollArea* sa, QWidget* parent)
   : QWidget(parent)
       {
+      setObjectName("Navigator");
       setAttribute(Qt::WA_NoBackground);
       _score         = 0;
       scrollArea     = sa;
@@ -103,6 +124,7 @@ Navigator::Navigator(NScrollArea* sa, QWidget* parent)
       setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
       sa->setWidget(this);
       sa->setWidgetResizable(false);
+      _previewOnly = false;
       }
 
 //---------------------------------------------------------
@@ -135,6 +157,7 @@ void Navigator::setScoreView(ScoreView* v)
             connect(_cv,  SIGNAL(viewRectChanged()), this, SLOT(updateViewRect()));
             rescale();
             updateViewRect();
+            update();
             }
       else {
             _score = 0;
@@ -150,7 +173,7 @@ void Navigator::setScoreView(ScoreView* v)
 
 void Navigator::setScore(Score* v)
       {
-      _cv    = 0;
+      setScoreView(nullptr); // ensure all connections to ScoreView get disconnected
       _score = v;
       rescale();
       updateViewRect();
@@ -165,17 +188,32 @@ void Navigator::setScore(Score* v)
 void Navigator::rescale()
       {
       if (!_score || _score->pages().isEmpty()) {
-            setFixedWidth(0);
+            setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+            setMinimumSize(0, 0);
             return;
             }
       Page* lp          = _score->pages().back();
-      qreal scoreWidth  = lp->x() + lp->width();
-      qreal scoreHeight = lp->height();
 
-      qreal m  = height() / scoreHeight;
+      // reset the layout before setting fix size
+      setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+      setMinimumSize(0, 0);
 
-      setFixedWidth(int(scoreWidth * m));
-      matrix = QTransform(m, 0, 0, m, 0, 0);
+      if (MScore::verticalOrientation() && !_previewOnly) {
+            qreal scoreWidth  = lp->width();
+            qreal scoreHeight = lp->y() + lp->height();
+            qreal m = width() / scoreWidth;
+            setFixedHeight(int(scoreHeight * m));
+            matrix = QTransform(m, 0, 0, m, 0, 0);
+            }
+      else {
+            qreal scoreWidth  = lp->x() + lp->width();
+            qreal scoreHeight = lp->height();
+            if (_previewOnly)
+                  scoreWidth = lp->width() * _score->pages().size();
+            qreal m  = height() / scoreHeight;
+            setFixedWidth(int(scoreWidth * m));
+            matrix = QTransform(m, 0, 0, m, 0, 0);
+            }
       }
 
 //---------------------------------------------------------
@@ -253,8 +291,14 @@ void Navigator::mouseMoveEvent(QMouseEvent* ev)
       viewRect->setGeometry(r);
 
       emit viewRectMoved(matrix.inverted().mapRect(r));
-      int x = delta.x() > 0 ? r.x() + r.width() : r.x();
-      scrollArea->ensureVisible(x, height()/2, 0, 0);
+      if (MScore::verticalOrientation() && !_previewOnly) {
+            int y = delta.y() > 0 ? r.y() + r.height() : r.y();
+            scrollArea->ensureVisible(width()/2, y, 0, 0);
+            }
+      else {
+            int x = delta.x() > 0 ? r.x() + r.width() : r.x();
+            scrollArea->ensureVisible(x, height()/2, 0, 0);
+            }
       }
 
 //---------------------------------------------------------
@@ -264,7 +308,10 @@ void Navigator::mouseMoveEvent(QMouseEvent* ev)
 void Navigator::setViewRect(const QRectF& _viewRect)
       {
       viewRect->setGeometry(matrix.mapRect(_viewRect).toRect());
-      scrollArea->ensureVisible(viewRect->x(), 0);
+      if (MScore::verticalOrientation() && !_previewOnly)
+            scrollArea->ensureVisible(0, viewRect->y() + viewRect->height() / 2);
+      else
+            scrollArea->ensureVisible(viewRect->x(), 0);
       }
 
 //---------------------------------------------------------
@@ -301,16 +348,27 @@ void Navigator::paintEvent(QPaintEvent* ev)
       QRect r(ev->rect());
       p.fillRect(r, palette().color(QPalette::Window));
 
-//      qDebug("navigator paint %d %d", r.width(), r.height());
+//      qDebug("navigator paint x %d w %d h %d", r.x(), r.width(), r.height());
 
       if (!_score)
             return;
+      if (_score->pages().size() <= 0)
+            return;
+
+      // compute optimal size of page number
+      QFont font("FreeSans", 4000);
+      QFontMetrics fm (font);
+      Page* firstPage = _score->pages()[0];
+      qreal factor = (firstPage->width() * 0.5) / fm.width(QString::number(_score->pages().size()));
+      font.setPointSizeF(font.pointSizeF() * factor);
 
       p.setTransform(matrix);
       QRectF fr = matrix.inverted().mapRect(QRectF(r));
-
-      foreach (Page* page, _score->pages()) {
+      int i = 0;
+      for (Page* page : _score->pages()) {
             QPointF pos(page->pos());
+            if (_previewOnly)
+                  pos = QPointF(i * page->width(), 0);
             QRectF pr(page->abbox().translated(pos));
             if (pr.right() < fr.left())
                   continue;
@@ -319,17 +377,18 @@ void Navigator::paintEvent(QPaintEvent* ev)
 
             p.fillRect(pr, Qt::white);
             p.translate(pos);
-            foreach(System* s, *page->systems()) {
-                  foreach(MeasureBase* m, s->measures())
+            for (System* s  : page->systems()) {
+                  for (MeasureBase* m : s->measures())
                         m->scanElements(&p, paintElement, false);
                   }
             page->scanElements(&p, paintElement, false);
             if (page->score()->layoutMode() == LayoutMode::PAGE) {
-                  p.setFont(QFont("FreeSans", 400));  // !!
+                  p.setFont(font);
                   p.setPen(MScore::layoutBreakColor);
                   p.drawText(page->bbox(), Qt::AlignCenter, QString("%1").arg(page->no() + 1 + _score->pageNumberOffset()));
                   }
             p.translate(-pos);
+            i++;
             }
       }
 }

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE
 //  Linux Music Editor
-//  $Id: simplebutton.cpp 3437 2010-09-04 18:18:49Z wschweer $
 //
 //  Copyright (C) 2002-2007 by Werner Schweer and others
 //
@@ -31,7 +30,7 @@ SimpleButton::SimpleButton(const QString& on, const QString& off, QWidget* paren
    : QToolButton(parent)
       {
       setAutoRaise(true);
-      QIcon icon(on);
+      QIcon icon(off);
       icon.addFile(on,  QSize(), QIcon::Normal, QIcon::On);
       icon.addFile(on,  QSize(), QIcon::Active, QIcon::On);
       icon.addFile(off, QSize(), QIcon::Normal, QIcon::Off);

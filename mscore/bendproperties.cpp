@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2010-2011 Werner Schweer and others
 //
@@ -26,6 +25,7 @@
 #include "libmscore/staff.h"
 #include "libmscore/chord.h"
 #include "libmscore/note.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -36,6 +36,7 @@ namespace Ms {
 BendProperties::BendProperties(Bend* b, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("BendProperties");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
@@ -49,6 +50,8 @@ BendProperties::BendProperties(Bend* b, QWidget* parent)
       bendTypes->addButton(bend5, 4);
       bendTypes->setExclusive(true);
       connect(bendTypes, SIGNAL(buttonClicked(int)), SLOT(bendTypeChanged(int)));
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -234,5 +237,14 @@ void BendCanvas::mousePressEvent(QMouseEvent* ev)
       update();
       }
 
-}
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
 
+void BendProperties::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QDialog::hideEvent(event);
+      }
+
+}

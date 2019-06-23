@@ -57,6 +57,7 @@ const int xgOnMsgLen = sizeof(xgOnMsg);
 MidiFile::MidiFile()
       {
       fp               = 0;
+      _isDivisionInTps = false;
       _format          = 1;
       _midiType        = MidiType::UNKNOWN;
       _noRunningStatus = false;
@@ -101,19 +102,17 @@ void MidiFile::writeEvent(const MidiEvent& event)
                   put(event.velo());
                   break;
 
+            case ME_PITCHBEND:
+                  writeStatus(ME_PITCHBEND, event.channel());
+                  put(event.dataA());
+                  put(event.dataB());
+                  break;
+
             case ME_CONTROLLER:
                   switch(event.controller()) {
                         case CTRL_PROGRAM:
                               writeStatus(ME_PROGRAM, event.channel());
                               put(event.value() & 0x7f);
-                              break;
-                        case CTRL_PITCH:
-                              {
-                              writeStatus(ME_PITCHBEND, event.channel());
-                              int v = event.value() + 8192;
-                              put(v & 0x7f);
-                              put((v >> 7) & 0x7f);
-                              }
                               break;
                         case CTRL_PRESS:
                               writeStatus(ME_AFTERTOUCH, event.channel());
@@ -212,6 +211,29 @@ bool MidiFile::read(QIODevice* in)
       _tracks.clear();
       curPos    = 0;
 
+      // === Read header_chunk = "MThd" + <header_length> + <format> + <n> + <division>
+      //
+      // "MThd" 4 bytes
+      //    the literal string MThd, or in hexadecimal notation: 0x4d546864.
+      //    These four characters at the start of the MIDI file
+      //    indicate that this is a MIDI file.
+      // <header_length> 4 bytes
+      //    length of the header chunk (always =6 bytes long - the size of the next
+      //    three fields which are considered the header chunk).
+      //    Although the header chunk currently always contains 6 bytes of data,
+      //    this should not be assumed, this value should always be read and acted upon,
+      //    to allow for possible future extension to the standard.
+      // <format> 2 bytes
+      //    0 = single track file format
+      //    1 = multiple track file format
+      //    2 = multiple song file format (i.e., a series of type 0 files)
+      // <n> 2 bytes
+      //    number of track chunks that follow the header chunk
+      // <division> 2 bytes
+      //    unit of time for delta timing. If the value is positive, then it represents
+      //    the units per beat. For example, +96 would mean 96 ticks per beat.
+      //    If the value is negative, delta times are in SMPTE compatible units.
+
       char tmp[4];
 
       read(tmp, 4);
@@ -219,14 +241,44 @@ bool MidiFile::read(QIODevice* in)
       if (memcmp(tmp, "MThd", 4) || len < 6)
             throw(QString("bad midifile: MThd expected"));
 
+      if (len > 6)
+            throw(QString("unsupported MIDI header data size: %1 instead of 6").arg(len));
+
       _format     = readShort();
       int ntracks = readShort();
-      _division   = readShort();
 
-      if (_division < 0)
-            _division = (-(_division/256)) * (_division & 0xff);
-      if (len > 6)
-            skip(len-6); // skip the excess
+      // ================ Read MIDI division =================
+      //
+      //                        2 bytes
+      //  +-------+---+-------------------+-----------------+
+      //  |  bit  |15 | 14              8 | 7             0 |
+      //  +-------+---+-------------------------------------+
+      //  |       | 0 |       ticks per quarter note        |
+      //  | value +---+-------------------------------------+
+      //  |       | 1 |  -frames/second   |   ticks/frame   |
+      //  +-------+---+-------------------+-----------------+
+
+      char firstByte;
+      fp->getChar(&firstByte);
+      char secondByte;
+      fp->getChar(&secondByte);
+      const char topBit = (firstByte & 0x80) >> 7;
+
+      if (topBit == 0) {            // ticks per beat
+            _isDivisionInTps = false;
+            _division = (firstByte << 8) | (secondByte & 0xff);
+            }
+      else {                        // ticks per second = fps * ticks per frame
+            _isDivisionInTps = true;
+            const int framesPerSecond = -((signed char) firstByte);
+            const int ticksPerFrame = secondByte;
+            if (framesPerSecond == 29)
+                  _division = qRound(29.97 * ticksPerFrame);
+            else
+                  _division = framesPerSecond * ticksPerFrame;
+            }
+
+      // =====================================================
 
       switch (_format) {
             case 0:
@@ -241,7 +293,9 @@ bool MidiFile::read(QIODevice* in)
                   break;
             default:
                   throw(QString("midi file format %1 not implemented").arg(_format));
-                  return false;
+
+                  // Prevent "unreachable code" warning 
+                  // return false;
             }
       return true;
       }
@@ -377,10 +431,23 @@ void MidiFile::writeLong(int i)
 
 void MidiFile::skip(qint64 len)
       {
+      // Note: if MS is updated to use Qt 5.10, this can be implemented with QIODevice::skip(), which should be more efficient
+      //       as bytes do not need to be moved around.
       if (len <= 0)
             return;
+#if (!defined (_MSCVER) && !defined (_MSC_VER))
       char tmp[len];
       read(tmp, len);
+#else
+      const int tmp_size = 256;  // Size of fixed-length temporary buffer. MSVC does not support VLA.
+      char tmp[tmp_size];
+      while(len > tmp_size) {
+            read(tmp, len);
+            len -= tmp_size;
+            }
+      // Now len is <= tmp_size, last read fits in the buffer.
+      read(tmp, tmp_size);
+#endif
       }
 
 /*---------------------------------------------------------
@@ -568,9 +635,8 @@ bool MidiFile::readEvent(MidiEvent* event)
                   event->setValue(b & 0x7f);
                   break;
             case ME_PITCHBEND:        // pitch bend
-                  event->setType(ME_CONTROLLER);
-                  event->setController(CTRL_PITCH);
-                  event->setValue(((((b & 0x80) ? 0 : b) << 7) + a) - 8192);
+                  event->setDataA(a & 0x7f);
+                  event->setDataB(b & 0x7f);
                   break;
             case ME_PROGRAM:
                   event->setValue(a & 0x7f);
@@ -657,9 +723,9 @@ void MidiTrack::mergeNoteOnOffAndFindMidiType(MidiType *mt)
                               ++ii;
                               bool found = false;
                               for (; ii != _events.end(); ++ii) {
-                                    MidiEvent& ev = ii->second;
-                                    if (ev.type() == ME_CONTROLLER) {
-                                          if (ev.controller() == CTRL_LDATA) {
+                                    MidiEvent& ev1 = ii->second;
+                                    if (ev1.type() == ME_CONTROLLER) {
+                                          if (ev1.controller() == CTRL_LDATA) {
                                                 // handle later
                                                 found = true;
                                                 }
@@ -688,7 +754,7 @@ void MidiTrack::mergeNoteOnOffAndFindMidiType(MidiType *mt)
                               if (rpnh == -1 || rpnl == -1) {
                                     qDebug("parameter number not defined, data 0x%x 0x%x, tick %d, channel %d",
                                        datah, datal, i->first, ev.channel());
-                                    break;
+                                    continue;
                                     }
                               // assume that the sequence is always
                               //    CTRL_HDATA - CTRL_LDATA
@@ -767,7 +833,7 @@ void MidiTrack::mergeNoteOnOffAndFindMidiType(MidiType *mt)
                                           // 3 - DRUM 2
                                           // 4 - DRUM 3
                                           // 5 - DRUM 4
-                                          if (buffer[6] != 0) {
+                                          if (buffer[6] != 0 && buffer[4] == ev.channel()) {
                                                 _drumTrack = true;
                                                 }
                                           ev.setType(ME_INVALID);
@@ -826,8 +892,8 @@ void MidiFile::separateChannel()
                         // create a list of channels used in current track
             QList<int> channel;
             MidiTrack &mt = _tracks[i];      // current track
-            for (auto i : mt.events()) {
-                  const MidiEvent& e = i.second;
+            for (const auto& ie : mt.events()) {
+                  const MidiEvent& e = ie.second;
                   if (e.isChannelEvent() && !channel.contains(e.channel()))
                         channel.append(e.channel());
                   }
@@ -841,7 +907,7 @@ void MidiFile::separateChannel()
             for (int ii = 1; ii < nn; ++ii) {
                   MidiTrack t;
                   t.setOutChannel(channel[ii]);
-                  _tracks.insert(i + 1, t);
+                  _tracks.insert(i + ii, t);
                   }
                         // extract all different channel events from current track to inserted tracks
             for (auto ie = mt.events().begin(); ie != mt.events().end(); ) {

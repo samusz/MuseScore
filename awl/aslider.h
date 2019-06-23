@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2006 by Werner Schweer and others
 //
@@ -22,6 +21,7 @@
 #define __AWLASLIDER_H__
 
 // #include "synthesizer/sparm.h"
+#include <QAccessibleWidget>
 
 namespace Awl {
 
@@ -54,19 +54,27 @@ class AbstractSlider : public QWidget {
       Q_PROPERTY(double pageStep READ pageStep WRITE setPageStep)
       Q_PROPERTY(bool   log      READ log      WRITE setLog)
 
+      Q_PROPERTY(double dclickValue1 READ dclickValue1 WRITE setDclickValue1)
+      Q_PROPERTY(double dclickValue2 READ dclickValue2 WRITE setDclickValue2)
+
    protected:
-      int _id;
+      int __id;
       double _value;
       double _minValue, _maxValue, _lineStep, _pageStep;
+      double _dclickValue1;
+      double _dclickValue2;
       bool _center;
+      bool _enableMouseWheel;
       bool _invert;
       int _scaleWidth;        //! scale line width
       QColor _scaleColor;
       QColor _scaleValueColor;
       bool _log;
+      bool _useActualValue; //! for user value
 
       virtual void wheelEvent(QWheelEvent*);
       virtual void keyPressEvent(QKeyEvent*);
+      virtual void mouseDoubleClickEvent(QMouseEvent*);
       virtual void valueChange();
 
    signals:
@@ -83,6 +91,9 @@ class AbstractSlider : public QWidget {
       virtual void setScaleColor(const QColor&);
       virtual void setScaleValueColor(const QColor&);
 
+      bool enableMouseWheel() { return _enableMouseWheel; }
+      virtual void setEnableMouseWheel(bool enabled);
+
       //! return the center flag
       bool center() const            { return _center; }
 
@@ -98,10 +109,11 @@ class AbstractSlider : public QWidget {
       virtual void setInvertedAppearance(bool val) { _invert = val; }
       bool invertedAppearance() const              { return _invert; }
 
-      int id() const { return _id; }
-      void setId(int i) { _id = i; }
+      int id() const { return __id; }
+      void setId(int i) { __id = i; }
 
       virtual double value() const;
+      virtual QString userValue() const;
 
       double minValue() const { return _minValue; }
       void setMinValue(double v) { _minValue = v; }
@@ -123,9 +135,25 @@ class AbstractSlider : public QWidget {
       void setLineStep(double v) { _lineStep = v;    }
       double pageStep() const    { return _pageStep; }
       void setPageStep(double f) { _pageStep = f;    }
+      double dclickValue1() const      { return _dclickValue1; }
+      double dclickValue2() const      { return _dclickValue2; }
+      void setDclickValue1(double val) { _dclickValue1 = val;  }
+      void setDclickValue2(double val) { _dclickValue2 = val;  }
       void setEnabled(bool val);
-//      virtual void init(const SyntiParameter& p);
+      void setUseActualValue(bool v)   { _useActualValue = v;  }
       };
+
+class AccessibleAbstractSlider : public QObject, QAccessibleWidget {
+      Q_OBJECT
+      AbstractSlider* slider;
+      QAccessible::Role role() const Q_DECL_OVERRIDE;
+      QString text(QAccessible::Text t) const Q_DECL_OVERRIDE;
+public:
+      static QAccessibleInterface* AbstractSliderFactory(const QString &classname, QObject *object);
+      AccessibleAbstractSlider(AbstractSlider*);
+public slots:
+      void valueChanged(double,int);
+};
 
 }
 

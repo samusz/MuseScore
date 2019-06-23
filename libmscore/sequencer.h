@@ -17,6 +17,8 @@ namespace Ms {
 
 class NPlayEvent;
 
+enum class BeatType : char;
+
 //---------------------------------------------------------
 //   Sequencer
 //---------------------------------------------------------
@@ -27,7 +29,9 @@ class Sequencer {
       virtual ~Sequencer() {}
 
       virtual void sendEvent(const NPlayEvent&) = 0;
+      virtual void startNote(int channel, int, int, double nt) = 0;
       virtual void startNote(int channel, int, int, int, double nt) = 0;
+      virtual void playMetronomeBeat(BeatType type) = 0;
       };
 
 }     // namespace Ms

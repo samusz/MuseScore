@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: mscore.cpp 4014 2011-02-14 14:30:49Z wschweer $
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -31,6 +30,8 @@ namespace Ms {
 
 class EditRaster : public QDialog, public Ui::EditRaster {
       Q_OBJECT
+
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       virtual void accept();

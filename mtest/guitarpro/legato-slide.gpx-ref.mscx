@@ -1,26 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.00">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
     <Division>480</Division>
     <Style>
-      <page-layout>
-        <page-height>1683.78</page-height>
-        <page-width>1190.55</page-width>
-        <page-margins type="even">
-          <left-margin>56.6929</left-margin>
-          <right-margin>56.6929</right-margin>
-          <top-margin>56.6929</top-margin>
-          <bottom-margin>113.386</bottom-margin>
-          </page-margins>
-        <page-margins type="odd">
-          <left-margin>56.6929</left-margin>
-          <right-margin>56.6929</right-margin>
-          <top-margin>56.6929</top-margin>
-          <bottom-margin>113.386</bottom-margin>
-          </page-margins>
-        </page-layout>
       <Spatium>1.76389</Spatium>
       </Style>
     <showInvisible>1</showInvisible>
@@ -38,14 +22,6 @@
     <metaTag name="translator"></metaTag>
     <metaTag name="workNumber"></metaTag>
     <metaTag name="workTitle"></metaTag>
-    <PageList>
-      <Page>
-        <System>
-          </System>
-        <System>
-          </System>
-        </Page>
-      </PageList>
     <Part>
       <Staff id="1">
         <StaffType group="pitched">
@@ -53,34 +29,50 @@
         </Staff>
       <trackName>S-Gt</trackName>
       <Instrument>
-        <longName pos="0">Acoustic Guitar</longName>
-        <shortName pos="0">Guit.</shortName>
-        <trackName>Acoustic Guitar</trackName>
+        <longName>Guitar</longName>
+        <shortName>Guit.</shortName>
+        <trackName>Acoustic Guitar (Treble Clef)</trackName>
         <minPitchP>40</minPitchP>
-        <maxPitchP>83</maxPitchP>
+        <maxPitchP>84</maxPitchP>
         <minPitchA>40</minPitchA>
         <maxPitchA>83</maxPitchA>
-        <clef>G8vb</clef>
+        <transposeDiatonic>-7</transposeDiatonic>
+        <transposeChromatic>-12</transposeChromatic>
+        <instrumentId>pluck.guitar.acoustic</instrumentId>
+        <concertClef>G8vb</concertClef>
+        <transposingClef>G</transposingClef>
         <StringData>
           <frets>21</frets>
-          <string>40</string>
-          <string>45</string>
-          <string>50</string>
-          <string>55</string>
-          <string>59</string>
-          <string>64</string>
+          <string>52</string>
+          <string>57</string>
+          <string>62</string>
+          <string>67</string>
+          <string>71</string>
+          <string>76</string>
           </StringData>
         <Articulation>
           <velocity>100</velocity>
           <gateTime>100</gateTime>
           </Articulation>
+        <Articulation name="staccatissimo">
+          <velocity>100</velocity>
+          <gateTime>33</gateTime>
+          </Articulation>
         <Articulation name="staccato">
           <velocity>100</velocity>
           <gateTime>50</gateTime>
           </Articulation>
+        <Articulation name="portato">
+          <velocity>100</velocity>
+          <gateTime>67</gateTime>
+          </Articulation>
         <Articulation name="tenuto">
           <velocity>100</velocity>
           <gateTime>100</gateTime>
+          </Articulation>
+        <Articulation name="marcato">
+          <velocity>120</velocity>
+          <gateTime>67</gateTime>
           </Articulation>
         <Articulation name="sforzato">
           <velocity>120</velocity>
@@ -98,8 +90,8 @@
         </VBox>
       <Measure number="1">
         <Clef>
-          <concertClefType>G8vb</concertClefType>
-          <transposingClefType>G8vb</transposingClefType>
+          <concertClefType>G</concertClefType>
+          <transposingClefType>G</transposingClefType>
           <lid>1</lid>
           </Clef>
         <KeySig>
@@ -110,12 +102,11 @@
           <lid>3</lid>
           <sigN>4</sigN>
           <sigD>4</sigD>
-          <showCourtesySig>1</showCourtesySig>
           </TimeSig>
         <Tempo>
           <tempo>2</tempo>
           <lid>4</lid>
-          <text><sym>unicodeNoteQuarterUp</sym> = 120</text>
+          <text><sym>metNoteQuarterUp</sym> = 120</text>
           </Tempo>
         <Rest>
           <lid>5</lid>
@@ -127,20 +118,26 @@
           <lid>6</lid>
           </Dynamic>
         <Slur id="2">
-          <lid>15</lid>
+          <lid>19</lid>
           <track>0</track>
           </Slur>
         <Chord>
           <lid>7</lid>
           <durationType>quarter</durationType>
+          <Slur type="start" id="2"/>
           <Note>
             <lid>8</lid>
             <pitch>57</pitch>
             <tpc>17</tpc>
             <fret>7</fret>
             <string>3</string>
+            <Glissando id="3">
+              <subtype>0</subtype>
+              <lid>12</lid>
+              <diagonal>1</diagonal>
+              <anchor>3</anchor>
+              </Glissando>
             </Note>
-          <Slur type="start" id="2"/>
           </Chord>
         <Dynamic>
           <subtype>mp</subtype>
@@ -150,27 +147,41 @@
         <Chord>
           <lid>10</lid>
           <durationType>quarter</durationType>
+          <Slur type="stop" id="2"/>
           <Note>
             <lid>11</lid>
             <pitch>59</pitch>
             <tpc>19</tpc>
             <fret>9</fret>
             <string>3</string>
+            <endSpanner id="3"/>
             </Note>
-          <Glissando>
-            <subtype>0</subtype>
-            <lid>12</lid>
-            </Glissando>
-          <Slur type="stop" id="2"/>
           </Chord>
         <Rest>
           <lid>13</lid>
           <durationType>quarter</durationType>
           </Rest>
-        <BarLine>
-          <subtype>end</subtype>
-          <span>1</span>
-          </BarLine>
+        <move>0/1</move>
+        <Rest>
+          <lid>14</lid>
+          <track>1</track>
+          <durationType>quarter</durationType>
+          </Rest>
+        <Rest>
+          <lid>15</lid>
+          <track>1</track>
+          <durationType>quarter</durationType>
+          </Rest>
+        <Rest>
+          <lid>16</lid>
+          <track>1</track>
+          <durationType>quarter</durationType>
+          </Rest>
+        <Rest>
+          <lid>17</lid>
+          <track>1</track>
+          <durationType>quarter</durationType>
+          </Rest>
         </Measure>
       </Staff>
     <Score>
@@ -179,42 +190,18 @@
       <Division>480</Division>
       <Style>
         <createMultiMeasureRests>1</createMultiMeasureRests>
-        <page-layout>
-          <page-height>1683.78</page-height>
-          <page-width>1190.55</page-width>
-          <page-margins type="even">
-            <left-margin>56.6929</left-margin>
-            <right-margin>56.6929</right-margin>
-            <top-margin>56.6929</top-margin>
-            <bottom-margin>113.386</bottom-margin>
-            </page-margins>
-          <page-margins type="odd">
-            <left-margin>56.6929</left-margin>
-            <right-margin>56.6929</right-margin>
-            <top-margin>56.6929</top-margin>
-            <bottom-margin>113.386</bottom-margin>
-            </page-margins>
-          </page-layout>
         <Spatium>1.76389</Spatium>
         </Style>
       <showInvisible>1</showInvisible>
       <showUnprintable>1</showUnprintable>
       <showFrames>1</showFrames>
       <showMargins>0</showMargins>
-      <PageList>
-        <Page>
-          <System>
-            </System>
-          <System>
-            </System>
-          </Page>
-        </PageList>
       <Part>
         <Staff id="1">
           <linkedTo>1</linkedTo>
           <StaffType group="pitched">
             </StaffType>
-          <bracket type="0" span="2"/>
+          <bracket type="0" span="2" col="0"/>
           </Staff>
         <Staff id="2">
           <linkedTo>1</linkedTo>
@@ -239,38 +226,53 @@
             <upsideDown>0</upsideDown>
             <useNumbers>1</useNumbers>
             </StaffType>
-          <bracket type="-1" span="0"/>
           </Staff>
         <trackName></trackName>
         <Instrument>
-          <longName pos="0">Acoustic Guitar</longName>
-          <shortName pos="0">Guit.</shortName>
-          <trackName>Acoustic Guitar</trackName>
+          <longName>Guitar</longName>
+          <shortName>Guit.</shortName>
+          <trackName>Acoustic Guitar (Treble Clef)</trackName>
           <minPitchP>40</minPitchP>
-          <maxPitchP>83</maxPitchP>
+          <maxPitchP>84</maxPitchP>
           <minPitchA>40</minPitchA>
           <maxPitchA>83</maxPitchA>
-          <clef>G8vb</clef>
+          <transposeDiatonic>-7</transposeDiatonic>
+          <transposeChromatic>-12</transposeChromatic>
+          <instrumentId>pluck.guitar.acoustic</instrumentId>
+          <concertClef>G8vb</concertClef>
+          <transposingClef>G</transposingClef>
           <StringData>
             <frets>21</frets>
-            <string>40</string>
-            <string>45</string>
-            <string>50</string>
-            <string>55</string>
-            <string>59</string>
-            <string>64</string>
+            <string>52</string>
+            <string>57</string>
+            <string>62</string>
+            <string>67</string>
+            <string>71</string>
+            <string>76</string>
             </StringData>
           <Articulation>
             <velocity>100</velocity>
             <gateTime>100</gateTime>
             </Articulation>
+          <Articulation name="staccatissimo">
+            <velocity>100</velocity>
+            <gateTime>33</gateTime>
+            </Articulation>
           <Articulation name="staccato">
             <velocity>100</velocity>
             <gateTime>50</gateTime>
             </Articulation>
+          <Articulation name="portato">
+            <velocity>100</velocity>
+            <gateTime>67</gateTime>
+            </Articulation>
           <Articulation name="tenuto">
             <velocity>100</velocity>
             <gateTime>100</gateTime>
+            </Articulation>
+          <Articulation name="marcato">
+            <velocity>120</velocity>
+            <gateTime>67</gateTime>
             </Articulation>
           <Articulation name="sforzato">
             <velocity>120</velocity>
@@ -287,13 +289,13 @@
           <lid>0</lid>
           <Text>
             <style>Instrument Name (Part)</style>
-            <text>Acoustic Guitar</text>
+            <text>Guitar</text>
             </Text>
           </VBox>
         <Measure number="1">
           <Clef>
-            <concertClefType>G8vb</concertClefType>
-            <transposingClefType>G8vb</transposingClefType>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
             <lid>1</lid>
             </Clef>
           <KeySig>
@@ -304,12 +306,11 @@
             <lid>3</lid>
             <sigN>4</sigN>
             <sigD>4</sigD>
-            <showCourtesySig>1</showCourtesySig>
             </TimeSig>
           <Tempo>
             <tempo>2</tempo>
             <lid>4</lid>
-            <text><sym>unicodeNoteQuarterUp</sym> = 120</text>
+            <text><sym>metNoteQuarterUp</sym> = 120</text>
             </Tempo>
           <Rest>
             <lid>5</lid>
@@ -320,21 +321,27 @@
             <velocity>80</velocity>
             <lid>6</lid>
             </Dynamic>
-          <Slur id="3">
-            <lid>15</lid>
+          <Slur id="4">
+            <lid>19</lid>
             <track>0</track>
             </Slur>
           <Chord>
             <lid>7</lid>
             <durationType>quarter</durationType>
+            <Slur type="start" id="4"/>
             <Note>
               <lid>8</lid>
               <pitch>57</pitch>
               <tpc>17</tpc>
               <fret>7</fret>
               <string>3</string>
+              <Glissando id="5">
+                <subtype>0</subtype>
+                <lid>12</lid>
+                <diagonal>1</diagonal>
+                <anchor>3</anchor>
+                </Glissando>
               </Note>
-            <Slur type="start" id="3"/>
             </Chord>
           <Dynamic>
             <subtype>mp</subtype>
@@ -344,27 +351,41 @@
           <Chord>
             <lid>10</lid>
             <durationType>quarter</durationType>
+            <Slur type="stop" id="4"/>
             <Note>
               <lid>11</lid>
               <pitch>59</pitch>
               <tpc>19</tpc>
               <fret>9</fret>
               <string>3</string>
+              <endSpanner id="5"/>
               </Note>
-            <Glissando>
-              <subtype>0</subtype>
-              <lid>12</lid>
-              </Glissando>
-            <Slur type="stop" id="3"/>
             </Chord>
           <Rest>
             <lid>13</lid>
             <durationType>quarter</durationType>
             </Rest>
-          <BarLine>
-            <subtype>end</subtype>
-            <span>1</span>
-            </BarLine>
+          <move>0/1</move>
+          <Rest>
+            <lid>14</lid>
+            <track>1</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>15</lid>
+            <track>1</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>16</lid>
+            <track>1</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>17</lid>
+            <track>1</track>
+            <durationType>quarter</durationType>
+            </Rest>
           </Measure>
         </Staff>
       <Staff id="2">
@@ -377,46 +398,66 @@
             <lid>5</lid>
             <durationType>quarter</durationType>
             </Rest>
-          <Slur id="4">
-            <lid>15</lid>
+          <Slur id="6">
+            <lid>19</lid>
             <track>4</track>
             </Slur>
           <Chord>
             <lid>7</lid>
             <durationType>quarter</durationType>
+            <Slur type="start" id="6"/>
             <Note>
               <lid>8</lid>
               <pitch>57</pitch>
               <tpc>17</tpc>
               <fret>7</fret>
               <string>3</string>
+              <Glissando id="7">
+                <subtype>0</subtype>
+                <lid>12</lid>
+                <diagonal>1</diagonal>
+                <anchor>3</anchor>
+                </Glissando>
               </Note>
-            <Slur type="start" id="4"/>
             </Chord>
           <Chord>
             <lid>10</lid>
             <durationType>quarter</durationType>
+            <Slur type="stop" id="6"/>
             <Note>
               <lid>11</lid>
               <pitch>59</pitch>
               <tpc>19</tpc>
               <fret>9</fret>
               <string>3</string>
+              <endSpanner id="7"/>
               </Note>
-            <Glissando>
-              <subtype>0</subtype>
-              <lid>12</lid>
-              </Glissando>
-            <Slur type="stop" id="4"/>
             </Chord>
           <Rest>
             <lid>13</lid>
             <durationType>quarter</durationType>
             </Rest>
-          <BarLine>
-            <subtype>end</subtype>
-            <span>1</span>
-            </BarLine>
+          <move>0/1</move>
+          <Rest>
+            <lid>14</lid>
+            <track>5</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>15</lid>
+            <track>5</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>16</lid>
+            <track>5</track>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <lid>17</lid>
+            <track>5</track>
+            <durationType>quarter</durationType>
+            </Rest>
           </Measure>
         </Staff>
       <name>S-Gt</name>

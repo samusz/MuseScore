@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: measureproperties.h 4720 2011-08-31 18:10:05Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -43,6 +42,8 @@ class MeasureProperties : public QDialog, private Ui::MeasurePropertiesBase {
       bool visible(int staffIdx);
       bool slashStyle(int staffIdx);
       void setMeasure(Measure* _m);
+
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       void bboxClicked(QAbstractButton* button);

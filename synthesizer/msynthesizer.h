@@ -33,19 +33,23 @@ class Xml;
 class MasterSynthesizer : public QObject {
       Q_OBJECT
 
-      float _gain;
-      double _masterTuning;
+      float _gain             { 0.1f  };     // -20dB
+      float _boost            { 10.0  };     // +20dB
+      double _masterTuning    { 440.0 };
+
+      int _dynamicsMethod     { 1 };      // Default dynamics method
+      int _ccToUse            { 1 };      // CC2
 
    public:
       static const int MAX_BUFFERSIZE = 8192;
       static const int MAX_EFFECTS = 2;
 
    private:
-      std::atomic<bool> lock1;
-      std::atomic<bool> lock2;
+      std::atomic<bool> lock1      { false };
+      std::atomic<bool> lock2      { true  };
       std::vector<Synthesizer*> _synthesizer;
-      std::vector<Effect*> _effectList[2];
-      Effect* _effect[2];
+      std::vector<Effect*> _effectList[MAX_EFFECTS];
+      Effect* _effect[MAX_EFFECTS]  { nullptr, nullptr };
 
       float _sampleRate;
 
@@ -81,9 +85,10 @@ class MasterSynthesizer : public QObject {
       QString name(unsigned) const;
 
       QList<MidiPatch*> getPatchInfo() const;
+      MidiPatch* getPatchInfo(QString synti, int bank, int program);
 
       SynthesizerState state() const;
-      void setState(const SynthesizerState&);
+      bool setState(const SynthesizerState&);
 
       Synthesizer* synthesizer(const QString& name);
       const std::vector<Effect*>& effectList(int ab) const { return _effectList[ab]; }
@@ -98,7 +103,16 @@ class MasterSynthesizer : public QObject {
       Effect* effect(int ab);
       int indexOfEffect(int ab);
 
-      float gain() const    { return _gain; }
+      float gain() const     { return _gain; }
+      float boost() const    { return _boost; }
+      void setBoost(float v) { _boost = v; }
+
+      int dynamicsMethod() const          { return _dynamicsMethod; }
+      void setDynamicsMethod(int val)     { _dynamicsMethod = val; }
+      int ccToUseIndex() const            { return _ccToUse; }    // NOTE: this doesn't return a CC number, but returns an index instead
+      void setCcToUseIndex(int val)       { _ccToUse = val; }
+
+      bool storeState();
       };
 
 }

@@ -1,18 +1,25 @@
-FluidR3Mono_GM.sf3
+MS_General.sf2
 ---
 
-Current version: 2.7
+Current version: 0.1 alpha 1st March 2018
 
-Original Stereo version by Frank Wen Copyright © 2000-2002
+This is a fork of FluidR3Mono_GM.sf2, with many samples (eventually) being replaced and/or reprogrammed. This version of the SoundFont is an alpha work-in-progress. Information on all sample sources will be provided upon release.
 
-Mono version by Michael Cowgill Copyright © 2014
+FluidR3 (original version) by Frank Wen Copyright © 2000-2002
 
-This Mono version of FluidR3 GM is released under the MIT license as described in COPYING
+Mono conversion (FluidR3Mono) by Michael Cowgill Copyright © 2014-17
 
-The soundfont was compressed from the SF2 soundfont.
-More info about the SF3 format and compression algorithm: https://github.com/wschweer/sftools
+Adaptation for MS_General.sf2 by S. Christian Collins Copyright © 2018
+
+Temple Blocks instrument provided by Ethan Winer Copyright © 2002
+
+Drumline Percussion provided by Michael Schorsch Copyright © 2016
+
+MS_General.sf2 is shared under the MIT license as described in COPYING, as was FluidR3Mono and FluidR3 before it. The licensing for this new collection is currently under discussion and may be subject to change before release.
 
 The COPYING and README files from the original FluidR3GM file are now displayed here for reference.
+
+The acknowledgements and copyright notices above must be included in any derivative work.
 
 
 README
@@ -59,7 +66,7 @@ Who knows, maybe I'll kick start this project again? ;)
 COPYING
 ---
 
-Mono version:  Copyright (c) 2014 Michael Cowgill 
+Mono version:  Copyright (c) 2014-16 Michael Cowgill 
 Copyright (c) 2000-2002, 2008 Frank Wen <getfrank@gmail.com>
 
 Permission is hereby granted, free of charge, to any person

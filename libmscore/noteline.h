@@ -13,7 +13,7 @@
 #ifndef __NOTELINE_H__
 #define __NOTELINE_H__
 
-#include "textline.h"
+#include "textlinebase.h"
 
 namespace Ms {
 
@@ -23,9 +23,7 @@ class Note;
 //   @@ NoteLine
 //---------------------------------------------------------
 
-class NoteLine : public TextLine {
-      Q_OBJECT
-
+class NoteLine final : public TextLineBase {
       Note* _startNote;
       Note* _endNote;
 
@@ -34,13 +32,14 @@ class NoteLine : public TextLine {
       NoteLine(const NoteLine&);
       ~NoteLine() {}
 
-      virtual NoteLine* clone() const           { return new NoteLine(*this); }
-      virtual Element::Type type() const        { return Element::Type::NOTELINE; }
+      virtual NoteLine* clone() const         { return new NoteLine(*this); }
+      virtual ElementType type() const        { return ElementType::NOTELINE; }
 
       void setStartNote(Note* n)  { _startNote = n; }
       Note* startNote() const     { return _startNote; }
       void setEndNote(Note* n)    { _endNote = n; }
       Note* endNote() const       { return _endNote; }
+      virtual LineSegment* createLineSegment() override;
       };
 
 

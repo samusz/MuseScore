@@ -13,145 +13,37 @@
 #ifndef __STYLE_H__
 #define __STYLE_H__
 
-#include "mscore.h"
-#include "spatium.h"
-#include "articulation.h"
+#include "chordlist.h"
+#include "types.h"
 
 namespace Ms {
 
-class Xml;
+enum class Pid : int;
+class XmlWriter;
 struct ChordDescription;
-class PageFormat;
-class ChordList;
 class Element;
-
-class TextStyleData;
-
-enum class TextStyleHidden : unsigned char {
-      NEVER     = 0,
-      IN_EDITOR = 1,
-      IN_LISTS  = 2,
-      ALWAYS    = 0xFF
-      };
-
-constexpr bool operator& (TextStyleHidden h1, TextStyleHidden h2) {
-      return static_cast<unsigned char>(h1) & static_cast<unsigned char>(h2);
-      }
+class Score;
 
 //---------------------------------------------------------
-//   TextStyle
+//   Sid
+//
+//    Keep in sync with styleTypes[] in style.cpp
 //---------------------------------------------------------
 
-class TextStyle {
-   private:
-      QSharedDataPointer<TextStyleData> d;
-      TextStyleHidden _hidden;               // read-only parameter for text style visibility in various program places
+enum class Sid {
+      NOSTYLE = -1,
 
-   public:
-      TextStyle();
-      TextStyle(QString _name, QString _family,
-         qreal _size,
-         bool _bold, bool _italic, bool _underline,
-         Align _align,
-         const QPointF& _off = QPointF(), OffsetType _ot = OffsetType::SPATIUM,
-         bool sd = false,
-         bool hasFrame = false, Spatium fw = Spatium(0.2), Spatium pw = Spatium(0.5), int fr = 25,
-         QColor co = QColor(Qt::black), bool circle = false, bool systemFlag = false,
-         QColor fg = QColor(Qt::black), QColor bg = QColor(255, 255, 255, 0), TextStyleHidden hidden = TextStyleHidden::NEVER);
+      pageWidth,
+      pageHeight,
+      pagePrintableWidth,
+      pageEvenLeftMargin,
+      pageOddLeftMargin,
+      pageEvenTopMargin,
+      pageEvenBottomMargin,
+      pageOddTopMargin,
+      pageOddBottomMargin,
+      pageTwosided,
 
-      TextStyle(const TextStyle&);
-      ~TextStyle();
-      TextStyle& operator=(const TextStyle&);
-
-      friend class TextStyleDialog;             // allow TextStyleDialog to access _hidden without making it globally writeable
-
-      QString name() const;
-      QString family() const;
-      qreal size() const;
-      bool bold() const;
-      bool italic() const;
-      bool underline() const;
-      bool hasFrame() const;
-      Align align() const;
-      OffsetType offsetType() const;
-      const QPointF& offset() const;
-      QPointF offset(qreal spatium) const;
-      bool sizeIsSpatiumDependent() const;
-
-      Spatium frameWidth()  const;
-      Spatium paddingWidth() const;
-      qreal frameWidthMM()  const;
-      qreal paddingWidthMM() const;
-      void setFrameWidth(Spatium v);
-      void setPaddingWidth(Spatium v);
-
-      int frameRound() const;
-      QColor frameColor() const;
-      bool circle() const;
-      bool systemFlag() const;
-      QColor foregroundColor() const;
-      QColor backgroundColor() const;
-      void setName(const QString& s);
-      void setFamily(const QString& s);
-      void setSize(qreal v);
-      void setBold(bool v);
-      void setItalic(bool v);
-      void setUnderline(bool v);
-      void setHasFrame(bool v);
-      void setAlign(Align v);
-      void setXoff(qreal v);
-      void setYoff(qreal v);
-      void setOffsetType(OffsetType v);
-      void setSizeIsSpatiumDependent(bool v);
-      void setFrameRound(int v);
-      void setFrameColor(const QColor& v);
-      void setCircle(bool v);
-      void setSystemFlag(bool v);
-      void setForegroundColor(const QColor& v);
-      void setBackgroundColor(const QColor& v);
-      TextStyleHidden hidden() const   { return _hidden; }
-      void write(Xml& xml) const;
-      void writeProperties(Xml& xml) const;
-      void writeProperties(Xml& xml, const TextStyle&) const;
-      void read(XmlReader& v);
-      bool readProperties(XmlReader& v);
-      QFont font(qreal spatium) const;
-      QFont fontPx(qreal spatium) const;
-      QRectF bbox(qreal spatium, const QString& s) const;
-      QFontMetricsF fontMetrics(qreal spatium) const;
-      bool operator!=(const TextStyle& s) const;
-      void layout(Element*) const;
-      void restyle(const TextStyle& os, const TextStyle& ns);
-      };
-
-//---------------------------------------------------------
-//   StyleValueType
-//---------------------------------------------------------
-
-enum class StyleValueType : char {
-      SPATIUM, DOUBLE, BOOL, INT, DIRECTION, STRING
-      };
-
-//---------------------------------------------------------
-//   StyleType
-//---------------------------------------------------------
-
-class StyleType {
-      const char* _name;       // xml name for read()/write()
-      StyleValueType _valueType;
-
-   public:
-      StyleType() { _name = 0; }
-      StyleType(const char* n, StyleValueType v) : _name(n), _valueType(v) {}
-      StyleValueType valueType() const { return _valueType; }
-      const char* name() const         { return _name; }
-      };
-
-//---------------------------------------------------------
-//   StyleIdx
-//---------------------------------------------------------
-
-enum class StyleIdx : unsigned char {
       staffUpperBorder,
       staffLowerBorder,
       staffDistance,
@@ -160,12 +52,53 @@ enum class StyleIdx : unsigned char {
       minSystemDistance,
       maxSystemDistance,
 
-      lyricsDistance,
+      lyricsPlacement,
+      lyricsPosAbove,
+      lyricsPosBelow,
+      lyricsMinTopDistance,
       lyricsMinBottomDistance,
+      lyricsMinDistance,
       lyricsLineHeight,
+      lyricsDashMinLength,
+      lyricsDashMaxLength,
+      lyricsDashMaxDistance,
+      lyricsDashForce,
+      lyricsAlignVerseNumber,
+      lyricsLineThickness,
+      lyricsMelismaAlign,
+      lyricsMelismaPad,
+      lyricsDashPad,
+      lyricsDashLineThickness,
+      lyricsDashYposRatio,
+
+      lyricsOddFontFace,
+      lyricsOddFontSize,
+      lyricsOddFontSpatiumDependent,
+      lyricsOddFontStyle,
+      lyricsOddColor,
+      lyricsOddAlign,
+      lyricsOddFrameType,
+      lyricsOddFramePadding,
+      lyricsOddFrameWidth,
+      lyricsOddFrameRound,
+      lyricsOddFrameFgColor,
+      lyricsOddFrameBgColor,
+
+      lyricsEvenFontFace,
+      lyricsEvenFontSize,
+      lyricsEvenFontSpatiumDependent,
+      lyricsEvenFontStyle,
+      lyricsEvenColor,
+      lyricsEvenAlign,
+      lyricsEvenFrameType,
+      lyricsEvenFramePadding,
+      lyricsEvenFrameWidth,
+      lyricsEvenFrameRound,
+      lyricsEvenFrameFgColor,
+      lyricsEvenFrameBgColor,
 
       figuredBassFontFamily,
-      figuredBassFontSize,
+//      figuredBassFontSize,
       figuredBassYOffset,
       figuredBassLineHeight,
       figuredBassAlignment,
@@ -179,6 +112,7 @@ enum class StyleIdx : unsigned char {
       endBarWidth,
       doubleBarDistance,
       endBarDistance,
+      repeatBarlineDotSeparation,
       repeatBarTips,
       startBarlineSingle,
       startBarlineMultiple,
@@ -187,13 +121,33 @@ enum class StyleIdx : unsigned char {
       bracketDistance,
       akkoladeWidth,
       akkoladeBarDistance,
+      dividerLeft,
+      dividerLeftSym,
+      dividerLeftX,
+      dividerLeftY,
+      dividerRight,
+      dividerRightSym,
+      dividerRightX,
+      dividerRightY,
 
       clefLeftMargin,
       keysigLeftMargin,
+      ambitusMargin,
       timesigLeftMargin,
+      timesigScale,
 
+      midClefKeyRightMargin,
       clefKeyRightMargin,
+      clefKeyDistance,
+      clefTimesigDistance,
+      keyTimesigDistance,
+      keyBarlineDistance,
+      systemHeaderDistance,
+      systemHeaderTimeSigDistance,
+
       clefBarlineDistance,
+      timesigBarlineDistance,
+
       stemWidth,
       shortenStem,
       shortStemProgression,
@@ -224,26 +178,118 @@ enum class StyleIdx : unsigned char {
       propertyDistanceStem,
       propertyDistance,
       articulationMag,
+      articulationPosAbove,
+      articulationAnchorDefault,
+      articulationAnchorLuteFingering,
+      articulationAnchorOther,
       lastSystemFillLimit,
 
-      hairpinY,
+      hairpinPlacement,
+      hairpinPosAbove,
+      hairpinPosBelow,
+      hairpinLinePosAbove,
+      hairpinLinePosBelow,
       hairpinHeight,
       hairpinContHeight,
       hairpinLineWidth,
+      hairpinFontFace,
+      hairpinFontSize,
+      hairpinFontSpatiumDependent,
+      hairpinFontStyle,
+      hairpinColor,
+      hairpinTextAlign,
+      hairpinFrameType,
+      hairpinFramePadding,
+      hairpinFrameWidth,
+      hairpinFrameRound,
+      hairpinFrameFgColor,
+      hairpinFrameBgColor,
+      hairpinText,
+      hairpinCrescText,
+      hairpinDecrescText,
+      hairpinCrescContText,
+      hairpinDecrescContText,
+      hairpinLineStyle,
+      hairpinLineLineStyle,
 
-      pedalY,
+      pedalPlacement,
+      pedalPosAbove,
+      pedalPosBelow,
       pedalLineWidth,
       pedalLineStyle,
+      pedalBeginTextOffset,
+      pedalHookHeight,
+      pedalFontFace,
+      pedalFontSize,
+      pedalFontSpatiumDependent,
+      pedalFontStyle,
+      pedalColor,
+      pedalTextAlign,
+      pedalFrameType,
+      pedalFramePadding,
+      pedalFrameWidth,
+      pedalFrameRound,
+      pedalFrameFgColor,
+      pedalFrameBgColor,
 
-      trillY,
-      harmonyY,
+      trillPlacement,
+      trillPosAbove,
+      trillPosBelow,
+
+      vibratoPlacement,
+      vibratoPosAbove,
+      vibratoPosBelow,
+
       harmonyFretDist,
       minHarmonyDistance,
       maxHarmonyBarDistance,
+      harmonyPlacement,
+
+      chordSymbolAPosAbove,
+      chordSymbolAPosBelow,
+
+      chordSymbolBPosAbove,
+      chordSymbolBPosBelow,
+
+      chordSymbolAFontFace,
+      chordSymbolAFontSize,
+      chordSymbolAFontSpatiumDependent,
+      chordSymbolAFontStyle,
+      chordSymbolAColor,
+      chordSymbolAAlign,
+      chordSymbolAFrameType,
+      chordSymbolAFramePadding,
+      chordSymbolAFrameWidth,
+      chordSymbolAFrameRound,
+      chordSymbolAFrameFgColor,
+      chordSymbolAFrameBgColor,
+
+      chordSymbolBFontFace,
+      chordSymbolBFontSize,
+      chordSymbolBFontSpatiumDependent,
+      chordSymbolBFontStyle,
+      chordSymbolBColor,
+      chordSymbolBAlign,
+      chordSymbolBFrameType,
+      chordSymbolBFramePadding,
+      chordSymbolBFrameWidth,
+      chordSymbolBFrameRound,
+      chordSymbolBFrameFgColor,
+      chordSymbolBFrameBgColor,
+
       capoPosition,
       fretNumMag,
       fretNumPos,
       fretY,
+      fretMinDistance,
+      fretMag,
+      fretPlacement,
+      fretStrings,
+      fretFrets,
+      fretNut,
+      fretDotSize,
+      fretStringSpacing,
+      fretFretSpacing,
 
       showPageNumber,
       showPageNumberOne,
@@ -260,7 +306,6 @@ enum class StyleIdx : unsigned char {
       smallClefMag,
       genClef,
       genKeysig,
-      genTimesig,
       genCourtesyTimesig,
       genCourtesyKeysig,
       genCourtesyClef,
@@ -270,8 +315,13 @@ enum class StyleIdx : unsigned char {
 
       useStandardNoteNames,
       useGermanNoteNames,
+      useFullGermanNoteNames,
       useSolfeggioNoteNames,
+      useFrenchNoteNames,
+      automaticCapitalization,
       lowerCaseMinorChords,
+      lowerCaseBassNotes,
+      allCapsNoteNames,
       chordStyle,
       chordsXmlFile,
       chordDescriptionFile,
@@ -290,20 +340,19 @@ enum class StyleIdx : unsigned char {
       ArpeggioNoteDistance,
       ArpeggioLineWidth,
       ArpeggioHookLen,
-      FixMeasureNumbers,
-      FixMeasureWidth,
+      ArpeggioHiddenInStdIfTab,
 
       SlurEndWidth,
       SlurMidWidth,
       SlurDottedWidth,
       MinTieLength,
+      SlurMinDistance,
 
       SectionPause,
       MusicalSymbolFont,
       MusicalTextFont,
 
       showHeader,
-//      headerStyled,
       headerFirstPage,
       headerOddEven,
       evenHeaderL,
@@ -314,7 +363,6 @@ enum class StyleIdx : unsigned char {
       oddHeaderR,
 
       showFooter,
-//      footerStyled,
       footerFirstPage,
       footerOddEven,
       evenFooterL,
@@ -324,16 +372,64 @@ enum class StyleIdx : unsigned char {
       oddFooterC,
       oddFooterR,
 
-      voltaY,
+      voltaPosAbove,
       voltaHook,
       voltaLineWidth,
       voltaLineStyle,
+      voltaFontFace,
+      voltaFontSize,
+      voltaFontSpatiumDependent,
+      voltaFontStyle,
+      voltaColor,
+      voltaAlign,
+      voltaOffset,
+      voltaFrameType,
+      voltaFramePadding,
+      voltaFrameWidth,
+      voltaFrameRound,
+      voltaFrameFgColor,
+      voltaFrameBgColor,
 
-      ottavaY,
-      ottavaHook,
+      ottava8VAPlacement,
+      ottava8VBPlacement,
+      ottava15MAPlacement,
+      ottava15MBPlacement,
+      ottava22MAPlacement,
+      ottava22MBPlacement,
+
+      ottava8VAText,
+      ottava8VBText,
+      ottava15MAText,
+      ottava15MBText,
+      ottava22MAText,
+      ottava22MBText,
+
+      ottava8VAnoText,
+      ottava8VBnoText,
+      ottava15MAnoText,
+      ottava15MBnoText,
+      ottava22MAnoText,
+      ottava22MBnoText,
+
+      ottavaPosAbove,
+      ottavaPosBelow,
+      ottavaHookAbove,
+      ottavaHookBelow,
       ottavaLineWidth,
       ottavaLineStyle,
       ottavaNumbersOnly,
+      ottavaFontFace,
+      ottavaFontSize,
+      ottavaFontSpatiumDependent,
+      ottavaFontStyle,
+      ottavaColor,
+      ottavaTextAlign,
+      ottavaFrameType,
+      ottavaFramePadding,
+      ottavaFrameWidth,
+      ottavaFrameRound,
+      ottavaFrameFgColor,
+      ottavaFrameBgColor,
 
       tabClef,
 
@@ -341,6 +437,9 @@ enum class StyleIdx : unsigned char {
       tremoloBoxHeight,
       tremoloStrokeWidth,
       tremoloDistance,
+      tremoloPlacement,
+      // TODO tremoloBeamLengthMultiplier,
+      // TODO tremoloMaxBeamLength,
 
       linearStretch,
       crossMeasureValues,
@@ -354,66 +453,765 @@ enum class StyleIdx : unsigned char {
       tupletStemRightDistance,
       tupletNoteLeftDistance,
       tupletNoteRightDistance,
+      tupletBracketWidth,
+      tupletDirection,
+      tupletNumberType,
+      tupletBracketType,
+      tupletFontFace,
+      tupletFontSize,
+      tupletFontSpatiumDependent,
+      tupletFontStyle,
+      tupletColor,
+      tupletAlign,
+      tupletBracketHookHeight,
+      tupletOffset,
+      tupletFrameType,
+      tupletFramePadding,
+      tupletFrameWidth,
+      tupletFrameRound,
+      tupletFrameFgColor,
+      tupletFrameBgColor,
+
+      barreLineWidth,
+      scaleBarlines,
+      barGraceDistance,
+
+      minVerticalDistance,
+      ornamentStyle,
+      spatium,
+
+      autoplaceHairpinDynamicsDistance,
+
+      dynamicsPlacement,
+      dynamicsPosAbove,
+      dynamicsPosBelow,
+
+      dynamicsMinDistance,
+      autoplaceVerticalAlignRange,
+
+      textLinePlacement,
+      textLinePosAbove,
+      textLinePosBelow,
+      textLineFrameType,
+      textLineFramePadding,
+      textLineFrameWidth,
+      textLineFrameRound,
+      textLineFrameFgColor,
+      textLineFrameBgColor,
+
+      tremoloBarLineWidth,
+      jumpPosAbove,
+      markerPosAbove,
+
+      defaultFontFace,
+      defaultFontSize,
+      defaultFontSpatiumDependent,
+      defaultFontStyle,
+      defaultColor,
+      defaultAlign,
+      defaultFrameType,
+      defaultFramePadding,
+      defaultFrameWidth,
+      defaultFrameRound,
+      defaultFrameFgColor,
+      defaultFrameBgColor,
+      defaultOffset,
+      defaultOffsetType,
+      defaultSystemFlag,
+      defaultText,
+
+      titleFontFace,
+      titleFontSize,
+      titleFontSpatiumDependent,
+      titleFontStyle,
+      titleColor,
+      titleAlign,
+      titleOffset,
+      titleOffsetType,
+      titleFrameType,
+      titleFramePadding,
+      titleFrameWidth,
+      titleFrameRound,
+      titleFrameFgColor,
+      titleFrameBgColor,
+
+      subTitleFontFace,
+      subTitleFontSize,
+      subTitleFontSpatiumDependent,
+      subTitleFontStyle,
+      subTitleColor,
+      subTitleAlign,
+      subTitleOffset,
+      subTitleOffsetType,
+      subTitleFrameType,
+      subTitleFramePadding,
+      subTitleFrameWidth,
+      subTitleFrameRound,
+      subTitleFrameFgColor,
+      subTitleFrameBgColor,
+
+      composerFontFace,
+      composerFontSize,
+      composerFontSpatiumDependent,
+      composerFontStyle,
+      composerColor,
+      composerAlign,
+      composerOffset,
+      composerOffsetType,
+      composerFrameType,
+      composerFramePadding,
+      composerFrameWidth,
+      composerFrameRound,
+      composerFrameFgColor,
+      composerFrameBgColor,
+
+      lyricistFontFace,
+      lyricistFontSize,
+      lyricistFontSpatiumDependent,
+      lyricistFontStyle,
+      lyricistColor,
+      lyricistAlign,
+      lyricistOffset,
+      lyricistOffsetType,
+      lyricistFrameType,
+      lyricistFramePadding,
+      lyricistFrameWidth,
+      lyricistFrameRound,
+      lyricistFrameFgColor,
+      lyricistFrameBgColor,
+
+      fingeringFontFace,
+      fingeringFontSize,
+      fingeringFontSpatiumDependent,
+      fingeringFontStyle,
+      fingeringColor,
+      fingeringAlign,
+      fingeringFrameType,
+      fingeringFramePadding,
+      fingeringFrameWidth,
+      fingeringFrameRound,
+      fingeringFrameFgColor,
+      fingeringFrameBgColor,
+      fingeringOffset,
+
+      lhGuitarFingeringFontFace,
+      lhGuitarFingeringFontSize,
+      lhGuitarFingeringFontSpatiumDependent,
+      lhGuitarFingeringFontStyle,
+      lhGuitarFingeringColor,
+      lhGuitarFingeringAlign,
+      lhGuitarFingeringFrameType,
+      lhGuitarFingeringFramePadding,
+      lhGuitarFingeringFrameWidth,
+      lhGuitarFingeringFrameRound,
+      lhGuitarFingeringFrameFgColor,
+      lhGuitarFingeringFrameBgColor,
+      lhGuitarFingeringOffset,
+
+      rhGuitarFingeringFontFace,
+      rhGuitarFingeringFontSize,
+      rhGuitarFingeringFontSpatiumDependent,
+      rhGuitarFingeringFontStyle,
+      rhGuitarFingeringColor,
+      rhGuitarFingeringAlign,
+      rhGuitarFingeringFrameType,
+      rhGuitarFingeringFramePadding,
+      rhGuitarFingeringFrameWidth,
+      rhGuitarFingeringFrameRound,
+      rhGuitarFingeringFrameFgColor,
+      rhGuitarFingeringFrameBgColor,
+      rhGuitarFingeringOffset,
+
+      stringNumberFontFace,
+      stringNumberFontSize,
+      stringNumberFontSpatiumDependent,
+      stringNumberFontStyle,
+      stringNumberColor,
+      stringNumberAlign,
+      stringNumberFrameType,
+      stringNumberFramePadding,
+      stringNumberFrameWidth,
+      stringNumberFrameRound,
+      stringNumberFrameFgColor,
+      stringNumberFrameBgColor,
+      stringNumberOffset,
+
+      longInstrumentFontFace,
+      longInstrumentFontSize,
+      longInstrumentFontSpatiumDependent,
+      longInstrumentFontStyle,
+      longInstrumentColor,
+      longInstrumentAlign,
+      longInstrumentOffset,
+      longInstrumentFrameType,
+      longInstrumentFramePadding,
+      longInstrumentFrameWidth,
+      longInstrumentFrameRound,
+      longInstrumentFrameFgColor,
+      longInstrumentFrameBgColor,
+
+      shortInstrumentFontFace,
+      shortInstrumentFontSize,
+      shortInstrumentFontSpatiumDependent,
+      shortInstrumentFontStyle,
+      shortInstrumentColor,
+      shortInstrumentAlign,
+      shortInstrumentOffset,
+      shortInstrumentFrameType,
+      shortInstrumentFramePadding,
+      shortInstrumentFrameWidth,
+      shortInstrumentFrameRound,
+      shortInstrumentFrameFgColor,
+      shortInstrumentFrameBgColor,
+
+      partInstrumentFontFace,
+      partInstrumentFontSize,
+      partInstrumentFontSpatiumDependent,
+      partInstrumentFontStyle,
+      partInstrumentColor,
+      partInstrumentAlign,
+      partInstrumentOffset,
+      partInstrumentFrameType,
+      partInstrumentFramePadding,
+      partInstrumentFrameWidth,
+      partInstrumentFrameRound,
+      partInstrumentFrameFgColor,
+      partInstrumentFrameBgColor,
+
+      dynamicsFontFace,
+      dynamicsFontSize,
+      dynamicsFontSpatiumDependent,
+      dynamicsFontStyle,
+      dynamicsColor,
+      dynamicsAlign,
+      dynamicsFrameType,
+      dynamicsFramePadding,
+      dynamicsFrameWidth,
+      dynamicsFrameRound,
+      dynamicsFrameFgColor,
+      dynamicsFrameBgColor,
+
+      expressionFontFace,
+      expressionFontSize,
+      expressionFontSpatiumDependent,
+      expressionFontStyle,
+      expressionColor,
+      expressionAlign,
+      expressionPlacement,
+      expressionOffset,
+      expressionFrameType,
+      expressionFramePadding,
+      expressionFrameWidth,
+      expressionFrameRound,
+      expressionFrameFgColor,
+      expressionFrameBgColor,
+
+      tempoFontFace,
+      tempoFontSize,
+      tempoFontSpatiumDependent,
+      tempoFontStyle,
+      tempoColor,
+      tempoAlign,
+      tempoSystemFlag,
+      tempoPlacement,
+      tempoPosAbove,
+      tempoPosBelow,
+      tempoMinDistance,
+      tempoFrameType,
+      tempoFramePadding,
+      tempoFrameWidth,
+      tempoFrameRound,
+      tempoFrameFgColor,
+      tempoFrameBgColor,
+
+      metronomeFontFace,
+      metronomeFontSize,
+      metronomeFontSpatiumDependent,
+      metronomeFontStyle,
+      metronomeColor,
+      metronomePlacement,
+      metronomeAlign,
+      metronomeOffset,
+      metronomeFrameType,
+      metronomeFramePadding,
+      metronomeFrameWidth,
+      metronomeFrameRound,
+      metronomeFrameFgColor,
+      metronomeFrameBgColor,
+
+      measureNumberFontFace,
+      measureNumberFontSize,
+      measureNumberFontSpatiumDependent,
+      measureNumberFontStyle,
+      measureNumberColor,
+      measureNumberOffset,
+      measureNumberOffsetType,
+      measureNumberAlign,
+      measureNumberFrameType,
+      measureNumberFramePadding,
+      measureNumberFrameWidth,
+      measureNumberFrameRound,
+      measureNumberFrameFgColor,
+      measureNumberFrameBgColor,
+
+      translatorFontFace,
+      translatorFontSize,
+      translatorFontSpatiumDependent,
+      translatorFontStyle,
+      translatorColor,
+      translatorAlign,
+      translatorOffset,
+      translatorFrameType,
+      translatorFramePadding,
+      translatorFrameWidth,
+      translatorFrameRound,
+      translatorFrameFgColor,
+      translatorFrameBgColor,
+
+      systemTextFontFace,
+      systemTextFontSize,
+      systemTextFontSpatiumDependent,
+      systemTextFontStyle,
+      systemTextColor,
+      systemTextAlign,
+      systemTextOffsetType,
+      systemTextPlacement,
+      systemTextPosAbove,
+      systemTextPosBelow,
+      systemTextMinDistance,
+      systemTextFrameType,
+      systemTextFramePadding,
+      systemTextFrameWidth,
+      systemTextFrameRound,
+      systemTextFrameFgColor,
+      systemTextFrameBgColor,
+
+      staffTextFontFace,
+      staffTextFontSize,
+      staffTextFontSpatiumDependent,
+      staffTextFontStyle,
+      staffTextColor,
+      staffTextAlign,
+      staffTextOffsetType,
+      staffTextPlacement,
+      staffTextPosAbove,
+      staffTextPosBelow,
+      staffTextMinDistance,
+      staffTextFrameType,
+      staffTextFramePadding,
+      staffTextFrameWidth,
+      staffTextFrameRound,
+      staffTextFrameFgColor,
+      staffTextFrameBgColor,
+
+      rehearsalMarkFontFace,
+      rehearsalMarkFontSize,
+      rehearsalMarkFontSpatiumDependent,
+      rehearsalMarkFontStyle,
+      rehearsalMarkColor,
+      rehearsalMarkAlign,
+      rehearsalMarkFrameType,
+      rehearsalMarkFramePadding,
+      rehearsalMarkFrameWidth,
+      rehearsalMarkFrameRound,
+      rehearsalMarkFrameFgColor,
+      rehearsalMarkFrameBgColor,
+      rehearsalMarkPlacement,
+      rehearsalMarkPosAbove,
+      rehearsalMarkPosBelow,
+      rehearsalMarkMinDistance,
+
+      repeatLeftFontFace,
+      repeatLeftFontSize,
+      repeatLeftFontSpatiumDependent,
+      repeatLeftFontStyle,
+      repeatLeftColor,
+      repeatLeftAlign,
+      repeatLeftPlacement,
+      repeatLeftFrameType,
+      repeatLeftFramePadding,
+      repeatLeftFrameWidth,
+      repeatLeftFrameRound,
+      repeatLeftFrameFgColor,
+      repeatLeftFrameBgColor,
+
+      repeatRightFontFace,
+      repeatRightFontSize,
+      repeatRightFontSpatiumDependent,
+      repeatRightFontStyle,
+      repeatRightColor,
+      repeatRightAlign,
+      repeatRightPlacement,
+      repeatRightFrameType,
+      repeatRightFramePadding,
+      repeatRightFrameWidth,
+      repeatRightFrameRound,
+      repeatRightFrameFgColor,
+      repeatRightFrameBgColor,
+
+      frameFontFace,
+      frameFontSize,
+      frameFontSpatiumDependent,
+      frameFontStyle,
+      frameColor,
+      frameAlign,
+      frameOffset,
+      frameFrameType,
+      frameFramePadding,
+      frameFrameWidth,
+      frameFrameRound,
+      frameFrameFgColor,
+      frameFrameBgColor,
+
+      textLineFontFace,
+      textLineFontSize,
+      textLineFontSpatiumDependent,
+      textLineFontStyle,
+      textLineColor,
+      textLineTextAlign,
+
+      glissandoFontFace,
+      glissandoFontSize,
+      glissandoFontSpatiumDependent,
+      glissandoFontStyle,
+      glissandoColor,
+      glissandoAlign,
+      glissandoOffset,
+      glissandoFrameType,
+      glissandoFramePadding,
+      glissandoFrameWidth,
+      glissandoFrameRound,
+      glissandoFrameFgColor,
+      glissandoFrameBgColor,
+      glissandoLineWidth,
+      glissandoText,
+
+      bendFontFace,
+      bendFontSize,
+      bendFontSpatiumDependent,
+      bendFontStyle,
+      bendColor,
+      bendAlign,
+      bendOffset,
+      bendFrameType,
+      bendFramePadding,
+      bendFrameWidth,
+      bendFrameRound,
+      bendFrameFgColor,
+      bendFrameBgColor,
+      bendLineWidth,
+      bendArrowWidth,
+
+      headerFontFace,
+      headerFontSize,
+      headerFontSpatiumDependent,
+      headerFontStyle,
+      headerColor,
+      headerAlign,
+      headerOffset,
+      headerFrameType,
+      headerFramePadding,
+      headerFrameWidth,
+      headerFrameRound,
+      headerFrameFgColor,
+      headerFrameBgColor,
+
+      footerFontFace,
+      footerFontSize,
+      footerFontSpatiumDependent,
+      footerFontStyle,
+      footerColor,
+      footerAlign,
+      footerOffset,
+      footerFrameType,
+      footerFramePadding,
+      footerFrameWidth,
+      footerFrameRound,
+      footerFrameFgColor,
+      footerFrameBgColor,
+
+      instrumentChangeFontFace,
+      instrumentChangeFontSize,
+      instrumentChangeFontSpatiumDependent,
+      instrumentChangeFontStyle,
+      instrumentChangeColor,
+      instrumentChangeAlign,
+      instrumentChangeOffset,
+      instrumentChangePlacement,
+      instrumentChangePosAbove,
+      instrumentChangePosBelow,
+      instrumentChangeMinDistance,
+      instrumentChangeFrameType,
+      instrumentChangeFramePadding,
+      instrumentChangeFrameWidth,
+      instrumentChangeFrameRound,
+      instrumentChangeFrameFgColor,
+      instrumentChangeFrameBgColor,
+
+      stickingFontFace,
+      stickingFontSize,
+      stickingFontSpatiumDependent,
+      stickingFontStyle,
+      stickingColor,
+      stickingAlign,
+      stickingOffset,
+      stickingPlacement,
+      stickingPosAbove,
+      stickingPosBelow,
+      stickingMinDistance,
+      stickingFrameType,
+      stickingFramePadding,
+      stickingFrameWidth,
+      stickingFrameRound,
+      stickingFrameFgColor,
+      stickingFrameBgColor,
+
+      figuredBassFontFace,
+      figuredBassFontSize,
+      figuredBassFontSpatiumDependent,
+      figuredBassFontStyle,
+      figuredBassColor,
+
+      user1Name,
+      user1FontFace,
+      user1FontSize,
+      user1FontSpatiumDependent,
+      user1FontStyle,
+      user1Color,
+      user1Align,
+      user1Offset,
+      user1OffsetType,
+      user1FrameType,
+      user1FramePadding,
+      user1FrameWidth,
+      user1FrameRound,
+      user1FrameFgColor,
+      user1FrameBgColor,
+
+      user2Name,
+      user2FontFace,
+      user2FontSize,
+      user2FontSpatiumDependent,
+      user2FontStyle,
+      user2Color,
+      user2Align,
+      user2Offset,
+      user2OffsetType,
+      user2FrameType,
+      user2FramePadding,
+      user2FrameWidth,
+      user2FrameRound,
+      user2FrameFgColor,
+      user2FrameBgColor,
+
+      user3Name,
+      user3FontFace,
+      user3FontSize,
+      user3FontSpatiumDependent,
+      user3FontStyle,
+      user3Color,
+      user3Align,
+      user3Offset,
+      user3OffsetType,
+      user3FrameType,
+      user3FramePadding,
+      user3FrameWidth,
+      user3FrameRound,
+      user3FrameFgColor,
+      user3FrameBgColor,
+
+      user4Name,
+      user4FontFace,
+      user4FontSize,
+      user4FontSpatiumDependent,
+      user4FontStyle,
+      user4Color,
+      user4Align,
+      user4Offset,
+      user4OffsetType,
+      user4FrameType,
+      user4FramePadding,
+      user4FrameWidth,
+      user4FrameRound,
+      user4FrameFgColor,
+      user4FrameBgColor,
+
+      user5Name,
+      user5FontFace,
+      user5FontSize,
+      user5FontSpatiumDependent,
+      user5FontStyle,
+      user5Color,
+      user5Align,
+      user5Offset,
+      user5OffsetType,
+      user5FrameType,
+      user5FramePadding,
+      user5FrameWidth,
+      user5FrameRound,
+      user5FrameFgColor,
+      user5FrameBgColor,
+
+      user6Name,
+      user6FontFace,
+      user6FontSize,
+      user6FontSpatiumDependent,
+      user6FontStyle,
+      user6Color,
+      user6Align,
+      user6Offset,
+      user6OffsetType,
+      user6FrameType,
+      user6FramePadding,
+      user6FrameWidth,
+      user6FrameRound,
+      user6FrameFgColor,
+      user6FrameBgColor,
+
+      letRingFontFace,
+      letRingFontSize,
+      letRingFontSpatiumDependent,
+      letRingFontStyle,
+      letRingColor,
+      letRingTextAlign,
+      letRingHookHeight,
+      letRingPlacement,
+      letRingPosAbove,
+      letRingPosBelow,
+      letRingLineWidth,
+      letRingLineStyle,
+      letRingBeginTextOffset,
+      letRingText,
+      letRingFrameType,
+      letRingFramePadding,
+      letRingFrameWidth,
+      letRingFrameRound,
+      letRingFrameFgColor,
+      letRingFrameBgColor,
+      letRingEndHookType,
+
+      palmMuteFontFace,
+      palmMuteFontSize,
+      palmMuteFontSpatiumDependent,
+      palmMuteFontStyle,
+      palmMuteColor,
+      palmMuteTextAlign,
+      palmMuteHookHeight,
+      palmMutePlacement,
+      palmMutePosAbove,
+      palmMutePosBelow,
+      palmMuteLineWidth,
+      palmMuteLineStyle,
+      palmMuteBeginTextOffset,
+      palmMuteText,
+      palmMuteFrameType,
+      palmMuteFramePadding,
+      palmMuteFrameWidth,
+      palmMuteFrameRound,
+      palmMuteFrameFgColor,
+      palmMuteFrameBgColor,
+      palmMuteEndHookType,
+
+      fermataPosAbove,
+      fermataPosBelow,
+      fermataMinDistance,
+
+      fingeringPlacement,
+
+      articulationMinDistance,
+      fingeringMinDistance,
+      hairpinMinDistance,
+      letRingMinDistance,
+      ottavaMinDistance,
+      palmMuteMinDistance,
+      pedalMinDistance,
+      repeatMinDistance,
+      textLineMinDistance,
+      trillMinDistance,
+      vibratoMinDistance,
+      voltaMinDistance,
+      figuredBassMinDistance,
+      tupletMinDistance,
+
+      autoplaceEnabled,
 
       STYLES
       };
 
 //---------------------------------------------------------
 //   MStyle
+//    the name "Style" gives problems with some microsoft
+//    header files...
 //---------------------------------------------------------
 
-class StyleData;
-
 class MStyle {
-      QSharedDataPointer<StyleData> d;
+      std::array<QVariant, int(Sid::STYLES)> _values;
+      std::array<qreal, int(Sid::STYLES)> _precomputedValues;
+
+      ChordList _chordList;
+      bool _customChordList;        // if true, chordlist will be saved as part of score
 
    public:
       MStyle();
-      MStyle(const MStyle&);
-      MStyle& operator=(const MStyle&);
-      ~MStyle();
 
-      bool isDefault(StyleIdx idx) const;
+      void precomputeValues();
+      QVariant value(Sid idx) const;
+      qreal pvalue(Sid idx) const    { return _precomputedValues[int(idx)]; }
+      void set(Sid idx, const QVariant& v);
+
+      bool isDefault(Sid idx) const;
+
       const ChordDescription* chordDescription(int id) const;
-      ChordList* chordList();
-
+      ChordList* chordList()  { return &_chordList; }
       void setChordList(ChordList*, bool custom = true);    // Style gets ownership of ChordList
+      void setCustomChordList(bool t) { _customChordList = t; }
+      void checkChordList();
 
-      const TextStyle& textStyle(TextStyleType) const;
-      const TextStyle& textStyle(const QString& name) const;
-      TextStyleType textStyleType(const QString& name) const;
-      void setTextStyle(const TextStyle& ts);
-      void addTextStyle(const TextStyle& ts);
-      void removeTextStyle(const TextStyle& ts);
-      const QList<TextStyle>& textStyles() const;
-      void set(StyleIdx t, Spatium val);
-      void set(StyleIdx t, const QString& val);
-      void set(StyleIdx t, bool val);
-      void set(StyleIdx t, qreal val);
-      void set(StyleIdx t, int val);
-      void set(StyleIdx t, MScore::Direction val);
-      void set(StyleIdx t, const QVariant& v);
-
-      QVariant value(StyleIdx idx) const;
-
-      bool load(QFile* qf);
+      bool load(QFile* qf, bool ignore = false);
       void load(XmlReader& e);
-      void save(Xml& xml, bool optimize);
-      const PageFormat* pageFormat() const;
-      void setPageFormat(const PageFormat& pf);
-      qreal spatium() const;
-      void setSpatium(qreal v);
-      ArticulationAnchor articulationAnchor(int id) const;
-      void setArticulationAnchor(int id, ArticulationAnchor val);
+      void save(XmlWriter& xml, bool optimize);
+      bool readProperties(XmlReader&);
+      bool readStyleValCompat(XmlReader&);
+      bool readTextStyleValCompat(XmlReader&);
+
+      void reset(Score*);
+
+      static const char* valueType(const Sid);
+      static const char* valueName(const Sid);
+      static Sid styleIdx(const QString& name);
       };
 
-extern QVector<TextStyle> defaultTextStyles;
-extern const TextStyle defaultTextStyleArray[];
+//---------------------------------------------------------
+//   StyledProperty
+//---------------------------------------------------------
 
-extern void initStyle(MStyle*);
+struct StyledProperty {
+      Sid sid;
+      Pid pid;
+      };
+
+typedef std::vector<StyledProperty> ElementStyle;
+
+#define TEXT_STYLE_SIZE 13
+
+typedef std::array<StyledProperty, TEXT_STYLE_SIZE> TextStyle;
+
+
+const TextStyle* textStyle(Tid);
+const TextStyle* textStyle(const char*);
+
+const char* textStyleName(Tid);
+QString textStyleUserName(Tid);
+Tid textStyleFromName(const QString&);
+
+const std::vector<Tid>& allTextStyles();
+const std::vector<Tid>& primaryTextStyles();
+
+#ifndef NDEBUG
+extern void checkStyles();
+#endif
 
 }     // namespace Ms
 
-Q_DECLARE_METATYPE(Ms::TextStyle);
 
 #endif

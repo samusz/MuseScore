@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2002-2011 Werner Schweer
+//  Copyright (C) 2002-2017 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -18,8 +18,14 @@
 #include "symbol.h"
 #include "staff.h"
 #include "stafftype.h"
+#include "segment.h"
+#include "utils.h"
 
 namespace Ms {
+
+static const ElementStyle timesigStyle {
+      { Sid::timesigScale,                       Pid::SCALE                   },
+      };
 
 //---------------------------------------------------------
 //   TimeSig
@@ -30,27 +36,15 @@ namespace Ms {
 //---------------------------------------------------------
 
 TimeSig::TimeSig(Score* s)
-  : Element(s)
+  : Element(s, ElementFlag::ON_STAFF | ElementFlag::MOVABLE)
       {
-      setFlags(ElementFlag::SELECTABLE | ElementFlag::ON_STAFF);
+      initElementStyle(&timesigStyle);
+
       _showCourtesySig = true;
-      customText = false;
       _stretch.set(1, 1);
       _sig.set(0, 1);               // initialize to invalid
-      _timeSigType   = TimeSigType::NORMAL;
+      _timeSigType      = TimeSigType::NORMAL;
       _largeParentheses = false;
-      _needLayout = true;
-      }
-
-//---------------------------------------------------------
-//   clone
-//---------------------------------------------------------
-
-TimeSig* TimeSig::clone() const
-      {
-      TimeSig* ts = new TimeSig(*this);
-      ts->setNeedLayout(true); // relayout of the ts is needed in parts #24571
-      return ts;
       }
 
 //---------------------------------------------------------
@@ -59,7 +53,7 @@ TimeSig* TimeSig::clone() const
 
 qreal TimeSig::mag() const
       {
-      return staff() ? staff()->mag() : 1.0;
+      return staff() ? staff()->mag(tick()) : 1.0;
       }
 
 //---------------------------------------------------------
@@ -69,39 +63,34 @@ qreal TimeSig::mag() const
 
 void TimeSig::setSig(const Fraction& f, TimeSigType st)
       {
-      if (!_sig.identical(f)) {
-            _sig = f;
-            _needLayout = true;
-            }
-      if (_timeSigType != st) {
-            _timeSigType = st;
-            _needLayout = true;
-            }
-      customText = false;
+      _sig              = f;
+      _timeSigType      = st;
       _largeParentheses = false;
+      _numeratorString.clear();
+      _denominatorString.clear();
       }
 
 //---------------------------------------------------------
 //   acceptDrop
 //---------------------------------------------------------
 
-bool TimeSig::acceptDrop(const DropData& data) const
+bool TimeSig::acceptDrop(EditData& data) const
       {
-      return data.element->type() == Element::Type::TIMESIG;
+      return data.dropElement->isTimeSig();
       }
 
 //---------------------------------------------------------
 //   drop
 //---------------------------------------------------------
 
-Element* TimeSig::drop(const DropData& data)
+Element* TimeSig::drop(EditData& data)
       {
-      Element* e = data.element;
-      if (e->type() == Element::Type::TIMESIG) {
+      Element* e = data.dropElement;
+      if (e->isTimeSig()) {
             // change timesig applies to all staves, can't simply set subtype
             // for this one only
             // ownership of e is transferred to cmdAddTimeSig
-            score()->cmdAddTimeSig(measure(), staffIdx(), static_cast<TimeSig*>(e), false);
+            score()->cmdAddTimeSig(measure(), staffIdx(), toTimeSig(e), false);
             return 0;
             }
       delete e;
@@ -115,12 +104,8 @@ Element* TimeSig::drop(const DropData& data)
 
 void TimeSig::setNumeratorString(const QString& a)
       {
-      if (_timeSigType ==  TimeSigType::NORMAL) {
+      if (_timeSigType == TimeSigType::NORMAL)
             _numeratorString = a;
-            customText = (_denominatorString != QString::number(_sig.denominator()))
-               || (_numeratorString != QString::number(_sig.numerator()));
-            _needLayout = true;
-            }
       }
 
 //---------------------------------------------------------
@@ -130,23 +115,18 @@ void TimeSig::setNumeratorString(const QString& a)
 
 void TimeSig::setDenominatorString(const QString& a)
       {
-      if (_timeSigType ==  TimeSigType::NORMAL) {
+      if (_timeSigType ==  TimeSigType::NORMAL)
             _denominatorString = a;
-            customText = (_denominatorString != QString::number(_sig.denominator()))
-               || (_numeratorString != QString::number(_sig.numerator()));
-            _needLayout = true;
-            }
       }
 
 //---------------------------------------------------------
 //   write TimeSig
 //---------------------------------------------------------
 
-void TimeSig::write(Xml& xml) const
+void TimeSig::write(XmlWriter& xml) const
       {
-      xml.stag("TimeSig");
-      if (timeSigType() != TimeSigType::NORMAL)
-            xml.tag("subtype", int(timeSigType()));
+      xml.stag(this);
+      writeProperty(xml, Pid::TIMESIG_TYPE);
       Element::writeProperties(xml);
 
       xml.tag("sigN",  _sig.numerator());
@@ -155,13 +135,13 @@ void TimeSig::write(Xml& xml) const
             xml.tag("stretchN", stretch().numerator());
             xml.tag("stretchD", stretch().denominator());
             }
-      if (customText) {
-            xml.tag("textN", _numeratorString);
-            xml.tag("textD", _denominatorString);
-            }
+      writeProperty(xml, Pid::NUMERATOR_STRING);
+      writeProperty(xml, Pid::DENOMINATOR_STRING);
       if (!_groups.empty())
             _groups.write(xml);
-      xml.tag("showCourtesySig", _showCourtesySig);
+      writeProperty(xml, Pid::SHOW_COURTESY);
+      writeProperty(xml, Pid::SCALE);
+
       xml.etag();
       }
 
@@ -173,8 +153,6 @@ void TimeSig::read(XmlReader& e)
       {
       int n=0, z1=0, z2=0, z3=0, z4=0;
       bool old = false;
-
-      customText = false;
 
       while (e.readNextStartElement()) {
             const QStringRef& tag(e.name());
@@ -201,14 +179,7 @@ void TimeSig::read(XmlReader& e)
                   }
             else if (tag == "subtype") {
                   int i = e.readInt();
-                  if (score()->mscVersion() < 122 && score()->mscVersion() > 114) {
-                        setSig(Fraction(
-                             ((i >> 24) & 0x3f)
-                           + ((i >> 18) & 0x3f)
-                           + ((i >> 12) & 0x3f)
-                           + ((i >>  6) & 0x3f), i & 0x3f), TimeSigType::NORMAL);
-                        }
-                  else if (score()->mscVersion() <= 114) {
+                  if (score()->mscVersion() <= 114) {
                         if (i == 0x40000104)
                               _timeSigType = TimeSigType::FOUR_FOUR;
                         else if (i == 0x40002084)
@@ -235,26 +206,41 @@ void TimeSig::read(XmlReader& e)
                   setDenominatorString(e.readElementText());
             else if (tag == "Groups")
                   _groups.read(e);
+            else if (readStyledProperty(e, tag))
+                  ;
             else if (!Element::readProperties(e))
                   e.unknown();
             }
       if (old) {
             _sig.set(z1+z2+z3+z4, n);
-            customText = false;
             }
-      // sanity check:
-      if (_timeSigType == TimeSigType::ALLA_BREVE)
-            _sig.set(2,2);
       _stretch.reduce();
-      _needLayout = true;
       }
 
 //---------------------------------------------------------
-//   layout1
+//   propertyId
 //---------------------------------------------------------
 
-void TimeSig::layout1()
+Pid TimeSig::propertyId(const QStringRef& name) const
       {
+      if (name == "subtype")
+            return Pid::TIMESIG_TYPE;
+      if (name == "sigN" || name == "sigD")
+            return Pid::TIMESIG;
+      if (name == "stretchN" || name == "stretchD")
+            return Pid::TIMESIG_STRETCH;
+      if (name == "Groups")
+            return Pid::GROUPS;
+      return Element::propertyId(name);
+      }
+
+//---------------------------------------------------------
+//   layout
+//---------------------------------------------------------
+
+void TimeSig::layout()
+      {
+      setPos(0.0, 0.0);
       qreal _spatium = spatium();
 
       setbbox(QRectF());                  // prepare for an empty time signature
@@ -263,15 +249,16 @@ void TimeSig::layout1()
       pn = QPointF();
       pointLargeRightParen = QPointF();
 
-      qreal lineDist      = 1.0;          // assume dimensions a standard staff
-      int   numOfLines    = 5;
+      qreal lineDist;
+      int   numOfLines;
       TimeSigType sigType = timeSigType();
-      Staff* _staff       = staff();
+      const Staff* _staff       = staff();
 
       if (_staff) {
             // if staff is without time sig, format as if no text at all
-            if (!_staff->staffType()->genTimesig() ) {
+            if (!_staff->staffType(tick())->genTimesig() ) {
                   // reset position and box sizes to 0
+                  // qDebug("staff: no time sig");
                   pointLargeLeftParen.rx() = 0.0;
                   pn.rx() = 0.0;
                   pz.rx() = 0.0;
@@ -281,9 +268,13 @@ void TimeSig::layout1()
                   // draw() will anyway skip any drawing if staff type has no time sigs
                   return;
                   }
-            // update to real staff values
-            numOfLines  = _staff->lines();
-            lineDist    = _staff->lineDistance();
+            numOfLines  = _staff->lines(tick());
+            lineDist    = _staff->lineDistance(tick());
+            }
+      else {
+            // assume dimensions of a standard staff
+            lineDist = 1.0;
+            numOfLines = 5;
             }
 
       // if some symbol
@@ -296,30 +287,26 @@ void TimeSig::layout1()
       if (sigType ==  TimeSigType::FOUR_FOUR) {
             pz = QPointF(0.0, yoff);
             setbbox(symBbox(SymId::timeSigCommon).translated(pz));
-            _numeratorString = score()->scoreFont()->toString(SymId::timeSigCommon);
-            _denominatorString.clear();
+            ns.clear();
+            ns.push_back(SymId::timeSigCommon);
+            ds.clear();
             }
       else if (sigType == TimeSigType::ALLA_BREVE) {
             pz = QPointF(0.0, yoff);
             setbbox(symBbox(SymId::timeSigCutCommon).translated(pz));
-            _numeratorString = score()->scoreFont()->toString(SymId::timeSigCutCommon);
-            _denominatorString.clear();
+            ns.clear();
+            ns.push_back(SymId::timeSigCutCommon);
+            ds.clear();
             }
       else {
-            if (!customText) {
-                  _numeratorString   = QString("%1").arg(_sig.numerator());   // build numerator string
-                  _denominatorString = QString("%1").arg(_sig.denominator()); // build denominator string
-                  }
-            QString ns = toTimeSigString(_numeratorString);
-            QString ds = toTimeSigString(_denominatorString);
-            QFont font = score()->scoreFont()->font();
-            QFontMetricsF fm(font);
-            qreal mag = magS();
-            QRectF numRect = fm.tightBoundingRect(ns);          // get 'tight' bounding boxes for strings
-            QRectF denRect = fm.tightBoundingRect(ds);
-            // really Qt does not provide a QRectF::scale() method?!!
-            numRect = QRect(numRect.x()*mag, numRect.y()*mag, fm.width(ns)*mag, numRect.height()*mag);
-            denRect = QRect(denRect.x()*mag, denRect.y()*mag, fm.width(ds)*mag, denRect.height()*mag);
+            ns = toTimeSigString(_numeratorString.isEmpty()   ? QString::number(_sig.numerator())   : _numeratorString);
+            ds = toTimeSigString(_denominatorString.isEmpty() ? QString::number(_sig.denominator()) : _denominatorString);
+
+            ScoreFont* font = score()->scoreFont();
+            QSizeF mag(magS() * _scale);
+
+            QRectF numRect = font->bbox(ns, mag);
+            QRectF denRect = font->bbox(ds, mag);
 
             // position numerator and denominator; vertical displacement:
             // number of lines is odd: 0.0 (strings are directly above and below the middle line)
@@ -328,17 +315,20 @@ void TimeSig::layout1()
             qreal displ = (numOfLines & 1) ? 0.0 : (0.05 * _spatium);
 
             //align on the wider
+            qreal pzY = yoff - (denRect.width() < 0.01 ? 0.0 : (displ + numRect.height() * .5));
+            qreal pnY = yoff + displ + denRect.height() * .5;
+
             if (numRect.width() >= denRect.width()) {
                   // numerator: one space above centre line, unless denomin. is empty (if so, directly centre in the middle)
-                  pz = QPointF(0.0, yoff - ((denRect.width() < 0.01) ? 0.0 : (displ + _spatium)) );
+                  pz = QPointF(0.0, pzY);
                   // denominator: horiz: centred around centre of numerator | vert: one space below centre line
-                  pn = QPointF((numRect.width() - denRect.width())*.5, yoff + displ + _spatium);
+                  pn = QPointF((numRect.width() - denRect.width())*.5, pnY);
                   }
             else {
-                  // denominator: horiz: centred around centre of numerator | vert: one space below centre line
-                  pn = QPointF(0.0, yoff + displ + _spatium);
                   // numerator: one space above centre line, unless denomin. is empty (if so, directly centre in the middle)
-                  pz = QPointF((denRect.width() - numRect.width())*.5, yoff - ((denRect.width() < 0.01) ? 0.0 : (displ + _spatium)) );
+                  pz = QPointF((denRect.width() - numRect.width())*.5, pzY);
+                  // denominator: horiz: centred around centre of numerator | vert: one space below centre line
+                  pn = QPointF(0.0, pnY);
                   }
 
             // centering of parenthesis so the middle of the parenthesis is at the divisor marking level
@@ -354,8 +344,26 @@ void TimeSig::layout1()
                   addbbox(QRect(pointLargeRightParen.x(), pointLargeRightParen.y() - denRect.height(),  _spatium / 2, numRect.height() + denRect.height()));
                   }
             }
+      }
 
-      _needLayout = false;
+//---------------------------------------------------------
+//   shape
+//---------------------------------------------------------
+
+Shape TimeSig::shape() const
+      {
+      QRectF box(bbox());
+      const Staff* st = staff();
+      if (st && addToSkyline()) {
+            // Extend time signature shape up and down to
+            // the first ledger line height to ensure that
+            // no notes will be too close to the timesig.
+            const qreal sp = spatium();
+            const qreal y = pos().y();
+            box.setTop(std::min(-sp - y, box.top()));
+            box.setBottom(std::max(st->height() - y + sp, box.bottom()));
+            }
+      return Shape(box);
       }
 
 //---------------------------------------------------------
@@ -364,27 +372,17 @@ void TimeSig::layout1()
 
 void TimeSig::draw(QPainter* painter) const
       {
-      if (staff() && !staff()->staffType()->genTimesig())
+      if (staff() && !const_cast<const Staff*>(staff())->staffType(tick())->genTimesig())
             return;
       painter->setPen(curColor());
-      QString ns = toTimeSigString(_numeratorString);
-      QString ds = toTimeSigString(_denominatorString);
 
-      drawSymbols(ns, painter, pz);
-      drawSymbols(ds, painter, pn);
+      drawSymbols(ns, painter, pz, _scale);
+      drawSymbols(ds, painter, pn, _scale);
+
       if (_largeParentheses) {
-            drawSymbol(SymId::timeSigParensLeft, painter, pointLargeLeftParen);
-            drawSymbol(SymId::timeSigParensRight, painter, pointLargeRightParen);
+            drawSymbol(SymId::timeSigParensLeft,  painter, pointLargeLeftParen,  _scale.width());
+            drawSymbol(SymId::timeSigParensRight, painter, pointLargeRightParen, _scale.width());
             }
-      }
-
-//---------------------------------------------------------
-//   space
-//---------------------------------------------------------
-
-Space TimeSig::space() const
-      {
-      return Space(point(score()->styleS(StyleIdx::timesigLeftMargin)), width());
       }
 
 //---------------------------------------------------------
@@ -398,8 +396,6 @@ void TimeSig::setFrom(const TimeSig* ts)
       _denominatorString = ts->_denominatorString;
       _sig               = ts->_sig;
       _stretch           = ts->_stretch;
-      customText         = ts->customText;
-      _needLayout        = true;
       }
 
 //---------------------------------------------------------
@@ -425,55 +421,30 @@ void TimeSig::setSSig(const QString& s)
       }
 
 //---------------------------------------------------------
-//   undoSetShowCourtesySig
-//---------------------------------------------------------
-
-void TimeSig::undoSetShowCourtesySig(bool v)
-      {
-      score()->undoChangeProperty(this, P_ID::SHOW_COURTESY, v);
-      }
-
-//---------------------------------------------------------
-//   undoSetNumeratorString
-//---------------------------------------------------------
-
-void TimeSig::undoSetNumeratorString(const QString& s)
-      {
-      score()->undoChangeProperty(this, P_ID::NUMERATOR_STRING, s);
-      }
-
-//---------------------------------------------------------
-//   undoSetDenominatorString
-//---------------------------------------------------------
-
-void TimeSig::undoSetDenominatorString(const QString& s)
-      {
-      score()->undoChangeProperty(this, P_ID::DENOMINATOR_STRING, s);
-      }
-
-//---------------------------------------------------------
-//   undoSetGroups
-//---------------------------------------------------------
-
-void TimeSig::undoSetGroups(const Groups& g)
-      {
-      score()->undoChangeProperty(this, P_ID::GROUPS, QVariant::fromValue(g));
-      }
-
-//---------------------------------------------------------
 //   getProperty
 //---------------------------------------------------------
 
-QVariant TimeSig::getProperty(P_ID propertyId) const
+QVariant TimeSig::getProperty(Pid propertyId) const
       {
-      switch(propertyId) {
-            case P_ID::SHOW_COURTESY:      return int(showCourtesySig());
-            case P_ID::NUMERATOR_STRING:   return numeratorString();
-            case P_ID::DENOMINATOR_STRING: return denominatorString();
-            case P_ID::GROUPS:             return QVariant::fromValue(groups());
-            case P_ID::TIMESIG:            return QVariant::fromValue(_sig);
-            case P_ID::TIMESIG_GLOBAL:     return QVariant::fromValue(globalSig());
-            case P_ID::TIMESIG_TYPE: return QVariant::fromValue(int(_timeSigType));
+      switch (propertyId) {
+            case Pid::SHOW_COURTESY:
+                  return int(showCourtesySig());
+            case Pid::NUMERATOR_STRING:
+                  return numeratorString();
+            case Pid::DENOMINATOR_STRING:
+                  return denominatorString();
+            case Pid::GROUPS:
+                  return QVariant::fromValue(groups());
+            case Pid::TIMESIG:
+                  return QVariant::fromValue(_sig);
+            case Pid::TIMESIG_GLOBAL:
+                  return QVariant::fromValue(globalSig());
+            case Pid::TIMESIG_STRETCH:
+                  return QVariant::fromValue(stretch());
+            case Pid::TIMESIG_TYPE:
+                  return int(_timeSigType);
+            case Pid::SCALE:
+                  return _scale;
             default:
                   return Element::getProperty(propertyId);
             }
@@ -483,37 +454,44 @@ QVariant TimeSig::getProperty(P_ID propertyId) const
 //   setProperty
 //---------------------------------------------------------
 
-bool TimeSig::setProperty(P_ID propertyId, const QVariant& v)
+bool TimeSig::setProperty(Pid propertyId, const QVariant& v)
       {
-      switch(propertyId) {
-            case P_ID::SHOW_COURTESY:
+      switch (propertyId) {
+            case Pid::SHOW_COURTESY:
+                  if (generated())
+                        return false;
                   setShowCourtesySig(v.toBool());
                   break;
-            case P_ID::NUMERATOR_STRING:
+            case Pid::NUMERATOR_STRING:
                   setNumeratorString(v.toString());
                   break;
-            case P_ID::DENOMINATOR_STRING:
+            case Pid::DENOMINATOR_STRING:
                   setDenominatorString(v.toString());
                   break;
-            case P_ID::GROUPS:
+            case Pid::GROUPS:
                   setGroups(v.value<Groups>());
                   break;
-            case P_ID::TIMESIG:
+            case Pid::TIMESIG:
                   setSig(v.value<Fraction>());
                   break;
-            case P_ID::TIMESIG_GLOBAL:
+            case Pid::TIMESIG_GLOBAL:
                   setGlobalSig(v.value<Fraction>());
                   break;
-            case P_ID::TIMESIG_TYPE:
+            case Pid::TIMESIG_STRETCH:
+                  setStretch(v.value<Fraction>());
+                  break;
+            case Pid::TIMESIG_TYPE:
                   _timeSigType = (TimeSigType)(v.toInt());
+                  break;
+            case Pid::SCALE:
+                  _scale = v.toSizeF();
                   break;
             default:
                   if (!Element::setProperty(propertyId, v))
                         return false;
                   break;
             }
-      _needLayout = true;
-      score()->setLayoutAll(true);
+      score()->setLayoutAll();      // TODO
       setGenerated(false);
       return true;
       }
@@ -522,52 +500,42 @@ bool TimeSig::setProperty(P_ID propertyId, const QVariant& v)
 //   propertyDefault
 //---------------------------------------------------------
 
-QVariant TimeSig::propertyDefault(P_ID id) const
+QVariant TimeSig::propertyDefault(Pid id) const
       {
-      switch(id) {
-            case P_ID::SHOW_COURTESY:      return true;
-            case P_ID::NUMERATOR_STRING:   return QString();
-            case P_ID::DENOMINATOR_STRING: return QString();
-            case P_ID::TIMESIG:            return QVariant::fromValue(Fraction(4,4));
-            case P_ID::TIMESIG_GLOBAL:     return QVariant::fromValue(Fraction(1,1));
-            case P_ID::TIMESIG_TYPE:       return int(TimeSigType::NORMAL);
-            default:                   return Element::propertyDefault(id);
+      switch (id) {
+            case Pid::SHOW_COURTESY:
+                  return true;
+            case Pid::NUMERATOR_STRING:
+                  return QString();
+            case Pid::DENOMINATOR_STRING:
+                  return QString();
+            case Pid::TIMESIG:
+                  return QVariant::fromValue(Fraction(4,4));
+            case Pid::TIMESIG_GLOBAL:
+                  return QVariant::fromValue(Fraction(1,1));
+            case Pid::TIMESIG_TYPE:
+                  return int(TimeSigType::NORMAL);
+            case Pid::SCALE:
+                  return score()->styleV(Sid::timesigScale);
+            default:
+                  return Element::propertyDefault(id);
             }
       }
 
 //---------------------------------------------------------
-//   spatiumChanged
+//   nextSegmentElement
 //---------------------------------------------------------
 
-void TimeSig::spatiumChanged(qreal /*oldValue*/, qreal /*newValue*/)
-      {
-      _needLayout = true;
-      }
-
-//---------------------------------------------------------
-//   layout
-//---------------------------------------------------------
-
-void TimeSig::layout()
-      {
-      if (_needLayout)
-            layout1();
-      }
-
-//---------------------------------------------------------
-//   nextElement
-//---------------------------------------------------------
-
-Element* TimeSig::nextElement()
+Element* TimeSig::nextSegmentElement()
       {
       return segment()->firstInNextSegments(staffIdx());
       }
 
 //---------------------------------------------------------
-//   prevElement
+//   prevSegmentElement
 //---------------------------------------------------------
 
-Element* TimeSig::prevElement()
+Element* TimeSig::prevSegmentElement()
       {
       return segment()->lastInPrevSegments(staffIdx());
       }
@@ -576,18 +544,35 @@ Element* TimeSig::prevElement()
 //   accessibleInfo
 //---------------------------------------------------------
 
-QString TimeSig::accessibleInfo()
+QString TimeSig::accessibleInfo() const
       {
       QString timeSigString;
       switch (timeSigType()) {
             case TimeSigType::FOUR_FOUR:
-                  timeSigString = tr("Common time");
+                  timeSigString = QObject::tr("Common time");
+                  break;
             case TimeSigType::ALLA_BREVE:
-                  timeSigString = tr("Cut time");
+                  timeSigString = QObject::tr("Cut time");
+                  break;
             default:
-                  timeSigString = tr("%1/%2 time").arg(QString::number(numerator())).arg(QString::number(denominator()));
+                  timeSigString = QObject::tr("%1/%2 time").arg(QString::number(numerator())).arg(QString::number(denominator()));
             }
       return QString("%1: %2").arg(Element::accessibleInfo()).arg(timeSigString);
+      }
+
+//---------------------------------------------------------
+//   operator==
+//---------------------------------------------------------
+
+bool TimeSig::operator==(const TimeSig& ts) const
+      {
+      return (timeSigType() == ts.timeSigType())
+         && (sig().identical(ts.sig()))
+         && (stretch() == ts.stretch())
+         && (groups() == ts.groups())
+         && (_numeratorString == ts._numeratorString)
+         && (_denominatorString == ts._denominatorString)
+         ;
       }
 
 }

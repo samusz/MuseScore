@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: editstaff.h 3629 2010-10-26 10:40:47Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -35,20 +34,20 @@ class InstrumentTemplate;
 class SelectInstrument : public QDialog, private Ui::SelectInstrument {
       Q_OBJECT
 
+      virtual void hideEvent(QHideEvent*);
    private slots:
       void buildTemplateList();
       void expandOrCollapse(const QModelIndex &);
       void on_instrumentList_itemSelectionChanged();
       void on_instrumentList_itemDoubleClicked(QTreeWidgetItem* item, int);
 
-      void on_search_textChanged(const QString &searchPhrase);
-      void on_clearSearch_clicked();
+      void on_search_textChanged(const QString&);
 
       void on_instrumentGenreFilter_currentIndexChanged(int);
       void filterInstrumentsByGenre(QTreeWidget *, QString);
 
    public:
-      SelectInstrument(const Instrument&, QWidget* parent = 0);
+      SelectInstrument(const Instrument*, QWidget* parent = 0);
       const InstrumentTemplate* instrTemplate() const;
       };
 

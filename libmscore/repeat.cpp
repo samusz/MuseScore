@@ -45,6 +45,10 @@ void RepeatMeasure::draw(QPainter* painter) const
 
 void RepeatMeasure::layout()
       {
+      for (Element* e : el())
+            e->layout();
+
+      rxpos() = 0.0;
       qreal sp  = spatium();
 
       qreal y   = sp;
@@ -53,7 +57,7 @@ void RepeatMeasure::layout()
       qreal lw  = sp * .50;  // line width
       qreal r   = sp * .20;  // dot radius
 
-      path       = QPainterPath();
+      path      = QPainterPath();
 
       path.moveTo(w - lw, y);
       path.lineTo(w,  y);
@@ -64,17 +68,17 @@ void RepeatMeasure::layout()
       path.addEllipse(QRectF(w * .75 - r, y+h * .75 - r, r * 2.0, r * 2.0 ));
 
       setbbox(path.boundingRect());
-      _space.setRw(width());
+//      _space.setRw(width());
       }
 
 //---------------------------------------------------------
-//   duration
+//   ticks
 //---------------------------------------------------------
 
-Fraction RepeatMeasure::duration() const
+Fraction RepeatMeasure::ticks() const
       {
       if (measure())
-            return measure()->len();
+            return measure()->stretchedLen(staff());
       return Fraction(0, 1);
       }
 
@@ -82,7 +86,7 @@ Fraction RepeatMeasure::duration() const
 //   accessibleInfo
 //---------------------------------------------------------
 
-QString RepeatMeasure::accessibleInfo()
+QString RepeatMeasure::accessibleInfo() const
       {
       return Element::accessibleInfo();
       }

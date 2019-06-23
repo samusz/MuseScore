@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: mididriver.cpp 5568 2012-04-22 10:08:43Z wschweer $
 //
 //  Copyright (C) 2008 Werner Schweer and others
 //
@@ -160,10 +159,8 @@ bool AlsaMidiDriver::init()
             qDebug("Alsa: Subscribe System failed: %s", snd_strerror(error));
             return false;
             }
-      midiOutPorts = new Port[preferences.midiPorts];
       midiInPort   = registerOutPort("MuseScore Port-0");
-      for (int i = 0; i < preferences.midiPorts; ++i)
-            midiOutPorts[i] = registerInPort(QString("MuseScore Port-%1").arg(i));
+      midiOutPorts.append(registerInPort("MuseScore Port-0"));
 
       struct pollfd* pfd;
       int npfd;
@@ -322,6 +319,31 @@ Port AlsaMidiDriver::registerInPort(const QString& name)
       }
 
 //---------------------------------------------------------
+//   updateInPortCount
+//---------------------------------------------------------
+
+void AlsaMidiDriver::updateInPortCount(int maxport)
+      {
+      int ports = midiOutPorts.size();
+      if (maxport == ports)
+            return;
+      if (MScore::debugMode)
+            qDebug()<<"ALSA number of ports:"<<ports<<", change to:"<<maxport;
+      if (maxport > ports) {
+            for (int i = ports; i < maxport; ++i)
+                  midiOutPorts.append(registerInPort(QString("MuseScore Port-%1").arg(i)));
+            }
+      else if (maxport < ports) {
+            for(int i = ports - 1; i >= maxport; --i) {
+                  if (snd_seq_delete_simple_port(alsaSeq, midiOutPorts[i].alsaPort()) < 0)
+                        qDebug("Can not delete ALSA port");
+                  else
+                        midiOutPorts.removeAt(i);
+                  }
+            }
+      }
+
+//---------------------------------------------------------
 //   getInputPollFd
 //---------------------------------------------------------
 
@@ -434,7 +456,7 @@ void AlsaMidiDriver::read()
 
 void AlsaMidiDriver::write(const Event& e)
       {
-      Score* cs = mscore->currentScore();
+      MasterScore* cs = mscore->currentScore()->masterScore();
       int port  = cs->midiPort(e.channel());
       int chn   = cs->midiChannel(e.channel());
       int a     = e.dataA();
@@ -446,7 +468,7 @@ void AlsaMidiDriver::write(const Event& e)
       snd_seq_event_t event;
       memset(&event, 0, sizeof(event));
       snd_seq_ev_set_direct(&event);
-      if (port >= preferences.midiPorts)
+      if (port >= midiOutPorts.size())
             port = 0;
       snd_seq_ev_set_source(&event, midiOutPorts[port].alsaPort());
       snd_seq_ev_set_dest(&event, SND_SEQ_ADDRESS_SUBSCRIBERS, 0);

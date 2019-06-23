@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -28,14 +27,14 @@
 using namespace Ms;
 
 //---------------------------------------------------------
-//   TestChordSymbol
+//   TestInstrumentChange
 //---------------------------------------------------------
 
 class TestInstrumentChange : public QObject, public MTest {
       Q_OBJECT
 
-      Score* test_pre(const char* p);
-      void test_post(Score* score, const char* p);
+      MasterScore* test_pre(const char* p);
+      void test_post(MasterScore* score, const char* p);
 
    private slots:
       void initTestCase();
@@ -59,15 +58,14 @@ void TestInstrumentChange::initTestCase()
 //   chordsymbol
 //---------------------------------------------------------
 
-Score* TestInstrumentChange::test_pre(const char* p)
+MasterScore* TestInstrumentChange::test_pre(const char* p)
       {
       QString p1 = DIR + p + ".mscx";
-      Score* score = readScore(p1);
-      score->doLayout();
+      MasterScore* score = readScore(p1);
       return score;
       }
 
-void TestInstrumentChange::test_post(Score* score, const char* p)
+void TestInstrumentChange::test_post(MasterScore* score, const char* p)
       {
       QString p1 = p;
       p1 += "-test.mscx";
@@ -78,24 +76,25 @@ void TestInstrumentChange::test_post(Score* score, const char* p)
 
 void TestInstrumentChange::testAdd()
       {
-      Score* score = test_pre("add");
+      MasterScore* score = test_pre("add");
       Measure* m = score->firstMeasure()->nextMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
+      Segment* s = m->first(SegmentType::ChordRest);
       InstrumentChange* ic = new InstrumentChange(score);
       ic->setParent(s);
       ic->setTrack(0);
-      ic->setText("Instrument");
+      ic->setXmlText("Instrument");
+      score->startCmd();
       score->undoAddElement(ic);
-      score->doLayout();
+      score->endCmd();
       test_post(score, "add");
       }
 
 void TestInstrumentChange::testDelete()
       {
-      Score* score = test_pre("delete");
+      MasterScore* score = test_pre("delete");
       Measure* m = score->firstMeasure()->nextMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
-      InstrumentChange* ic = static_cast<InstrumentChange*>(s->annotations()[0]);
+      Segment* s = m->first(SegmentType::ChordRest);
+      InstrumentChange* ic = toInstrumentChange(s->annotations()[0]);
       score->deleteItem(ic);
       score->doLayout();
       test_post(score, "delete");
@@ -103,14 +102,14 @@ void TestInstrumentChange::testDelete()
 
 void TestInstrumentChange::testChange()
       {
-      Score* score = test_pre("change");
-      Measure* m = score->firstMeasure()->nextMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
-      InstrumentChange* ic = static_cast<InstrumentChange*>(s->annotations()[0]);
-      Instrument* ni = score->staff(1)->part()->instr();
-      ic->setInstrument(*ni);
+      MasterScore* score   = test_pre("change");
+      Measure* m           = score->firstMeasure()->nextMeasure();
+      Segment* s           = m->first(SegmentType::ChordRest);
+      InstrumentChange* ic = toInstrumentChange(s->annotations()[0]);
+      Instrument* ni       = score->staff(1)->part()->instrument();
+      ic->setInstrument(new Instrument(*ni));
       score->startCmd();
-      ic->setText("Instrument Oboe");
+      ic->setXmlText("Instrument Oboe");
       score->undo(new ChangeInstrument(ic, ic->instrument()));
       score->endCmd();
       score->doLayout();
@@ -119,12 +118,12 @@ void TestInstrumentChange::testChange()
 
 void TestInstrumentChange::testMixer()
       {
-      Score* score = test_pre("mixer");
+      MasterScore* score = test_pre("mixer");
       Measure* m = score->firstMeasure()->nextMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
+      Segment* s = m->first(SegmentType::ChordRest);
       InstrumentChange* ic = static_cast<InstrumentChange*>(s->annotations()[0]);
       int idx = score->staff(0)->channel(s->tick(), 0);
-      Channel* c = &score->staff(0)->part()->instr(s->tick())->channel(idx);
+      Channel* c = score->staff(0)->part()->instrument(s->tick())->channel(idx);
       MidiPatch* mp = new MidiPatch;
       mp->bank = 0;
       mp->drum = false;
@@ -132,8 +131,8 @@ void TestInstrumentChange::testMixer()
       mp->prog = 41;
       mp->synti = "Fluid";
       score->startCmd();
-      ic->setText("Mixer Viola");
-      score->undo(new ChangePatch(c, mp));
+      ic->setXmlText("Mixer Viola");
+      score->undo(new ChangePatch(score, c, mp));
       score->endCmd();
       score->doLayout();
       test_post(score, "mixer");
@@ -141,12 +140,12 @@ void TestInstrumentChange::testMixer()
 
 void TestInstrumentChange::testCopy()
       {
-      Score* score = test_pre("copy");
+      MasterScore* score = test_pre("copy");
       Measure* m = score->firstMeasure()->nextMeasure();
-      Segment* s = m->first(Segment::Type::ChordRest);
+      Segment* s = m->first(SegmentType::ChordRest);
       InstrumentChange* ic = static_cast<InstrumentChange*>(s->annotations()[0]);
       m = m->nextMeasure();
-      s = m->first(Segment::Type::ChordRest);
+      s = m->first(SegmentType::ChordRest);
       InstrumentChange* nic = new InstrumentChange(*ic);
       nic->setParent(s);
       nic->setTrack(4);

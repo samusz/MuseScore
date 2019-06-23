@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2014 Werner Schweer
 //
@@ -23,14 +22,14 @@
 using namespace Ms;
 
 //---------------------------------------------------------
-//   SelectionRangeDelete
+//   TestSelectionRangeDelete
 //---------------------------------------------------------
 
 class TestSelectionRangeDelete : public QObject, public MTest
       {
       Q_OBJECT
-      void verifyDelete(Score* score, size_t spanners);
-      void verifyNoDelete(Score* score, size_t spanners);
+      void verifyDelete(MasterScore* score, size_t spanners);
+      void verifyNoDelete(MasterScore* score, size_t spanners);
       void deleteVoice(int voice, QString idx);
 
    private slots:
@@ -39,6 +38,7 @@ class TestSelectionRangeDelete : public QObject, public MTest
       void deleteSegmentWithSpanner();
       void deleteVoice1() { deleteVoice(0,"03"); }
       void deleteVoice2() { deleteVoice(1,"04"); }
+      void deleteSkipAnnotations();
       };
 
 //---------------------------------------------------------
@@ -54,15 +54,14 @@ void TestSelectionRangeDelete::initTestCase()
 //   verifyDelete
 //---------------------------------------------------------
 
-void TestSelectionRangeDelete::verifyDelete(Score* score, size_t spanners)
+void TestSelectionRangeDelete::verifyDelete(MasterScore* score, size_t spanners)
       {
       score->startCmd();
       score->cmdDeleteSelection();
       score->endCmd();
 
       QVERIFY(score->spanner().size() == spanners -1);
-      score->undo()->undo();
-      score->endUndoRedo();
+      score->undoRedo(true, 0);
       QVERIFY(score->spanner().size() == spanners);
       }
 
@@ -70,15 +69,14 @@ void TestSelectionRangeDelete::verifyDelete(Score* score, size_t spanners)
 //   verifyNoDelete
 //---------------------------------------------------------
 
-void TestSelectionRangeDelete::verifyNoDelete(Score* score, size_t spanners)
+void TestSelectionRangeDelete::verifyNoDelete(MasterScore* score, size_t spanners)
       {
       score->startCmd();
       score->cmdDeleteSelection();
       score->endCmd();
 
       QVERIFY(score->spanner().size() == spanners);
-      score->undo()->undo();
-      score->endUndoRedo();
+      score->undoRedo(true, 0);
       QVERIFY(score->spanner().size() == spanners);
       }
 
@@ -89,7 +87,9 @@ void TestSelectionRangeDelete::verifyNoDelete(Score* score, size_t spanners)
 Element* chordRestAtBeat(Score* score, int beat, int half = 0)
       {
       qDebug("Chordrest at beat %i,%i",beat,half);
-      return score->tick2segment(beat * 480 + half * 240,false,Segment::Type::ChordRest,false)->element(0);
+      int division = MScore::division;
+      int tick = beat * division + half * division/2;
+      return score->tick2segment(Fraction::fromTicks(tick), false, SegmentType::ChordRest,false)->element(0);
       }
 
 //---------------------------------------------------------
@@ -105,7 +105,7 @@ void TestSelectionRangeDelete::deleteSegmentWithSlur()
        *  ss es ss   es
        *  q  q  q  e e
        */
-      Score* score = readScore(DIR + "selectionrangedelete01.mscx");
+      MasterScore* score = readScore(DIR + "selectionrangedelete01.mscx");
 
       score->doLayout();
       QVERIFY(score);
@@ -147,7 +147,7 @@ void TestSelectionRangeDelete::deleteSegmentWithSpanner()
        *  ss    es
        *  q  q  q
        */
-      Score* score = readScore(DIR + "selectionrangedelete02.mscx");
+      MasterScore* score = readScore(DIR + "selectionrangedelete02.mscx");
 
       score->doLayout();
       QVERIFY(score);
@@ -180,7 +180,7 @@ void TestSelectionRangeDelete::deleteSegmentWithSpanner()
 
 void TestSelectionRangeDelete::deleteVoice(int voice, QString idx)
       {
-      Score* score = readScore(DIR + QString("selectionrangedelete%1.mscx").arg(idx));
+      MasterScore* score = readScore(DIR + QString("selectionrangedelete%1.mscx").arg(idx));
 
       Measure* m1 = score->firstMeasure();
       QVERIFY(m1);
@@ -197,6 +197,32 @@ void TestSelectionRangeDelete::deleteVoice(int voice, QString idx)
 
       QVERIFY(saveCompareScore(score, QString("selectionrangedelete%1.mscx").arg(idx),
          DIR + QString("selectionrangedelete%1-ref.mscx").arg(idx)));
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   deleteSkipAnnotations
+//---------------------------------------------------------
+
+void TestSelectionRangeDelete::deleteSkipAnnotations()
+      {
+      MasterScore* score = readScore(DIR + QString("selectionrangedelete05.mscx"));
+
+      Measure* m1 = score->firstMeasure();
+      QVERIFY(m1);
+
+      SelectionFilterType annotationFilterType = SelectionFilterType((int)SelectionFilterType::CHORD_SYMBOL);
+      score->selectionFilter().setFiltered(annotationFilterType, false);
+
+      score->startCmd();
+      score->cmdSelectAll();
+      score->cmdDeleteSelection();
+      score->endCmd();
+
+      score->doLayout();
+
+      QVERIFY(saveCompareScore(score, QString("selectionrangedelete05.mscx"),
+         DIR + QString("selectionrangedelete05-ref.mscx")));
       delete score;
       }
 

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2009 Werner Schweer and others
 //
@@ -44,7 +43,6 @@ class KeyEditor : public QWidget, Ui::KeyEdit {
       void addClicked();
       void clearClicked();
       void setDirty() { _dirty = true; }
-
 
    public:
       KeyEditor(QWidget* parent = 0);

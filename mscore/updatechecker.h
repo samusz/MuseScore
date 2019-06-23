@@ -25,31 +25,52 @@ namespace Ms {
 //---------------------------------------------------------
 //   UpdateChecker
 //---------------------------------------------------------
+class UpdateCheckerBase: public QObject {
+      Q_OBJECT
 
-class UpdateChecker : public QObject{
+public:
+      UpdateCheckerBase(QObject* parent);
+      virtual bool hasToCheck();
+
+private:
+      virtual bool getUpdatePrefValue() = 0;
+      virtual QString getUpdatePrefString() = 0;
+      };
+
+class UpdateChecker : public UpdateCheckerBase {
       Q_OBJECT
 
       QNetworkAccessManager* manager;
       QString os;
       QString release;
-      QString revision;
+      QString _currentVersion;
       bool manual;
 
    public:
       void check(QString,bool);
-      static int defaultPeriod();
-      static bool hasToCheck();
+
 
    public slots:
       void onRequestFinished(QNetworkReply*);
 
    private:
       QString parseText(QXmlStreamReader&);
+      virtual bool getUpdatePrefValue();
+      virtual QString getUpdatePrefString();
 
    public:
-      UpdateChecker();
-      ~UpdateChecker();
+      UpdateChecker(QObject* parent);
       };
 
+class ExtensionsUpdateChecker : public UpdateCheckerBase {
+      Q_OBJECT
+public:
+      ExtensionsUpdateChecker(QObject* parent);
+
+      void check();
+private:
+      virtual bool getUpdatePrefValue();
+      virtual QString getUpdatePrefString();
+      };
 }
 #endif // UPDATECHECKER_H

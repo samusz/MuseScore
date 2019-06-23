@@ -6,40 +6,64 @@
 #include "libmscore/timesig.h"
 #include "libmscore/score.h"
 #include "libmscore/measure.h"
+#include "libmscore/spanner.h"
+#include "libmscore/sig.h"
 #include "inspector/inspector.h"
+#include "selectionwindow.h"
+#include "playpanel.h"
+#include "synthcontrol.h"
+#include "mixer.h"
+#include "drumroll.h"
+#include "pianoroll.h"
 
 namespace Ms{
-AccessibleScoreView::AccessibleScoreView(ScoreView* scView) : QAccessibleWidget(scView){
+
+//---------------------------------------------------------
+//   AccessibleScoreView
+//---------------------------------------------------------
+
+AccessibleScoreView::AccessibleScoreView(ScoreView* scView)
+   : QAccessibleWidget(scView)
+      {
       s = scView;
       }
 
-int AccessibleScoreView::childCount() const{
+int AccessibleScoreView::childCount() const
+      {
       return 0;
       }
 
-QAccessibleInterface* AccessibleScoreView::child(int /*index*/) const{
+QAccessibleInterface* AccessibleScoreView::child(int /*index*/) const
+      {
       return 0;
       }
-QAccessibleInterface* AccessibleScoreView::parent() const{
+
+QAccessibleInterface* AccessibleScoreView::parent() const
+      {
       return QAccessibleWidget::parent();
       }
-QRect AccessibleScoreView::rect() const{
+
+QRect AccessibleScoreView::rect() const
+      {
       return s->rect();
       }
-QAccessible::Role AccessibleScoreView::role() const{
+
+QAccessible::Role AccessibleScoreView::role() const
+      {
       return QAccessible::NoRole;
       }
 
-QString AccessibleScoreView::text(QAccessible::Text t) const {
+QString AccessibleScoreView::text(QAccessible::Text t) const
+      {
       switch (t) {
             case QAccessible::Name:
-                  return tr("Score %1").arg(s->score()->name());
+//TODO                  return tr("Score %1").arg(s->score()->name());
+                  return "Score ???";
             case QAccessible::Value:
                   return s->score()->accessibleInfo();
             default:
                   return QString();
            }
-      return QString();
       }
 
 QWindow* AccessibleScoreView::window() const {
@@ -50,7 +74,7 @@ QAccessibleInterface* AccessibleScoreView::ScoreViewFactory(const QString &class
       {
           QAccessibleInterface *iface = 0;
           if (classname == QLatin1String("Ms::ScoreView") && object && object->isWidgetType()){
-                qDebug("Creating interface for ScoreView object");
+//                qDebug("Creating interface for ScoreView object");
                 iface = static_cast<QAccessibleInterface*>(new AccessibleScoreView(static_cast<ScoreView*>(object)));
                 }
 
@@ -63,7 +87,8 @@ ScoreAccessibility* ScoreAccessibility::inst = 0;
 ScoreAccessibility::ScoreAccessibility(QMainWindow* mainWindow) : QObject(mainWindow)
       {
       this->mainWindow = mainWindow;
-      statusBarLabel = 0;
+      statusBarLabel = new QLabel(mainWindow->statusBar());
+      mainWindow->statusBar()->addWidget(statusBarLabel);
       }
 
 void ScoreAccessibility::createInstance(QMainWindow* mainWindow)
@@ -79,18 +104,15 @@ ScoreAccessibility::~ScoreAccessibility()
 
 void ScoreAccessibility::clearAccessibilityInfo()
       {
-      if(statusBarLabel != 0) {
-            mainWindow->statusBar()->removeWidget(statusBarLabel);
-            delete statusBarLabel;
-            statusBarLabel = 0;
-            static_cast<MuseScore*>(mainWindow)->currentScoreView()->score()->setAccessibleInfo(tr("No selection"));
-            }
+      statusBarLabel->setText("");
+      MuseScoreView* view = static_cast<MuseScore*>(mainWindow)->currentScoreView();
+      if (view)
+            view->score()->setAccessibleInfo(tr("No selection"));
       }
 
 void ScoreAccessibility::currentInfoChanged()
       {
       clearAccessibilityInfo();
-      statusBarLabel  = new QLabel(mainWindow->statusBar());
       ScoreView* scoreView =  static_cast<MuseScore*>(mainWindow)->currentScoreView();
       Score* score = scoreView->score();
       if (score->selection().isSingle()) {
@@ -100,19 +122,18 @@ void ScoreAccessibility::currentInfoChanged()
                   }
             Element* el = e->isSpannerSegment() ? static_cast<SpannerSegment*>(e)->spanner() : e;
             QString barsAndBeats = "";
-            std::pair<int, float> bar_beat;
             if (el->isSpanner()){
                   Spanner* s = static_cast<Spanner*>(el);
-                  bar_beat = barbeat(s->startSegment());
+                  std::pair<int, float> bar_beat = barbeat(s->startSegment());
                   barsAndBeats += tr("Start Measure: %1; Start Beat: %2").arg(QString::number(bar_beat.first)).arg(QString::number(bar_beat.second));
                   Segment* seg = s->endSegment();
                   if(!seg)
-                        seg = score->lastSegment()->prev1MM(Segment::Type::ChordRest);
+                        seg = score->lastSegment()->prev1MM(SegmentType::ChordRest);
 
-                  if (seg->tick() != score->lastSegment()->prev1MM(Segment::Type::ChordRest)->tick() &&
-                      s->type() != Element::Type::SLUR                                               &&
-                      s->type() != Element::Type::TIE                                                )
-                        seg = seg->prev1MM(Segment::Type::ChordRest);
+                  if (seg->tick() != score->lastSegment()->prev1MM(SegmentType::ChordRest)->tick() &&
+                      s->type() != ElementType::SLUR                                               &&
+                      s->type() != ElementType::TIE                                                )
+                        seg = seg->prev1MM(SegmentType::ChordRest);
 
                   bar_beat = barbeat(seg);
                   barsAndBeats += "; " + tr("End Measure: %1; End Beat: %2").arg(QString::number(bar_beat.first)).arg(QString::number(bar_beat.second));
@@ -162,7 +183,6 @@ void ScoreAccessibility::currentInfoChanged()
             statusBarLabel->setText(tr("List Selection"));
             score->setAccessibleInfo(tr("List Selection"));
             }
-      mainWindow->statusBar()->addWidget(statusBarLabel);
       }
 
 ScoreAccessibility* ScoreAccessibility::instance()
@@ -172,14 +192,25 @@ ScoreAccessibility* ScoreAccessibility::instance()
 
 void ScoreAccessibility::updateAccessibilityInfo()
       {
-      currentInfoChanged();
       ScoreView* w = static_cast<MuseScore*>(mainWindow)->currentScoreView();
+      if (!w) return;
+
+      currentInfoChanged();
 
       //getInspector->isAncestorOf is used so that inspector and search dialog don't loose focus
       //when this method is called
+      //TODO: create a class to manage focus and replace this massive if
       if ( (qApp->focusWidget() != w) &&
            !mscore->inspector()->isAncestorOf(qApp->focusWidget()) &&
-           !(mscore->searchDialog() && mscore->searchDialog()->isAncestorOf(qApp->focusWidget())) ) {
+           !(mscore->searchDialog() && mscore->searchDialog()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getSelectionWindow() && mscore->getSelectionWindow()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getPlayPanel() && mscore->getPlayPanel()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getSynthControl() && mscore->getSynthControl()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getMixer() && mscore->getMixer()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->searchDialog() && mscore->searchDialog()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getDrumrollEditor() && mscore->getDrumrollEditor()->isAncestorOf(qApp->focusWidget())) &&
+           !(mscore->getPianorollEditor() && mscore->getPianorollEditor()->isAncestorOf(qApp->focusWidget()))) {
+            mscore->activateWindow();
             w->setFocus();
             }
       QObject* obj = static_cast<QObject*>(w);
@@ -190,30 +221,32 @@ void ScoreAccessibility::updateAccessibilityInfo()
 std::pair<int, float> ScoreAccessibility::barbeat(Element *e)
       {
       if (!e) {
-            return std::pair<int, float>(0, 0);
+            return std::pair<int, float>(0, 0.0F);
             }
 
-      int bar;
-      int beat;
-      int ticks;
+      int bar = 0;
+      int beat = 0;
+      int ticks = 0;
       TimeSigMap* tsm = e->score()->sigmap();
       Element* p = e;
-      while(p && p->type() != Element::Type::SEGMENT && p->type() != Element::Type::MEASURE)
+      int ticksB = ticks_beat(tsm->timesig(0).timesig().denominator());
+      while(p && p->type() != ElementType::SEGMENT && p->type() != ElementType::MEASURE)
             p = p->parent();
 
       if (!p) {
-            return std::pair<int, float>(0, 0);
+            return std::pair<int, float>(0, 0.0F);
             }
-      else if (p->type() == Element::Type::SEGMENT) {
+      else if (p->type() == ElementType::SEGMENT) {
             Segment* seg = static_cast<Segment*>(p);
-            tsm->tickValues(seg->tick(), &bar, &beat, &ticks);
+            tsm->tickValues(seg->tick().ticks(), &bar, &beat, &ticks);
+            ticksB = ticks_beat(tsm->timesig(seg->tick().ticks()).timesig().denominator());
             }
-      else if (p->type() == Element::Type::MEASURE) {
+      else if (p->type() == ElementType::MEASURE) {
             Measure* m = static_cast<Measure*>(p);
             bar = m->no();
             beat = -1;
             ticks = 0;
             }
-      return pair<int,float>(bar + 1, beat + 1 + ticks / static_cast<float>(MScore::division));
+      return pair<int,float>(bar + 1, beat + 1 + ticks / static_cast<float>(ticksB));
       }
 }

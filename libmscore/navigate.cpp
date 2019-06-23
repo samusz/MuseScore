@@ -9,6 +9,7 @@
 //  as published by the Free Software Foundation and appearing in
 //  the file LICENCE.GPL
 //=============================================================================
+
 #include "navigate.h"
 #include "element.h"
 #include "clef.h"
@@ -18,7 +19,6 @@
 #include "chord.h"
 #include "system.h"
 #include "segment.h"
-#include "lyrics.h"
 #include "harmony.h"
 #include "utils.h"
 #include "input.h"
@@ -36,7 +36,7 @@ namespace Ms {
 //    return next Chord or Rest
 //---------------------------------------------------------
 
-ChordRest* nextChordRest(ChordRest* cr)
+ChordRest* nextChordRest(ChordRest* cr, bool skipGrace)
       {
       if (!cr)
             return 0;
@@ -45,29 +45,30 @@ ChordRest* nextChordRest(ChordRest* cr)
             //
             // cr is a grace note
 
-            Chord* c  = static_cast<Chord*>(cr);
-            Chord* pc = static_cast<Chord*>(cr->parent());
+            Chord* c  = toChord(cr);
+            Chord* pc = toChord(cr->parent());
 
-            if (cr->isGraceBefore()) {
-                  QList<Chord*> graceNotesBefore;
-                  pc->getGraceNotesBefore(&graceNotesBefore);
-                  auto i = std::find(graceNotesBefore.begin(), graceNotesBefore.end(), c);
-                  if (i == graceNotesBefore.end())
+            if (skipGrace) {
+                  cr = toChordRest(cr->parent());
+                  }
+            else if (cr->isGraceBefore()) {
+                  QVector<Chord*> cl = pc->graceNotesBefore();
+                  auto i = std::find(cl.begin(), cl.end(), c);
+                  if (i == cl.end())
                         return 0;   // unable to find self?
                   ++i;
-                  if (i != graceNotesBefore.end())
+                  if (i != cl.end())
                         return *i;
                   // if this was last grace note before, return parent
                   return pc;
                   }
             else {
-                  QList<Chord*> graceNotesAfter;
-                  pc->getGraceNotesAfter(&graceNotesAfter);
-                  auto i = std::find(graceNotesAfter.begin(), graceNotesAfter.end(), c);
-                  if (i == graceNotesAfter.end())
+                  QVector<Chord*> cl = pc->graceNotesAfter();
+                  auto i = std::find(cl.begin(), cl.end(), c);
+                  if (i == cl.end())
                         return 0;   // unable to find self?
                   ++i;
-                  if (i != graceNotesAfter.end())
+                  if (i != cl.end())
                         return *i;
                   // if this was last grace note after, fall through to find next main note
                   cr = pc;
@@ -76,30 +77,28 @@ ChordRest* nextChordRest(ChordRest* cr)
       else {
             //
             // cr is not a grace note
-            if (cr->type() == Element::Type::CHORD) {
-                  Chord* c = static_cast<Chord*>(cr);
+            if (cr->isChord() && !skipGrace) {
+                  Chord* c = toChord(cr);
                   if (!c->graceNotes().empty()) {
-                        QList<Chord*> graceNotesAfter;
-                        c->getGraceNotesAfter(&graceNotesAfter);
-                        if (!graceNotesAfter.isEmpty())
-                              return graceNotesAfter.first();
+                        QVector<Chord*> cl = c->graceNotesAfter();
+                        if (!cl.empty())
+                              return cl.first();
                         }
                   }
             }
 
-      int track = cr->track();
-      Segment::Type st = Segment::Type::ChordRest;
+      int track      = cr->track();
+      SegmentType st = SegmentType::ChordRest;
 
-      for (Segment* seg = cr->segment()->next1(st); seg; seg = seg->next1(st)) {
-            ChordRest* e = static_cast<ChordRest*>(seg->element(track));
+      for (Segment* seg = cr->segment()->next1MM(st); seg; seg = seg->next1MM(st)) {
+            ChordRest* e = toChordRest(seg->element(track));
             if (e) {
-                  if (e->type() == Element::Type::CHORD) {
-                        Chord* c = static_cast<Chord*>(e);
+                  if (e->isChord() && !skipGrace) {
+                        Chord* c = toChord(e);
                         if (!c->graceNotes().empty()) {
-                              QList<Chord*> graceNotesBefore;
-                              c->getGraceNotesBefore(&graceNotesBefore);
-                              if (!graceNotesBefore.isEmpty())
-                                    return graceNotesBefore.first();
+                              QVector<Chord*> cl = c->graceNotesBefore();
+                              if (!cl.empty())
+                                    return cl.first();
                               }
                         }
                   return e;
@@ -112,9 +111,10 @@ ChordRest* nextChordRest(ChordRest* cr)
 //---------------------------------------------------------
 //   prevChordRest
 //    return previous Chord or Rest
+//    if grace is true, include grace notes
 //---------------------------------------------------------
 
-ChordRest* prevChordRest(ChordRest* cr)
+ChordRest* prevChordRest(ChordRest* cr, bool skipGrace)
       {
       if (!cr)
             return 0;
@@ -123,27 +123,28 @@ ChordRest* prevChordRest(ChordRest* cr)
             //
             // cr is a grace note
 
-            Chord* c  = static_cast<Chord*>(cr);
-            Chord* pc = static_cast<Chord*>(cr->parent());
+            Chord* c  = toChord(cr);
+            Chord* pc = toChord(cr->parent());
 
-            if (cr->isGraceBefore()) {
-                  QList<Chord*> graceNotesBefore;
-                  pc->getGraceNotesBefore(&graceNotesBefore);
-                  auto i = std::find(graceNotesBefore.begin(), graceNotesBefore.end(), c);
-                  if (i == graceNotesBefore.end())
+            if (skipGrace) {
+                  cr = toChordRest(cr->parent());
+                  }
+            else if (cr->isGraceBefore()) {
+                  QVector<Chord*> cl = pc->graceNotesBefore();
+                  auto i = std::find(cl.begin(), cl.end(), c);
+                  if (i == cl.end())
                         return 0;   // unable to find self?
-                  if (i != graceNotesBefore.begin())
+                  if (i != cl.begin())
                         return *--i;
                   // if this was first grace note before, fall through to find previous main note
                   cr = pc;
                   }
             else {
-                  QList<Chord*> graceNotesAfter;
-                  pc->getGraceNotesAfter(&graceNotesAfter);
-                  auto i = std::find(graceNotesAfter.begin(), graceNotesAfter.end(), c);
-                  if (i == graceNotesAfter.end())
+                  QVector<Chord*> cl = pc->graceNotesAfter();
+                  auto i = std::find(cl.begin(), cl.end(), c);
+                  if (i == cl.end())
                         return 0;   // unable to find self?
-                  if (i != graceNotesAfter.begin())
+                  if (i != cl.begin())
                         return *--i;
                   // if this was first grace note after, return parent
                   return pc;
@@ -152,30 +153,23 @@ ChordRest* prevChordRest(ChordRest* cr)
       else {
             //
             // cr is not a grace note
-            if (cr->type() == Element::Type::CHORD) {
-                  Chord* c = static_cast<Chord*>(cr);
-                  if (!c->graceNotes().empty()) {
-                        QList<Chord*> graceNotesBefore;
-                        c->getGraceNotesBefore(&graceNotesBefore);
-                        if (!graceNotesBefore.isEmpty())
-                              return graceNotesBefore.last();
-                        }
+            if (cr->isChord() && !skipGrace) {
+                  Chord* c = toChord(cr);
+                  QVector<Chord*> cl = c->graceNotesBefore();
+                  if (!cl.empty())
+                        return cl.last();
                   }
             }
 
       int track = cr->track();
-      Segment::Type st = Segment::Type::ChordRest;
-      for (Segment* seg = cr->segment()->prev1(st); seg; seg = seg->prev1(st)) {
-            ChordRest* e = static_cast<ChordRest*>(seg->element(track));
+      SegmentType st = SegmentType::ChordRest;
+      for (Segment* seg = cr->segment()->prev1MM(st); seg; seg = seg->prev1MM(st)) {
+            ChordRest* e = toChordRest(seg->element(track));
             if (e) {
-                  if (e->type() == Element::Type::CHORD) {
-                        Chord* c = static_cast<Chord*>(e);
-                        if (!c->graceNotes().empty()) {
-                              QList<Chord*> graceNotesAfter;
-                              c->getGraceNotesAfter(&graceNotesAfter);
-                              if (!graceNotesAfter.isEmpty())
-                                    return graceNotesAfter.last();
-                              }
+                  if (e->type() == ElementType::CHORD && !skipGrace) {
+                        QVector<Chord*> cl = toChord(e)->graceNotesAfter();
+                        if (!cl.empty())
+                              return cl.last();
                         }
                   return e;
                   }
@@ -196,16 +190,16 @@ ChordRest* prevChordRest(ChordRest* cr)
 Element* Score::upAlt(Element* element)
       {
       Element* re = 0;
-      if (element->type() == Element::Type::REST)
-            re = prevTrack(static_cast<Rest*>(element));
-      else if (element->type() == Element::Type::NOTE) {
-            Chord* chord = static_cast<Note*>(element)->chord();
-            const QList<Note*>& notes = chord->notes();
-            int idx = notes.indexOf(static_cast<Note*>(element));
-            if (idx < notes.size()-1) {
-                  ++idx;
-                  re = notes.value(idx);
-                  }
+      if (element->isRest())
+            re = prevTrack(toRest(element));
+      else if (element->isNote()) {
+            Note* note = toNote(element);
+            Chord* chord = note->chord();
+            const std::vector<Note*>& notes = chord->notes();
+            auto i = std::find(notes.begin(), notes.end(), note);
+            ++i;
+            if (i != notes.end())
+                  re = *i;
             else {
                   re = prevTrack(chord);
                   if (re->track() == chord->track())
@@ -214,8 +208,8 @@ Element* Score::upAlt(Element* element)
             }
       if (re == 0)
             return 0;
-      if (re->type() == Element::Type::CHORD)
-            re = static_cast<Chord*>(re)->notes().front();
+      if (re->isChord())
+            re = toChord(re)->notes().front();
       return re;
       }
 
@@ -232,21 +226,22 @@ Note* Score::upAltCtrl(Note* note) const
 //---------------------------------------------------------
 //   downAlt
 //    return next lower pitched note in chord
-//    move to previous track if at bottom of chord
+//    move to next track if at bottom of chord
 //---------------------------------------------------------
 
 Element* Score::downAlt(Element* element)
       {
       Element* re = 0;
-      if (element->type() == Element::Type::REST)
-            re = nextTrack(static_cast<Rest*>(element));
-      else if (element->type() == Element::Type::NOTE) {
-            Chord* chord = static_cast<Note*>(element)->chord();
-            const QList<Note*>& notes = chord->notes();
-            int idx = notes.indexOf(static_cast<Note*>(element));
-            if (idx > 0) {
-                  --idx;
-                  re = notes.value(idx);
+      if (element->isRest())
+            re = nextTrack(toRest(element));
+      else if (element->isNote()) {
+            Note* note   = toNote(element);
+            Chord* chord = note->chord();
+            const std::vector<Note*>& notes = chord->notes();
+            auto i = std::find(notes.begin(), notes.end(), note);
+            if (i != notes.begin()) {
+                  --i;
+                  re = *i;
                   }
             else {
                   re = nextTrack(chord);
@@ -256,8 +251,8 @@ Element* Score::downAlt(Element* element)
             }
       if (re == 0)
             return 0;
-      if (re->type() == Element::Type::CHORD)
-            re = static_cast<Chord*>(re)->notes().back();
+      if (re->isChord())
+            re = toChord(re)->notes().back();
       return re;
       }
 
@@ -277,7 +272,8 @@ Note* Score::downAltCtrl(Note* note) const
 
 Element* Score::firstElement()
       {
-      return this->firstSegment()->element(0);
+      Segment *s = firstSegment(SegmentType::All);
+      return s ? s->element(0) : nullptr;
       }
 
 //---------------------------------------------------------
@@ -286,21 +282,22 @@ Element* Score::firstElement()
 
 Element* Score::lastElement()
       {
-      Element* re =0;
-      Segment* seg = this->lastSegment();
+      Element* re = 0;
+      Segment* seg = lastSegment();
+      if (!seg)
+            return nullptr;
       while (true) {
-            for(int i = (this->staves().size() -1) * VOICES; i < this->staves().size() * VOICES; i++){
-                  if(seg->element(i) != 0){
+            for (int i = (staves().size() -1) * VOICES; i < staves().size() * VOICES; i++) {
+                  if (seg->element(i))
                         re = seg->element(i);
-                        }
                   }
-            if(re){
-                  if(re->type() == Element::Type::CHORD){
-                        return static_cast<Chord*>(re)->notes().first();
+            if (re) {
+                  if (re->isChord()) {
+                        return toChord(re)->notes().front();
                         }
                   return re;
                   }
-            seg = seg->prev1MM(Segment::Type::All);
+            seg = seg->prev1MM(SegmentType::All);
             }
       }
 
@@ -319,10 +316,10 @@ ChordRest* Score::upStaff(ChordRest* cr)
             Element* el = segment->element(track);
             if (!el)
                   continue;
-            if (el->type() == Element::Type::NOTE)
-                  el = static_cast<Note*>(el)->chord();
+            if (el->isNote())
+                  el = toNote(el)->chord();
             if (el->isChordRest())
-                  return static_cast<ChordRest*>(el);
+                  return toChordRest(el);
             }
       return 0;
       }
@@ -343,10 +340,10 @@ ChordRest* Score::downStaff(ChordRest* cr)
             Element* el = segment->element(track);
             if (!el)
                   continue;
-            if (el->type() == Element::Type::NOTE)
-                  el = static_cast<Note*>(el)->chord();
+            if (el->isNote())
+                  el = toNote(el)->chord();
             if (el->isChordRest())
-                  return static_cast<ChordRest*>(el);
+                  return toChordRest(el);
             }
       return 0;
       }
@@ -370,7 +367,7 @@ ChordRest* Score::nextTrack(ChordRest* cr)
 
       while (!el) {
             // find next non-empty track
-            while (++track < tracks){
+            while (++track < tracks) {
                   if (measure->hasVoice(track))
                         break;
                   }
@@ -378,8 +375,8 @@ ChordRest* Score::nextTrack(ChordRest* cr)
             if (track == tracks)
                   return cr;
             // find element at same or previous segment within this track
-            for (Segment* segment = cr->segment(); segment; segment = segment->prev(Segment::Type::ChordRest)) {
-                  el = static_cast<ChordRest*>(segment->element(track));
+            for (Segment* segment = cr->segment(); segment; segment = segment->prev(SegmentType::ChordRest)) {
+                  el = toChordRest(segment->element(track));
                   if (el)
                         break;
                   }
@@ -413,8 +410,8 @@ ChordRest* Score::prevTrack(ChordRest* cr)
             if (track < 0)
                   return cr;
             // find element at same or previous segment within this track
-            for (Segment* segment = cr->segment(); segment != 0; segment = segment->prev(Segment::Type::ChordRest)) {
-                  el = static_cast<ChordRest*>(segment->element(track));
+            for (Segment* segment = cr->segment(); segment; segment = segment->prev(SegmentType::ChordRest)) {
+                  el = toChordRest(segment->element(track));
                   if (el)
                         break;
                   }
@@ -426,16 +423,21 @@ ChordRest* Score::prevTrack(ChordRest* cr)
 //   nextMeasure
 //---------------------------------------------------------
 
-ChordRest* Score::nextMeasure(ChordRest* element, bool selectBehavior)
+ChordRest* Score::nextMeasure(ChordRest* element, bool selectBehavior, bool mmRest)
       {
       if (!element)
             return 0;
 
-      Measure* measure = element->measure()->nextMeasure();
-      if (measure == 0)
+      Measure* measure = 0;
+      if (mmRest)
+            measure = element->measure()->nextMeasureMM();
+      else
+            measure = element->measure()->nextMeasure();
+
+      if (!measure)
             return 0;
 
-      int endTick = element->measure()->last()->nextChordRest(element->track(), true)->tick();
+      Fraction endTick = element->measure()->last()->nextChordRest(element->track(), true)->tick();
       bool last   = false;
 
       if (selection().isRange()) {
@@ -463,7 +465,7 @@ ChordRest* Score::nextMeasure(ChordRest* element, bool selectBehavior)
                   Element* pel = seg->element(track);
 
                   if (pel && pel->isChordRest())
-                        return static_cast<ChordRest*>(pel);
+                        return toChordRest(pel);
                   }
             }
       return 0;
@@ -473,22 +475,21 @@ ChordRest* Score::nextMeasure(ChordRest* element, bool selectBehavior)
 //   prevMeasure
 //---------------------------------------------------------
 
-ChordRest* Score::prevMeasure(ChordRest* element)
+ChordRest* Score::prevMeasure(ChordRest* element, bool mmRest)
       {
       if (!element)
             return 0;
 
-      MeasureBase* mb = element->measure()->prev();
-      while (mb && mb->type() != Element::Type::MEASURE)
-            mb = mb->prev();
+      Measure* measure =  0;
+      if (mmRest)
+            measure = element->measure()->prevMeasureMM();
+      else
+            measure = element->measure()->prevMeasure();
 
-      Measure* measure = static_cast<Measure*>(mb);
-
-      int startTick = element->measure()->first()->nextChordRest(element->track())->tick();
+      Fraction startTick = element->measure()->first()->nextChordRest(element->track())->tick();
       bool last = false;
 
-      if ((selection().isRange())
-          && selection().isEndActive() && selection().startSegment()->tick() <= startTick)
+      if (selection().isRange() && selection().isEndActive() && selection().startSegment()->tick() <= startTick)
             last = true;
       else if (element->tick() != startTick) {
             measure = element->measure();
@@ -507,10 +508,215 @@ ChordRest* Score::prevMeasure(ChordRest* element)
                   Element* pel = seg->element(track);
 
                   if (pel && pel->isChordRest())
-                        return static_cast<ChordRest*>(pel);
+                        return toChordRest(pel);
                   }
             }
       return 0;
+      }
+
+//---------------------------------------------------------
+//   nextElement
+//---------------------------------------------------------
+
+Element* Score::nextElement()
+      {
+      Element* e = getSelectedElement();
+      if (!e)
+            return nullptr;
+      int staffId = e->staffIdx();
+      while (e) {
+            switch (e->type()) {
+                  case ElementType::NOTE:
+                  case ElementType::CHORD: {
+                        Element* next = e->nextElement();
+                        if (next)
+                              return next;
+                        else
+                              break;
+                       }
+                  case ElementType::SEGMENT: {
+                        Segment* s = toSegment(e);
+                        Element* next = s->nextElement(staffId);
+                        if (next)
+                              return next;
+                        else
+                              break;
+                        }
+                  case ElementType::MEASURE: {
+                        Measure* m = toMeasure(e);
+                        Element* next = m->nextElementStaff(staffId);
+                        if (next)
+                              return next;
+                        else
+                              break;
+                        }
+                  case ElementType::CLEF:
+                  case ElementType::KEYSIG:
+                  case ElementType::TIMESIG:
+                  case ElementType::BAR_LINE: {
+                       for (; e && e->type() != ElementType::SEGMENT; e = e->parent()) {
+                             ;
+                             }
+                       Segment* s = toSegment(e);
+                       Element* next = s->nextElement(staffId);
+                       if (next)
+                             return next;
+                       else
+                             return score()->firstElement();
+                       }
+                  case ElementType::SLUR_SEGMENT:
+                  case ElementType::TEXTLINE_SEGMENT:
+                  case ElementType::HAIRPIN_SEGMENT:
+                  case ElementType::OTTAVA_SEGMENT:
+                  case ElementType::TRILL_SEGMENT:
+                  case ElementType::VIBRATO_SEGMENT:
+                  case ElementType::VOLTA_SEGMENT:
+                  case ElementType::LET_RING_SEGMENT:
+                  case ElementType::PALM_MUTE_SEGMENT:
+                  case ElementType::PEDAL_SEGMENT: {
+                        SpannerSegment* s = toSpannerSegment(e);
+                        Spanner* sp = s->spanner();
+                        Spanner* nextSp = sp->nextSpanner(sp, staffId);
+                        if (nextSp)
+                              return nextSp->spannerSegments().front();
+
+                        Segment* seg = tick2segment(sp->tick());
+                        if (seg) {
+                              Segment* nextSegment = seg->next1();
+                              while (nextSegment) {
+                                    Element* nextEl = nextSegment->firstElementOfSegment(nextSegment, staffId);
+                                    if (nextEl)
+                                          return nextEl;
+                                    nextSegment = nextSegment->next1();
+                                    }
+                              }
+                        break;
+                        }
+                  case ElementType::GLISSANDO_SEGMENT:
+                  case ElementType::TIE_SEGMENT: {
+                        SpannerSegment* s = toSpannerSegment(e);
+                        Spanner* sp = s->spanner();
+                        Element* elSt = sp->startElement();
+                        Note* n = toNote(elSt);
+                        Element* next =  n->nextElement();
+                        if (next)
+                              return next;
+                        else
+                              break;
+                        }
+                  default:
+                        break;
+                  }
+            e = e->parent();
+            }
+      return score()->firstElement();
+      }
+
+//---------------------------------------------------------
+//   prevElement
+//---------------------------------------------------------
+
+Element* Score::prevElement()
+      {
+      Element* e = getSelectedElement();
+      if (!e)
+            return nullptr;
+      int staffId = e->staffIdx();
+      while (e) {
+            switch (e->type()) {
+                  case ElementType::NOTE:
+                  case ElementType::REST:
+                  case ElementType::CHORD: {
+                        Element* prev = e->prevElement();
+                        if (prev)
+                              return prev;
+                        else
+                              break;
+                        }
+                  case ElementType::SEGMENT: {
+                        Segment* s = toSegment(e);
+                        Element* prev = s->prevElement(staffId);
+                        if (prev)
+                              return prev;
+                        else
+                              break;
+                        }
+                  case ElementType::MEASURE: {
+                        Measure* m = toMeasure(e);
+                        return m->prevElementStaff(staffId);
+                        }
+                  case ElementType::CLEF:
+                  case ElementType::KEYSIG:
+                  case ElementType::TIMESIG:
+                  case ElementType::BAR_LINE: {
+                        for (; e && e->type() != ElementType::SEGMENT; e = e->parent()) {
+                              ;
+                              }
+                        Segment* s = toSegment(e);
+                        return s->prevElement(staffId);
+                        }
+                  case ElementType::SLUR_SEGMENT:
+                  case ElementType::TEXTLINE_SEGMENT:
+                  case ElementType::HAIRPIN_SEGMENT:
+                  case ElementType::OTTAVA_SEGMENT:
+                  case ElementType::TRILL_SEGMENT:
+                  case ElementType::VIBRATO_SEGMENT:
+                  case ElementType::VOLTA_SEGMENT:
+                  case ElementType::PEDAL_SEGMENT: {
+                        SpannerSegment* s = toSpannerSegment(e);
+                        Spanner* sp = s->spanner();
+                        Element* stEl = sp->startElement();
+                        Spanner* prevSp = sp->prevSpanner(sp, staffId);
+                        if (prevSp)
+                              return prevSp->spannerSegments().front();
+                        else {
+                              Segment* startSeg = sp->startSegment();
+                              if (!startSeg->annotations().empty()) {
+                                    Element* last = startSeg->lastAnnotation(startSeg, staffId);
+                                    if (last)
+                                          return last;
+                                    }
+                              Element* el = startSeg->lastElementOfSegment(startSeg, staffId);
+                              if (stEl->type() == ElementType::CHORD || stEl->type() == ElementType::REST
+                                       || stEl->type() == ElementType::REPEAT_MEASURE || stEl->type() == ElementType::NOTE) {
+                                    ChordRest* cr = startSeg->cr(stEl->track());
+                                    if (cr) {
+                                          Element* elCr = cr->lastElementBeforeSegment();
+                                          if (elCr) {
+                                                return elCr;
+                                                }
+                                          }
+                                    }
+                              if (el->isChord())
+                                    return toChord(el)->lastElementBeforeSegment();
+                              else if (el->isNote()) {
+                                    Chord* c = toNote(el)->chord();
+                                    return c->lastElementBeforeSegment();
+                                    }
+                              else {
+                                    return el;
+                                    }
+                             }
+                        }
+                  case ElementType::GLISSANDO_SEGMENT:
+                  case ElementType::TIE_SEGMENT: {
+                        SpannerSegment* s = toSpannerSegment(e);
+                        Spanner* sp = s->spanner();
+                        Element* elSt = sp->startElement();
+                        Q_ASSERT(elSt->type() == ElementType::NOTE);
+                        Note* n = toNote(elSt);
+                        Element* prev =  n->prevElement();
+                        if(prev)
+                              return prev;
+                        else
+                              break;
+                        }
+                  default:
+                        break;
+                  }
+            e = e->parent();
+            }
+      return score()->lastElement();
       }
 
 }

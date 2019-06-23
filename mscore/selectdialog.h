@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: select.h 3779 2010-12-19 11:39:26Z wschweer $
 //
 //  Copyright (C) 2002-2010 Werner Schweer and others
 //
@@ -21,7 +20,7 @@
 #ifndef __SELECTDIALOG_H__
 #define __SELECTDIALOG_H__
 
-#include "ui_select.h"
+#include "ui_selectdialog.h"
 
 namespace Ms {
 
@@ -36,6 +35,7 @@ class SelectDialog : public QDialog, Ui::SelectDialog {
       Q_OBJECT
       const Element* e;
 
+      virtual void hideEvent(QHideEvent*);
    public:
       SelectDialog(const Element* e, QWidget* parent);
       void setPattern(ElementPattern* p);

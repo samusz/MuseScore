@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -11,10 +10,13 @@
 //  the file LICENSE.GPL
 //=============================================================================
 
+#include "inspector.h"
 #include "inspectorOttava.h"
+#include "inspectorTextLine.h"
 #include "musescore.h"
 #include "libmscore/ottava.h"
 #include "libmscore/score.h"
+#include "icons.h"
 
 namespace Ms {
 
@@ -23,30 +25,21 @@ namespace Ms {
 //---------------------------------------------------------
 
 InspectorOttava::InspectorOttava(QWidget* parent)
-   : InspectorBase(parent)
+   : InspectorTextLineBase(parent)
       {
-      e.setupUi(addWidget());
-      l.setupUi(addWidget());
-      setupLineStyle(l.lineStyle);
-      tl.setupUi(addWidget());
       o.setupUi(addWidget());
 
-      iList = {
-            { P_ID::COLOR,       0, 0, e.color,      e.resetColor      },
-            { P_ID::VISIBLE,     0, 0, e.visible,    e.resetVisible    },
-            { P_ID::USER_OFF,    0, 0, e.offsetX,    e.resetX          },
-            { P_ID::USER_OFF,    1, 0, e.offsetY,    e.resetY          },
-            { P_ID::DIAGONAL,    0, 0, l.diagonal,   l.resetDiagonal   },
-            { P_ID::LINE_COLOR,  0, 0, l.lineColor,  l.resetLineColor  },
-            { P_ID::LINE_WIDTH,  0, 0, l.lineWidth,  l.resetLineWidth  },
-            { P_ID::LINE_STYLE,  0, 0, l.lineStyle,  l.resetLineStyle  },
-            // tl missing
-            { P_ID::OTTAVA_TYPE,  0, 0, o.ottavaType,  o.resetOttavaType  },
-            { P_ID::PLACEMENT,    0, 0, o.placement,   o.resetPlacement   },
-            { P_ID::NUMBERS_ONLY, 0, 0, o.numbersOnly, o.resetNumbersOnly }
+      const std::vector<InspectorItem> il = {
+            { Pid::OTTAVA_TYPE,             0, o.ottavaType,              0                            },
+            { Pid::PLACEMENT,               0, o.placement,               o.resetPlacement             },
+            { Pid::NUMBERS_ONLY,            0, o.numbersOnly,             o.resetNumbersOnly           }
             };
-
-      mapSignals();
+      const std::vector<InspectorPanel> ppList = {
+            { o.title,  o.panel }
+            };
+      populatePlacement(o.placement);
+      mapSignals(il, ppList);
       }
+
 }
 

@@ -1,9 +1,8 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id:$ drumtools.h
 //
-//  Copyright (C) 2010 Werner Schweer and others
+//  Copyright (C) 2010-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -38,16 +37,23 @@ class DrumTools : public QDockWidget {
       Score* _score;
       Staff* staff;
       Palette* drumPalette;
-      Drumset* drumset;
+      QToolButton* editButton;
+      QLabel* pitchName;
+      const Drumset* drumset;
 
    private slots:
       void drumNoteSelected(int val);
       void editDrumset();
 
+   protected:
+      virtual void changeEvent(QEvent *event);
+      void retranslate();
+
    public:
       DrumTools(QWidget* parent = 0);
-      void setDrumset(Score*, Staff*, Drumset*);
-      void updateDrumset();
+      void setDrumset(Score*, Staff*, const Drumset*);
+      void updateDrumset(const Drumset* ds);
+      int selectedDrumNote();
       };
 
 

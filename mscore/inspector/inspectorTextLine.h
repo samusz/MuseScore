@@ -13,28 +13,23 @@
 #ifndef __INSPECTOR_TEXTLINE_H__
 #define __INSPECTOR_TEXTLINE_H__
 
-#include "inspector.h"
-#include "inspectorBase.h"
+#include "inspectorTextLineBase.h"
 #include "ui_inspector_textline.h"
-#include "ui_inspector_line.h"
 
 namespace Ms {
 
 //---------------------------------------------------------
-//   InspectorHairpin
+//   InspectorTextLine
 //---------------------------------------------------------
 
-class InspectorTextLine : public InspectorBase {
+class InspectorTextLine : public InspectorTextLineBase {
       Q_OBJECT
 
-      UiInspectorElement e;
-      Ui::InspectorLine l;
-      Ui::InspectorTextLine tl;
+      Ui::InspectorTextLine ttl;
 
    public:
       InspectorTextLine(QWidget* parent);
       };
-
 
 } // namespace Ms
 #endif

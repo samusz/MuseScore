@@ -31,6 +31,8 @@ class TestClef : public QObject, public MTest
    private slots:
       void initTestCase();
       void clef1();
+      void clef2();
+      void clef3();
       };
 
 //---------------------------------------------------------
@@ -49,8 +51,44 @@ void TestClef::initTestCase()
 
 void TestClef::clef1()
       {
-      Score* score = readScore(DIR + "clef-1.mscx");
+      MasterScore* score = readScore(DIR + "clef-1.mscx");
       QVERIFY(saveCompareScore(score, "clef-1.mscx", DIR + "clef-1-ref.mscx"));
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   clef2
+//    change timesig -> rewrite measures ->insertTime
+//---------------------------------------------------------
+
+void TestClef::clef2()
+      {
+      MasterScore* score = readScore(DIR + "clef-2.mscx");
+      Measure* m = score->firstMeasure();
+      m = m->nextMeasure();
+      m = m->nextMeasure();
+      TimeSig* ts = new TimeSig(score);
+      ts->setSig(Fraction(2, 4));
+      score->cmdAddTimeSig(m, 0, ts, false);
+
+      score->doLayout();
+      QVERIFY(saveCompareScore(score, "clef-2.mscx", DIR + "clef-2-ref.mscx"));
+      delete score;
+      }
+
+//---------------------------------------------------------
+//   clef3
+//    change the first clef of a score by changing the first measure's cleff
+//---------------------------------------------------------
+
+void TestClef::clef3()
+      {
+      MasterScore* score = readScore(DIR + "clef-3.mscx");
+      Measure* m = score->firstMeasure();
+      score->undoChangeClef(score->staff(0), m, ClefType::F);
+
+      score->doLayout();
+      QVERIFY(saveCompareScore(score, "clef-3.mscx", DIR + "clef-3-ref.mscx"));
       delete score;
       }
 

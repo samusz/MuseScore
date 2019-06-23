@@ -11,11 +11,13 @@
 //=============================================================================
 
 #include "duration.h"
+#include "measure.h"
 #include "tuplet.h"
 #include "score.h"
 #include "undo.h"
 #include "staff.h"
 #include "xml.h"
+#include "property.h"
 
 namespace Ms {
 
@@ -23,8 +25,8 @@ namespace Ms {
 //   DurationElement
 //---------------------------------------------------------
 
-DurationElement::DurationElement(Score* s)
-   : Element(s)
+DurationElement::DurationElement(Score* s, ElementFlags f)
+   : Element(s, f)
       {
       _tuplet = 0;
       }
@@ -41,20 +43,36 @@ DurationElement::DurationElement(const DurationElement& e)
       }
 
 //---------------------------------------------------------
-//   DurationElement
+//   ~DurationElement
 //---------------------------------------------------------
 
 DurationElement::~DurationElement()
       {
-      if (tuplet() && tuplet()->elements().front() == this)
-            delete tuplet();
+      if (_tuplet && _tuplet->contains(this)) {
+            while (Tuplet* t = topTuplet()) // delete tuplets from top to bottom
+                  delete t; // Tuplet destructor removes references to the deleted object
+            }
       }
 
 //---------------------------------------------------------
-//   globalDuration
+//   topTuplet
 //---------------------------------------------------------
 
-Fraction DurationElement::globalDuration() const
+Tuplet* DurationElement::topTuplet() const
+      {
+      Tuplet* t = tuplet();
+      if (t) {
+            while (t->tuplet())
+                  t = t->tuplet();
+            }
+      return t;
+      }
+
+//---------------------------------------------------------
+//   globalTicks
+//---------------------------------------------------------
+
+Fraction DurationElement::globalTicks() const
       {
       Fraction f(_duration);
       for (Tuplet* t = tuplet(); t; t = t->tuplet())
@@ -63,74 +81,81 @@ Fraction DurationElement::globalDuration() const
       }
 
 //---------------------------------------------------------
-//  actualTicks
+//   actualTicks
 //---------------------------------------------------------
 
-int DurationElement::actualTicks() const
+Fraction DurationElement::actualTicks() const
       {
-      return actualFraction().ticks();
+      return globalTicks() / staff()->timeStretch(tick());
       }
 
 //---------------------------------------------------------
-//   actualFraction
+//   readAddTuplet
 //---------------------------------------------------------
 
-Fraction DurationElement::actualFraction() const
+void DurationElement::readAddTuplet(Tuplet* t)
       {
-      return globalDuration() / staff()->timeStretch(tick());
+      setTuplet(t);
+      if (!score()->undoStack()->active())     // HACK, also added in Undo::AddElement()
+            t->add(this);
       }
 
 //---------------------------------------------------------
-//   readProperties
+//   writeTupletStart
 //---------------------------------------------------------
 
-bool DurationElement::readProperties(XmlReader& e)
-      {
-      if (e.name() == "Tuplet") {
-            int i = e.readInt();
-            Tuplet* t = e.findTuplet(i);
-            if (!t) {
-                  qDebug("DurationElement:read(): Tuplet id %d not found", i);
-                  t = score()->searchTuplet(e, i);
-                  if (t) {
-                        qDebug("   ...found outside measure, input file corrupted?");
-                        e.addTuplet(t);
-                        }
-                  }
-            if (t) {
-                  setTuplet(t);
-                  if (!score()->undo()->active())     // HACK, also added in Undo::AddElement()
-                        t->add(this);
-                  }
-            return true;
-            }
-      if (Element::readProperties(e))
-            return true;
-      return false;
-      }
-
-//---------------------------------------------------------
-//   writeProperties
-//---------------------------------------------------------
-
-void DurationElement::writeProperties(Xml& xml) const
-      {
-      Element::writeProperties(xml);
-      if (tuplet())
-            xml.tag("Tuplet", tuplet()->id());
-      }
-
-//---------------------------------------------------------
-//   writeTuplet
-//---------------------------------------------------------
-
-void DurationElement::writeTuplet(Xml& xml)
+void DurationElement::writeTupletStart(XmlWriter& xml) const
       {
       if (tuplet() && tuplet()->elements().front() == this) {
-            tuplet()->writeTuplet(xml);           // recursion
-            tuplet()->setId(xml.tupletId++);
+            tuplet()->writeTupletStart(xml);           // recursion
             tuplet()->write(xml);
             }
+      }
+
+//---------------------------------------------------------
+//   writeTupletEnd
+//---------------------------------------------------------
+
+void DurationElement::writeTupletEnd(XmlWriter& xml) const
+      {
+      if (tuplet() && tuplet()->elements().back() == this) {
+            xml.tagE("endTuplet");
+            tuplet()->writeTupletEnd(xml);           // recursion
+            }
+      }
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+QVariant DurationElement::getProperty(Pid propertyId) const
+      {
+      switch (propertyId) {
+            case Pid::DURATION:
+                  return QVariant::fromValue(_duration);
+            default:
+                  return Element::getProperty(propertyId);
+            }
+      }
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool DurationElement::setProperty(Pid propertyId, const QVariant& v)
+      {
+      switch (propertyId) {
+            case Pid::DURATION: {
+                  Fraction f(v.value<Fraction>());
+                  setTicks(f);
+                  // TODO: do we really need to re-layout all here?
+                  score()->setLayoutAll();
+                  }
+                  break;
+            default:
+                  return Element::setProperty(propertyId, v);
+            }
+      return true;
       }
 
 }

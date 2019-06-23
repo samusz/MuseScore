@@ -10,9 +10,9 @@
 //  the file LICENSE.GPL
 //=============================================================================
 
+#include "inspector.h"
 #include "inspectorTextLine.h"
 #include "musescore.h"
-#include "libmscore/textline.h"
 #include "libmscore/score.h"
 
 namespace Ms {
@@ -22,24 +22,19 @@ namespace Ms {
 //---------------------------------------------------------
 
 InspectorTextLine::InspectorTextLine(QWidget* parent)
-   : InspectorBase(parent)
+   : InspectorTextLineBase(parent)
       {
-      e.setupUi(addWidget());
-      l.setupUi(addWidget());
-      setupLineStyle(l.lineStyle);
-      tl.setupUi(addWidget());
+      ttl.setupUi(addWidget());
 
-      iList = {
-            { P_ID::COLOR,         0, 0, e.color,       e.resetColor       },
-            { P_ID::VISIBLE,       0, 0, e.visible,     e.resetVisible     },
-            { P_ID::USER_OFF,      0, 0, e.offsetX,     e.resetX           },
-            { P_ID::USER_OFF,      1, 0, e.offsetY,     e.resetY           },
-            { P_ID::DIAGONAL,      0, 0, l.diagonal,    l.resetDiagonal    },
-            { P_ID::LINE_COLOR,    0, 0, l.lineColor,   l.resetLineColor   },
-            { P_ID::LINE_WIDTH,    0, 0, l.lineWidth,   l.resetLineWidth   },
-            { P_ID::LINE_STYLE,    0, 0, l.lineStyle,   l.resetLineStyle   },
+      const std::vector<InspectorItem> il = {
+            { Pid::PLACEMENT,  0, ttl.placement,  ttl.resetPlacement             },
             };
-      mapSignals();
+      const std::vector<InspectorPanel> ppList = {
+            { ttl.title, ttl.panel },
+            };
+
+      populatePlacement(ttl.placement);
+      mapSignals(il, ppList);
       }
 }
 

@@ -26,6 +26,8 @@ class Score;
 class InstrumentsDialog : public QDialog, public Ui::InstrumentsDialog {
       Q_OBJECT
 
+      void readSettings();
+
    private slots:
       virtual void accept();
       void on_saveButton_clicked();
@@ -33,9 +35,11 @@ class InstrumentsDialog : public QDialog, public Ui::InstrumentsDialog {
 
    public:
       InstrumentsDialog(QWidget* parent = 0);
+      void init();
       void writeSettings();
       void genPartList(Score*);
       QTreeWidget* partiturList();
+      void buildInstrumentsList();
       };
 
 } // namespace Ms

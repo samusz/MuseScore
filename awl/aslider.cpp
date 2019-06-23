@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2006 by Werner Schweer and others
 //
@@ -30,16 +29,20 @@ namespace Awl {
 AbstractSlider::AbstractSlider(QWidget* parent)
    : QWidget(parent), _scaleColor(Qt::darkGray), _scaleValueColor(QColor("#2456aa"))
       {
-      _id         = 0;
+      __id         = 0;
       _value      = 0.5;
       _minValue   = 0.0;
       _maxValue   = 1.0;
       _lineStep   = 0.1;
       _pageStep   = 0.2;
       _center     = false;
+      _enableMouseWheel = true;
       _invert     = false;
       _scaleWidth = 4;
       _log        = false;
+      _useActualValue = false;
+      _dclickValue1 = 0.0;
+      _dclickValue2 = 0.0;
       setFocusPolicy(Qt::StrongFocus);
       }
 
@@ -51,6 +54,15 @@ void AbstractSlider::setEnabled(bool val)
       {
       QWidget::setEnabled(val);
       update();
+      }
+
+//---------------------------------------------------------
+//   setEnableMouseWheel
+//---------------------------------------------------------
+
+void AbstractSlider::setEnableMouseWheel(bool enabled)
+      {
+            _enableMouseWheel = enabled;
       }
 
 //---------------------------------------------------------
@@ -109,6 +121,9 @@ void AbstractSlider::setScaleValueColor(const QColor& c)
 
 void AbstractSlider::wheelEvent(QWheelEvent* ev)
       {
+      if (!_enableMouseWheel)
+            return;
+
       int div = 50;
       if (ev->modifiers() & Qt::ShiftModifier)
             div = 15;
@@ -129,14 +144,16 @@ void AbstractSlider::keyPressEvent(QKeyEvent* ev)
       double oval = _value;
 
       switch (ev->key()) {
-            case Qt::Key_Home:    _value = _minValue; break;
-            case Qt::Key_End:     _value = _maxValue; break;
+            case Qt::Key_Home:      _value = _minValue; break;
+            case Qt::Key_End:       _value = _maxValue; break;
             case Qt::Key_Up:
-            case Qt::Key_Left:    _value += lineStep(); break;
+            case Qt::Key_Left:      _value += lineStep(); break;
             case Qt::Key_Down:
-            case Qt::Key_Right:   _value -= lineStep(); break;
-            case Qt::Key_PageDown: _value -= pageStep(); break;
-            case Qt::Key_PageUp:   _value += pageStep(); break;
+            case Qt::Key_Right:     _value -= lineStep(); break;
+            case Qt::Key_PageDown:  _value -= pageStep(); break;
+            case Qt::Key_PageUp:    _value += pageStep(); break;
+            case Qt::Key_Delete:
+            case Qt::Key_Backspace: _value = ev->modifiers() & Qt::ShiftModifier ? dclickValue2() : dclickValue1(); break;
             default:
                   break;
             }
@@ -149,11 +166,26 @@ void AbstractSlider::keyPressEvent(QKeyEvent* ev)
       }
 
 //---------------------------------------------------------
+//   mouseDoubleClickEvent
+//---------------------------------------------------------
+
+void AbstractSlider::mouseDoubleClickEvent(QMouseEvent* ev)
+      {
+      if (ev->button() == Qt::RightButton)
+            _value = _dclickValue2;
+      else
+            _value = _dclickValue1;
+      valueChange();
+      }
+
+//---------------------------------------------------------
 //   setValue
 //---------------------------------------------------------
 
 void AbstractSlider::setValue(double val)
       {
+      double oldValue = _value;
+
       if (_log) {
             if (val == 0.0f)
                   _value = _minValue;
@@ -165,6 +197,10 @@ void AbstractSlider::setValue(double val)
             }
       else
             _value = val;
+
+      if (oldValue != _value)
+            emit valueChanged(val, __id);
+
       update();
       }
 
@@ -174,7 +210,7 @@ void AbstractSlider::setValue(double val)
 
 void AbstractSlider::valueChange()
       {
-      emit valueChanged(value(), _id);
+      emit valueChanged(value(), __id);
       update();
       }
 
@@ -185,6 +221,21 @@ void AbstractSlider::valueChange()
 double AbstractSlider::value() const
       {
       return _log ? pow(10.0, _value*0.05f) : _value;
+      }
+
+//---------------------------------------------------------
+//   userValue (between 0 and 100)
+//---------------------------------------------------------
+
+QString AbstractSlider::userValue() const
+      {
+      double result;
+      if (_useActualValue)
+            result = value();
+      else
+            result = (_value - minValue())/ ((maxValue() - minValue())/100);
+
+      return QString::number(result, 'f', 2);
       }
 
 //---------------------------------------------------------
@@ -246,4 +297,49 @@ void AbstractSlider::init(const SyntiParameter& f)
       _pageStep   = _lineStep * 2.0;
       }
 #endif
+
+AccessibleAbstractSlider::AccessibleAbstractSlider(AbstractSlider* s) : QAccessibleWidget(s)
+      {
+      slider = s;
+      }
+
+QAccessible::Role AccessibleAbstractSlider::role() const
+      {
+      return QAccessible::Slider;
+      }
+
+QString AccessibleAbstractSlider::text(QAccessible::Text t) const
+      {
+      switch (t) {
+            case QAccessible::Name:
+                  return slider->accessibleName();
+            case QAccessible::Value:
+                  return slider->userValue();
+            case QAccessible::Description:
+                  return slider->accessibleDescription();
+            default:
+                  return QString();
+            }
+      // Eliminate "unreachable code" 
+      // return QString();
+      }
+
+void AccessibleAbstractSlider::valueChanged(double, int)
+      {
+      QAccessibleValueChangeEvent ev(slider, slider->userValue());
+      QAccessible::updateAccessibility(&ev);
+      }
+
+QAccessibleInterface* AccessibleAbstractSlider::AbstractSliderFactory(const QString& /*classname*/, QObject *object)
+      {
+      QAccessibleInterface *iface = 0;
+      if (object && object->isWidgetType() && object->inherits("Awl::AbstractSlider")){
+            AbstractSlider* slider = static_cast<AbstractSlider*>(object);
+            AccessibleAbstractSlider* acc = new AccessibleAbstractSlider(slider);
+            QObject::connect(slider, SIGNAL(valueChanged(double,int)), acc, SLOT(valueChanged(double,int)));
+            iface = static_cast<QAccessibleInterface*>(acc);
+            }
+
+      return iface;
+      }
 }

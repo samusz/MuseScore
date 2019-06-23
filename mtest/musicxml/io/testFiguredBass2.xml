@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
-<score-partwise>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
   <work>
     <work-number>MuseScore testfile</work-number>
     <work-title>Figured bass 2</work-title>
@@ -10,16 +10,22 @@
     <encoding>
       <software>MuseScore 0.7.0</software>
       <encoding-date>2007-09-10</encoding-date>
+      <supports element="accidental" type="yes"/>
+      <supports element="beam" type="yes"/>
+      <supports element="print" attribute="new-page" type="no"/>
+      <supports element="print" attribute="new-system" type="no"/>
+      <supports element="stem" type="yes"/>
       </encoding>
     </identification>
   <part-list>
     <score-part id="P1">
       <part-name>Flute</part-name>
       <part-abbreviation>Fl.</part-abbreviation>
-      <score-instrument id="P1-I3">
+      <score-instrument id="P1-I1">
         <instrument-name>Flute</instrument-name>
         </score-instrument>
-      <midi-instrument id="P1-I3">
+      <midi-device id="P1-I1" port="1"></midi-device>
+      <midi-instrument id="P1-I1">
         <midi-channel>1</midi-channel>
         <midi-program>74</midi-program>
         <volume>78.7402</volume>
@@ -29,10 +35,11 @@
     <score-part id="P2">
       <part-name>Harpsichord</part-name>
       <part-abbreviation>Hch.</part-abbreviation>
-      <score-instrument id="P2-I3">
+      <score-instrument id="P2-I1">
         <instrument-name>Harpsichord</instrument-name>
         </score-instrument>
-      <midi-instrument id="P2-I3">
+      <midi-device id="P2-I1" port="1"></midi-device>
+      <midi-instrument id="P2-I1">
         <midi-channel>2</midi-channel>
         <midi-program>7</midi-program>
         <volume>78.7402</volume>
@@ -46,7 +53,6 @@
         <divisions>1</divisions>
         <key>
           <fifths>0</fifths>
-          <mode>major</mode>
           </key>
         <time>
           <beats>4</beats>
@@ -87,11 +93,10 @@
         </note>
       </measure>
     <measure number="4">
-      <print new-system="yes"/>
       <figured-bass>
         <figure>
           <figure-number>1</figure-number>
-          <extend/>
+          <extend type="start" />
           </figure>
         </figured-bass>
       <note>
@@ -106,7 +111,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="continue" />
           </figure>
         </figured-bass>
       <note>
@@ -121,7 +126,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="continue" />
           </figure>
         </figured-bass>
       <note>
@@ -136,7 +141,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="continue" />
           </figure>
         </figured-bass>
       <note>
@@ -153,7 +158,7 @@
     <measure number="5">
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="stop" />
           </figure>
         </figured-bass>
       <note>
@@ -187,7 +192,6 @@
         <divisions>1</divisions>
         <key>
           <fifths>0</fifths>
-          <mode>major</mode>
           </key>
         <time>
           <beats>4</beats>
@@ -272,7 +276,6 @@
         </note>
       </measure>
     <measure number="4">
-      <print new-system="yes"/>
       <note>
         <pitch>
           <step>G</step>
@@ -298,7 +301,7 @@
       <figured-bass>
         <figure>
           <figure-number>2</figure-number>
-          <extend/>
+          <extend type="start" />
           </figure>
         </figured-bass>
       <note>
@@ -314,7 +317,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="stop" />
           </figure>
         </figured-bass>
       <note>
@@ -345,7 +348,7 @@
       <figured-bass>
         <figure>
           <figure-number>3</figure-number>
-          <extend/>
+          <extend type="start" />
           </figure>
         </figured-bass>
       <note>
@@ -361,7 +364,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="continue" />
           </figure>
         </figured-bass>
       <note>
@@ -377,7 +380,7 @@
         </note>
       <figured-bass>
         <figure>
-          <extend/>
+          <extend type="stop" />
           </figure>
         </figured-bass>
       <note>

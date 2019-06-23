@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: textpalette.h 3734 2010-12-01 10:47:29Z wschweer $
 //
 //  Copyright (C) 2002-2010 Werner Schweer and others
 //
@@ -25,7 +24,7 @@
 
 namespace Ms {
 
-class Text;
+class TextBase;
 class Palette;
 
 //---------------------------------------------------------
@@ -35,23 +34,27 @@ class Palette;
 class TextPalette : public QWidget, public Ui::TextPaletteBase {
       Q_OBJECT
 
-      Text* _textElement;
+      TextBase* _textElement;
       QFont _font;
       Palette* pCommon;
-      Palette* pAll;
+      Palette* pSmufl;
+      Palette* pUnicode;
 
+      QListWidget* lws;
+      QListWidget* lwu;
+
+      virtual void hideEvent(QHideEvent*);
       void closeEvent(QCloseEvent* ev);
       void populateCommon();
 
    private slots:
-      void commonToggled(bool);
-      void pageChanged(int);
-      void populateAll();
+      void populateSmufl();
+      void populateUnicode();
 
    public:
       TextPalette(QWidget* parent);
-      void setText(Text* te);
-      Text* text() { return _textElement; }
+      void setText(TextBase* te);
+      TextBase* text() { return _textElement; }
       void setFont(const QFont& font);
       };
 }

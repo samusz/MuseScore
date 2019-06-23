@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: navigator.h 4785 2011-09-14 10:06:35Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -40,6 +39,7 @@ class NScrollArea : public QScrollArea {
 
    public:
       NScrollArea(QWidget* w = 0);
+      void orientationChanged();
       };
 
 //---------------------------------------------------------
@@ -70,6 +70,7 @@ class Navigator : public QWidget {
       ViewRect* viewRect;
       QPoint startMove;
       QTransform matrix;
+      bool _previewOnly;
 
       void rescale();
 
@@ -89,6 +90,7 @@ class Navigator : public QWidget {
       Navigator(NScrollArea* sa, QWidget* parent = 0);
       void setScoreView(ScoreView*);
       void setScore(Score*);
+      void setPreviewOnly(bool b) { _previewOnly = b; }
       Score* score() const { return _score; }
       void setViewRect(const QRectF& r);
       };

@@ -14,6 +14,7 @@
 #define __ICON_H__
 
 #include "element.h"
+#include "mscore.h"
 
 namespace Ms {
 
@@ -22,24 +23,32 @@ namespace Ms {
 //    dummy element, used for drag&drop
 //---------------------------------------------------------
 
-class Icon : public Element {
-      Q_OBJECT
-
-      IconType _iconType;
-      QString _action;
+class Icon final : public Element {
+      IconType _iconType { IconType::NONE };
+      QByteArray _action;
       QIcon _icon;
+      int _extent { 40 };
 
    public:
-      Icon(Score* s) : Element(s), _iconType(IconType::NONE) { }
-      virtual Icon* clone() const        { return new Icon(*this);    }
-      virtual Element::Type type() const { return Element::Type::ICON;  }
-      IconType iconType() const          { return _iconType;          }
-      void setIconType(IconType val)     { _iconType = val;           }
-      void setAction(const QString& s, const QIcon& i)   { _action = s; _icon = i;  }
-      QString action() const             { return _action; }
-      QIcon icon() const                 { return _icon;   }
-      virtual void write(Xml&) const;
-      virtual void read(XmlReader&);
+      Icon(Score* s) : Element(s) { }
+      virtual ~Icon() {}
+
+      virtual Icon* clone() const override                { return new Icon(*this);    }
+      virtual ElementType type() const override           { return ElementType::ICON;  }
+      IconType iconType() const                           { return _iconType;          }
+      void setIconType(IconType val)                      { _iconType = val;           }
+      void setAction(const QByteArray& a, const QIcon& i) { _action = a; _icon = i; }
+      const QByteArray& action() const                    { return _action; }
+      QIcon icon() const                                  { return _icon;   }
+      void setExtent(int v)                               { _extent = v; }
+      int extent() const                                  { return _extent; }
+      virtual void write(XmlWriter&) const override;
+      virtual void read(XmlReader&) override;
+      virtual void draw(QPainter*) const override;
+      virtual void layout() override;
+
+      QVariant getProperty(Pid) const override;
+      bool setProperty(Pid, const QVariant&) override;
       };
 
 

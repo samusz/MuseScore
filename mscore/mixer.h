@@ -1,9 +1,8 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: mixer.h 4388 2011-06-18 13:17:58Z wschweer $
 //
-//  Copyright (C) 2002-2009 Werner Schweer and others
+//  Copyright (C) 2002-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -21,71 +20,98 @@
 #ifndef __ILEDIT_H__
 #define __ILEDIT_H__
 
+#include "ui_parteditbase.h"
 #include "ui_mixer.h"
 #include "libmscore/instrument.h"
+#include "enableplayforwidget.h"
+#include "mixertrackgroup.h"
+#include <QWidget>
+#include <QDockWidget>
+#include <QScrollArea>
+#include <QList>
 
 namespace Ms {
 
 class Score;
-struct Channel;
+class Channel;
 class Part;
+class PartEdit;
+class MixerDetails;
+class MixerTrack;
+class MidiMapping;
 
-//---------------------------------------------------------
-//   PartEdit
-//---------------------------------------------------------
+double volumeToUserRange(char v);
+double panToUserRange(char v);
+double chorusToUserRange(char v);
+double reverbToUserRange(char v);
 
-class PartEdit : public QWidget, public Ui::PartEditBase {
-      Q_OBJECT
+//0 to 100
+char userRangeToVolume(double v);
+//-180 to 180
+char userRangeToPan(double v);
+//0 to 100
+char userRangeToChorus(double v);
+//0 to 100
+char userRangeToReverb(double v);
 
-      Channel* channel;
-      Part* part;
-
-   private slots:
-      void patchChanged(int);
-      void volChanged(double);
-      void panChanged(double);
-      void reverbChanged(double);
-      void chorusChanged(double);
-      void muteChanged(bool);
-      void soloToggled(bool);
-
-   public slots:
-
-   signals:
-      void soloChanged(bool);
-
-   public:
-      PartEdit(QWidget* parent = 0);
-      void setPart(Part*, Channel*);
-      };
 
 //---------------------------------------------------------
 //   Mixer
 //---------------------------------------------------------
 
-class Mixer : public QScrollArea
+class Mixer : public QDockWidget, public Ui::Mixer, public MixerTrackGroup
       {
       Q_OBJECT
-      Score*       cs;
-      QScrollArea* sa;
-      QVBoxLayout* vb;
 
-      virtual void closeEvent(QCloseEvent*);
+      Score* _score = nullptr; // playback score
+      Score* _activeScore = nullptr; // may be a _score itself or its excerpt;
+      QHBoxLayout* trackAreaLayout;
+      EnablePlayForWidget* enablePlay;
+
+      MixerDetails* mixerDetails;
+      QGridLayout* detailsLayout;
+
+      bool showDetails;
+      QSet<Part*> expandedParts;
+      QWidget* trackHolder;
+      QList<MixerTrack*> trackList;
+
+      int _scrollPosition = 0;
+      bool _needToKeepScrollPosition = false;
+
+      virtual void closeEvent(QCloseEvent*) override;
+      virtual void showEvent(QShowEvent*) override;
+      virtual void hideEvent(QHideEvent*) override;
+      virtual bool eventFilter(QObject*, QEvent*) override;
+      virtual void keyPressEvent(QKeyEvent*) override;
+      void keepScrollPosition();
+      void setPlaybackScore(Score*);
 
    private slots:
-      void updateSolo(bool);
+      void on_partOnlyCheckBox_toggled(bool checked);
 
    public slots:
-      void patchListChanged();
+      void updateTracks();
+      void midiPrefsChanged(bool showMidiControls);
+      void masterVolumeChanged(double val);
+      void synthGainChanged(float val);
+      void adjustScrollPosition(int, int);
+      void checkKeptScrollValue(int);
 
    signals:
       void closed(bool);
 
+   protected:
+      virtual void changeEvent(QEvent *event) override;
+      void retranslate(bool firstTime = false);
+
    public:
       Mixer(QWidget* parent);
-      void updateAll(Score*);
-      PartEdit* partEdit(int index);
-      void writeSettings();
+      void setScore(Score*);
+      PartEdit* getPartAtIndex(int index);
+      void expandToggled(Part* part, bool expanded) override;
+      void notifyTrackSelected(MixerTrack* track) override;
+      void showDetailsToggled(bool shown);
       };
 
 

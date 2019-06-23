@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: timedialog.cpp 4391 2011-06-18 14:28:24Z wschweer $
 //
 //  Copyright (C) 2002-2011 Werner Schweer and others
 //
@@ -39,7 +38,7 @@ TimeDialog::TimeDialog(QWidget* parent)
    : QWidget(parent, Qt::WindowFlags(Qt::Dialog | Qt::Window))
       {
       setupUi(this);
-      setWindowTitle(tr("MuseScore: Time Signatures"));
+      setWindowTitle(tr("Time Signatures"));
 
       QLayout* l = new QVBoxLayout();
       l->setContentsMargins(0, 0, 0, 0);
@@ -54,6 +53,8 @@ TimeDialog::TimeDialog(QWidget* parent)
       connect(sp,        SIGNAL(boxClicked(int)),   SLOT(paletteChanged(int)));
       connect(sp,        SIGNAL(changed()),         SLOT(setDirty()));
       connect(addButton, SIGNAL(clicked()),         SLOT(addClicked()));
+      connect(zText,     SIGNAL(textChanged(const QString&)),    SLOT(textChanged()));
+      connect(nText,     SIGNAL(textChanged(const QString&)),    SLOT(textChanged()));
 
       _timePalette = new PaletteScrollArea(sp);
       QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -64,13 +65,14 @@ TimeDialog::TimeDialog(QWidget* parent)
 
       _dirty = false;
 
-      if (useFactorySettings || !sp->read(dataPath + "/" + "timesigs")) {
+      if (useFactorySettings || !sp->read(dataPath + "/timesigs")) {
             Fraction sig(4,4);
-            groups->setSig(sig, Groups::endings(sig));
+            groups->setSig(sig, Groups::endings(sig), zText->text(), nText->text());
             }
       for (int i = 0; i < sp->size(); ++i)      // cells can be changed
             sp->setCellReadOnly(i, false);
 
+      sp->element(2)->layout();
       sp->setSelected(2);
       paletteChanged(2);
       }
@@ -93,6 +95,7 @@ void TimeDialog::addClicked()
             }
       // extend palette:
       sp->append(ts, "");
+      sp->setSelected(sp->size() - 1);
       _dirty = true;
       }
 
@@ -104,8 +107,8 @@ void TimeDialog::save()
       {
       QDir dir;
       dir.mkpath(dataPath);
-      sp->write(dataPath + "/" + "timesigs");
-      qDebug("TimeDialog::save(): %s", qPrintable(dataPath+"/" + "timesigs"));
+      sp->write(dataPath + "/timesigs");
+      qDebug("TimeDialog::save(): %s", qPrintable(dataPath+"/timesigs"));
       }
 
 //---------------------------------------------------------
@@ -116,7 +119,7 @@ void TimeDialog::zChanged(int val)
       {
       zText->setText(QString("%1").arg(val));
       Fraction sig(zNominal->value(), denominator());
-      groups->setSig(sig, Groups::endings(sig));
+      groups->setSig(sig, Groups::endings(sig), zText->text(), nText->text());
       }
 
 //---------------------------------------------------------
@@ -127,7 +130,7 @@ void TimeDialog::nChanged(int /*val*/)
       {
       nText->setText(QString("%1").arg(denominator()));
       Fraction sig(zNominal->value(), denominator());
-      groups->setSig(sig, Groups::endings(sig));
+      groups->setSig(sig, Groups::endings(sig), zText->text(), nText->text());
       }
 
 //---------------------------------------------------------
@@ -175,7 +178,7 @@ int TimeDialog::denominator() const
 void TimeDialog::paletteChanged(int idx)
       {
       TimeSig* e = static_cast<TimeSig*>(sp->element(idx));
-      if (!e || e->type() != Element::Type::TIMESIG) {
+      if (!e || e->type() != ElementType::TIMESIG) {
             zNominal->setEnabled(false);
             nNominal->setEnabled(false);
             zText->setEnabled(false);
@@ -195,12 +198,23 @@ void TimeDialog::paletteChanged(int idx)
       Groups g = e->groups();
       if (g.empty())
             g = Groups::endings(sig);
-      groups->setSig(sig, g);
       zNominal->setValue(sig.numerator());
       nNominal->setCurrentIndex(denominator2Idx(sig.denominator()));
       zText->setText(e->numeratorString());
       nText->setText(e->denominatorString());
+      groups->setSig(sig, g, zText->text(), nText->text());
       }
+
+//---------------------------------------------------------
+//   textChanged
+//---------------------------------------------------------
+
+void TimeDialog::textChanged()
+      {
+      Fraction sig(zNominal->value(), denominator());
+      groups->setSig(sig, Groups::endings(sig), zText->text(), nText->text());
+      }
+
 
 }
 

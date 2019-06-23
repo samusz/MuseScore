@@ -60,13 +60,16 @@ class SFont {
       QList<Sample*> sample;
 
       int _id;
+      int _bankOffset;
+
       SFVersion _version;		// sound font version
       SFVersion romver;		      // ROM version
+      QString _fontName;
       QList<unsigned char*> infos;	// list of info strings (1st byte is ID)
 
       void read_listchunk(SFChunk* chunk);
       void process_info(int size);
-      void process_sdta(int size);
+      void process_sdta(unsigned int size);
       void pdtahelper(unsigned int expid, unsigned int reclen, SFChunk* chunk, int* size);
 
       void process_pdta(int size);
@@ -115,6 +118,10 @@ class SFont {
       unsigned getSamplesize() const            { return samplesize; }
       const QList<Preset*> getPresets() const   { return presets; }
       SFVersion version() const                 { return _version; }
+      int bankOffset() const                    { return _bankOffset; }
+      void setBankOffset(int val)               { _bankOffset = val; }
+      QString fontName() const                  { return _fontName; }
+
       friend class Preset;
       };
 

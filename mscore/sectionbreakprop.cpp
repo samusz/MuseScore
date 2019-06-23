@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: layoutbreak.cpp -1   $
 //
 //  Copyright (C) 2002-2011 Werner Schweer and others
 //
@@ -20,6 +19,7 @@
 
 #include "sectionbreakprop.h"
 #include "libmscore/layoutbreak.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -30,11 +30,13 @@ namespace Ms {
 SectionBreakProperties::SectionBreakProperties(LayoutBreak* lb, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("SectionBreakProperties");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       _pause->setValue(lb->pause());
       _startWithLongNames->setChecked(lb->startWithLongNames());
       _startWithMeasureOne->setChecked(lb->startWithMeasureOne());
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -62,6 +64,16 @@ bool SectionBreakProperties::startWithLongNames() const
 bool SectionBreakProperties::startWithMeasureOne() const
       {
       return _startWithMeasureOne->isChecked();
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void SectionBreakProperties::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
       }
 
 }

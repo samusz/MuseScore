@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: excerptsdialog.h 5254 2012-01-26 10:03:53Z wschweer $
 //
 //  Copyright (C) 2008-2009 Werner Schweer and others
 //
@@ -22,12 +21,14 @@
 #define __EXCERPTSDIALOG_H__
 
 #include "ui_excerptsdialog.h"
+#include "libmscore/excerpt.h"
 
 namespace Ms {
 
-class Score;
+class MasterScore;
 class Excerpt;
 class Part;
+class Staff;
 
 //---------------------------------------------------------
 //   ExcerptItem
@@ -38,19 +39,47 @@ class ExcerptItem : public QListWidgetItem {
 
    public:
       ExcerptItem(Excerpt*, QListWidget* parent = 0);
-      Excerpt* excerpt() const { return _excerpt; }
+      Excerpt* excerpt() { return _excerpt; }
       };
 
 //---------------------------------------------------------
 //   PartItem
 //---------------------------------------------------------
 
-class PartItem : public QListWidgetItem {
+class PartItem : public QTreeWidgetItem {
       Part* _part;
 
    public:
-      PartItem(Part*, QListWidget* parent = 0);
-      Part* part() const { return _part; }
+      PartItem(Part*, QTreeWidget* parent = 0);
+      Part* part() const                    { return _part;   }
+      };
+
+//---------------------------------------------------------
+//   ScorePartsItem
+//---------------------------------------------------------
+
+class InstrumentItem : public QListWidgetItem {
+      PartItem* _partItem;
+
+   public:
+      InstrumentItem(PartItem*, QListWidget* parent = 0);
+      PartItem* partItem() const { return _partItem; }
+      };
+
+//---------------------------------------------------------
+//   StaffListItem
+//---------------------------------------------------------
+
+class StaffItem : public QTreeWidgetItem {
+      Staff* _staff { 0 };
+
+   public:
+      StaffItem();
+      StaffItem(PartItem* li);
+
+      Staff* staff() const        { return _staff;    }
+      void setStaff(Staff* s)     { _staff = s;       }
+      void setData(int column, int role, const QVariant& value) override;
       };
 
 //---------------------------------------------------------
@@ -59,7 +88,7 @@ class PartItem : public QListWidgetItem {
 
 class ExcerptsDialog : public QDialog, private Ui::ExcerptsDialog {
       Q_OBJECT
-      Score* score;
+      MasterScore* score;
 
       QString createName(const QString&);
 
@@ -69,14 +98,24 @@ class ExcerptsDialog : public QDialog, private Ui::ExcerptsDialog {
       void deleteClicked();
       void newClicked();
       void newAllClicked();
+      void moveUpClicked();
+      void moveDownClicked();
       void excerptChanged(QListWidgetItem* cur, QListWidgetItem* prev);
-      void partDoubleClicked(QListWidgetItem*);
-      void partClicked(QListWidgetItem*);
+      void partDoubleClicked(QTreeWidgetItem*, int);
+      void partClicked(QTreeWidgetItem*, int);
       void createExcerptClicked(QListWidgetItem*);
       void titleChanged(const QString&);
+      ExcerptItem* isInPartsList(Excerpt* e);
+
+      QMultiMap<int, int> mapTracks();
+      void assignTracks(QMultiMap<int, int> );
+
+      void doubleClickedInstrument(QTreeWidgetItem*);
+      void addButtonClicked();
+      void removeButtonClicked();
 
    public:
-      ExcerptsDialog(Score*, QWidget* parent = 0);
+      ExcerptsDialog(MasterScore*, QWidget* parent = 0);
       };
 
 

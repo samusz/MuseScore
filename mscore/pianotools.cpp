@@ -1,9 +1,8 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
-//  Copyright (C) 2011 Werner Schweer and others
+//  Copyright (C) 2011-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -19,6 +18,8 @@
 //=============================================================================
 
 #include "pianotools.h"
+#include "preferences.h"
+#include "libmscore/chord.h"
 
 namespace Ms {
 
@@ -34,6 +35,7 @@ static const qreal BKEY_HEIGHT = 25.0;
 HPiano::HPiano(QWidget* parent)
    : QGraphicsView(parent)
       {
+      scaleVal = 1.0;
       setLineWidth(0);
       setMidLineWidth(0);
 
@@ -43,13 +45,18 @@ HPiano::HPiano(QWidget* parent)
       setMouseTracking(true);
       setRubberBandSelectionMode(Qt::IntersectsItemBoundingRect);
       setDragMode(QGraphicsView::RubberBandDrag);
-      setScale(1.5);
+      setScale(2.5);
+
+      grabGesture(Qt::PinchGesture);      // laptop pad (Mac) and touchscreen
 
       scene()->setSceneRect(0.0, 0.0, KEY_WIDTH * 52, KEY_HEIGHT);
+      QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+      setSizePolicy(policy);
+      int margin = 16;
+      setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, 1000));
 
       _firstKey   = 21;
       _lastKey    = 108;   // 88 key piano
-      _currentKey = -1;
       qreal x = 0.0;
       for (int i = _firstKey; i <= _lastKey; ++i) {
             PianoKeyItem* k = new PianoKeyItem(this, i);
@@ -111,12 +118,27 @@ HPiano::HPiano(QWidget* parent)
 
 void HPiano::setScale(qreal s)
       {
-       scaleVal = s;
-      setMaximumSize(QSize((KEY_WIDTH * 52) * scaleVal + 8, KEY_HEIGHT * scaleVal + 8 + 80));
-      setMinimumSize(QSize(100, KEY_HEIGHT * scaleVal + 8));
-      QTransform t;
-      t.scale(scaleVal, scaleVal);
-      setTransform(t, false);
+      if (s > 16.0)
+            s = 16.0;
+      else if (s < .5)
+            s = .5;
+      if (s != scaleVal) {
+            scaleVal = s;
+            int margin = 16;
+            QDockWidget* par = static_cast<QDockWidget*>(parent());
+            if (par) {
+                  if (!par->isFloating())
+                        setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, 1000));
+                  else
+                        setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, (KEY_HEIGHT + margin) * scaleVal));
+                  }
+            else
+                  setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, (KEY_HEIGHT + margin) * scaleVal));
+            setMinimumSize(QSize(100 * scaleVal, (KEY_HEIGHT + margin) * scaleVal));
+            QTransform t;
+            t.scale(scaleVal, scaleVal);
+            setTransform(t, false);
+            }
       }
 
 //---------------------------------------------------------
@@ -129,6 +151,89 @@ QSize HPiano::sizeHint() const
       }
 
 //---------------------------------------------------------
+//   pressKeys
+//---------------------------------------------------------
+
+void HPiano::setPressedPlaybackPitches(QSet<int> pitches)
+      {
+      _pressedPlaybackPitches = pitches;
+      updateAllKeys();
+      }
+
+//---------------------------------------------------------
+//   pressPitch
+//---------------------------------------------------------
+
+void HPiano::pressPitch(int pitch)
+      {
+      _pressedPitches.insert(pitch);
+      updateAllKeys();
+      }
+
+//---------------------------------------------------------
+//   releasePitch
+//---------------------------------------------------------
+
+void HPiano::releasePitch(int pitch)
+      {
+      _pressedPitches.remove(pitch);
+      updateAllKeys();
+      }
+
+//---------------------------------------------------------
+//   changeSelection
+//---------------------------------------------------------
+
+void HPiano::changeSelection(const Selection& selection)
+      {
+      for (PianoKeyItem* key : keys) {
+            key->setHighlighted(false);
+            key->setSelected(false);
+            }
+      for (Note* n : selection.noteList()) {
+            if (n->epitch() >= _firstKey && n->epitch() <= _lastKey)
+                  keys[n->epitch() - _firstKey]->setSelected(true);
+            for (Note* other : n->chord()->notes())
+                  if (other->epitch() >= _firstKey && other->epitch() <= _lastKey)
+                        keys[other->epitch() - _firstKey]->setHighlighted(true);
+            }
+      for (PianoKeyItem* key : keys)
+            key->update();
+      }
+
+// used when currentScore() is NULL; same as above except the for loop
+void HPiano::clearSelection()
+      {
+      for (PianoKeyItem* key : keys) {
+            key->setHighlighted(false);
+            key->setSelected(false);
+            key->update();
+            }
+      }
+
+//---------------------------------------------------------
+//   updateAllKeys
+//---------------------------------------------------------
+
+void HPiano::updateAllKeys()
+      {
+      for (PianoKeyItem* key : keys) {
+            key->setPressed(_pressedPitches.contains(key->pitch())
+                            || _pressedPlaybackPitches.contains(key->pitch()));
+            key->update();
+            }
+      }
+
+void HPiano::setMaximum(bool top_level) {
+      int margin = 16;
+      if (!top_level)
+            setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, 1000));
+      else
+            setMaximumSize(QSize((KEY_WIDTH * 52 + margin/2) * scaleVal, (KEY_HEIGHT + margin) * scaleVal));
+      updateAllKeys();
+      }
+
+//---------------------------------------------------------
 //   PianoKeyItem
 //---------------------------------------------------------
 
@@ -136,9 +241,15 @@ PianoKeyItem::PianoKeyItem(HPiano* _piano, int p)
    : QGraphicsPathItem()
       {
       piano = _piano;
-      pitch = p;
-      pressed = false;
+      _pitch = p;
+      _pressed = false;
+      _selected = false;
+      _highlighted = false;
       type = -1;
+
+      QString pitchNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+      QString text = pitchNames[_pitch % 12] + QString::number((_pitch / 12) - 1);
+      setToolTip(text);
       }
 
 //---------------------------------------------------------
@@ -149,14 +260,15 @@ void PianoKeyItem::setType(int val)
       {
       type = val;
       QPainterPath path;
-
+      qreal triangle = 1.0;
+      qreal htriangle = triangle/2;
       switch(type) {
             case 0:
                   path.moveTo(0,0);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 5/9, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 5/9, 0);
@@ -165,10 +277,10 @@ void PianoKeyItem::setType(int val)
                   path.moveTo(BKEY_WIDTH * 4/9, 0);
                   path.lineTo(BKEY_WIDTH * 4/9, BKEY_HEIGHT);
                   path.lineTo(0, BKEY_HEIGHT);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, 0);
@@ -177,10 +289,10 @@ void PianoKeyItem::setType(int val)
                   path.moveTo(BKEY_WIDTH * 5/9, 0);
                   path.lineTo(BKEY_WIDTH * 5/9, BKEY_HEIGHT);
                   path.lineTo(0,   BKEY_HEIGHT);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH,  KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH,  KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH,  BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH, 0);
                   break;
@@ -188,10 +300,10 @@ void PianoKeyItem::setType(int val)
                   path.moveTo(BKEY_WIDTH * 4/9, 0);
                   path.lineTo(BKEY_WIDTH * 4/9, BKEY_HEIGHT);
                   path.lineTo(0, BKEY_HEIGHT);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 5/9, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 5/9, 0);
@@ -200,38 +312,38 @@ void PianoKeyItem::setType(int val)
                   path.moveTo(BKEY_WIDTH * 5/9, 0);
                   path.lineTo(BKEY_WIDTH * 5/9, BKEY_HEIGHT);
                   path.lineTo(0, BKEY_HEIGHT);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, 0);
                   break;
             case 5:
                   path.moveTo(0,0);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, BKEY_HEIGHT);
                   path.lineTo(KEY_WIDTH - BKEY_WIDTH * 4/9, 0);
                   break;
             case 6:
                   path.moveTo(0,0);
-                  path.lineTo(0,   KEY_HEIGHT-2);
-                  path.lineTo(2.0, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH-2, KEY_HEIGHT);
-                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-2);
+                  path.lineTo(0,   KEY_HEIGHT-triangle);
+                  path.lineTo(triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH-triangle, KEY_HEIGHT);
+                  path.lineTo(KEY_WIDTH, KEY_HEIGHT-triangle);
                   path.lineTo(KEY_WIDTH, 0);
                   break;
             case 7:
                   path.moveTo(0,0);
-                  path.lineTo(0,            BKEY_HEIGHT-1);
-                  path.lineTo(1.0,          BKEY_HEIGHT);
-                  path.lineTo(BKEY_WIDTH-1, BKEY_HEIGHT);
-                  path.lineTo(BKEY_WIDTH,   BKEY_HEIGHT-1);
+                  path.lineTo(0,           BKEY_HEIGHT-htriangle);
+                  path.lineTo(htriangle,   BKEY_HEIGHT);
+                  path.lineTo(BKEY_WIDTH-htriangle, BKEY_HEIGHT);
+                  path.lineTo(BKEY_WIDTH,  BKEY_HEIGHT-htriangle);
                   path.lineTo(BKEY_WIDTH, 0);
                   break;
             default:
@@ -247,10 +359,10 @@ void PianoKeyItem::setType(int val)
 
 void PianoKeyItem::mousePressEvent(QGraphicsSceneMouseEvent*)
       {
-      pressed = true;
+      _pressed = true;
       update();
-      bool ctrl = qApp->keyboardModifiers() & Qt::ControlModifier;
-      emit piano->keyPressed(pitch, ctrl);
+      bool chord = qApp->keyboardModifiers() & Qt::ShiftModifier;
+      emit piano->keyPressed(_pitch, chord, 80);
       }
 
 //---------------------------------------------------------
@@ -259,8 +371,9 @@ void PianoKeyItem::mousePressEvent(QGraphicsSceneMouseEvent*)
 
 void PianoKeyItem::mouseReleaseEvent(QGraphicsSceneMouseEvent*)
       {
-      pressed = false;
+      _pressed = false;
       update();
+      emit piano->keyReleased(_pitch, false, 0);
       }
 
 //---------------------------------------------------------
@@ -271,16 +384,27 @@ void PianoKeyItem::paint(QPainter* p, const QStyleOptionGraphicsItem* /*o*/, QWi
       {
       p->setRenderHint(QPainter::Antialiasing, true);
       p->setPen(QPen(Qt::black, .8));
-      if (pressed)
-            p->setBrush(QColor(255, 255, 128));
+      if (_pressed) {
+            QColor c(preferences.getColor(PREF_UI_PIANO_HIGHLIGHTCOLOR));
+            c.setAlpha(180);
+            p->setBrush(c);
+            }
+      else if (_selected) {
+            QColor c(preferences.getColor(PREF_UI_PIANO_HIGHLIGHTCOLOR));
+            c.setAlpha(100);
+            p->setBrush(c);
+            }
+      else if (_highlighted)
+            p->setBrush(type >= 7 ? QColor(125, 125, 125) : QColor(200, 200, 200));
       else
             p->setBrush(type >= 7 ? Qt::black : Qt::white);
       p->drawPath(path());
-      if (pitch == 60) {
-            QFont f("FreeSerif", 8);
+      if (_pitch % 12 == 0) {
+            QFont f("FreeSerif", 6);
             p->setFont(f);
+            QString text = "C" + QString::number((_pitch / 12) - 1);
             p->drawText(QRectF(KEY_WIDTH / 2, KEY_HEIGHT - 8, 0, 0),
-               Qt::AlignCenter | Qt::TextDontClip, "c'");
+               Qt::AlignCenter | Qt::TextDontClip, text);
             }
       }
 
@@ -292,17 +416,52 @@ PianoTools::PianoTools(QWidget* parent)
    : QDockWidget(parent)
       {
       setObjectName("piano");
-      setWindowTitle(tr("Piano"));
-      setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
+      setAllowedAreas(Qt::DockWidgetAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea));
 
-      HPiano* piano = new HPiano;
-      piano->setFocusPolicy(Qt::ClickFocus);
-      setWidget(piano);
+      _piano = new HPiano;
+      _piano->setFocusPolicy(Qt::ClickFocus);
+      setWidget(_piano);
 
-//      QWidget* w = new QWidget(this);
-//      setTitleBarWidget(w);
-//      titleBarWidget()->hide();
-      connect(piano, SIGNAL(keyPressed(int, bool)), SIGNAL(keyPressed(int, bool)));
+      QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+      setSizePolicy(policy);
+
+      connect(_piano, SIGNAL(keyPressed(int, bool, int)), SIGNAL(keyPressed(int, bool, int)));
+      connect(_piano, SIGNAL(keyReleased(int, bool, int)), SIGNAL(keyReleased(int, bool, int)));
+      connect(this, SIGNAL(topLevelChanged(bool)), _piano, SLOT(setMaximum(bool)));
+      retranslate();
+      }
+
+//---------------------------------------------------------
+//   retranslate
+//---------------------------------------------------------
+
+void PianoTools::retranslate()
+      {
+      setWindowTitle(tr("Piano Keyboard"));
+      }
+
+//---------------------------------------------------------
+//   heartBeat
+//---------------------------------------------------------
+
+void PianoTools::setPlaybackNotes(QList<const Ms::Note *> notes)
+      {
+      QSet<int> pitches;
+      for (const Note* note : notes) {
+          pitches.insert(note->ppitch());
+          }
+      _piano->setPressedPlaybackPitches(pitches);
+      }
+
+//---------------------------------------------------------
+//   changeEvent
+//---------------------------------------------------------
+
+void PianoTools::changeEvent(QEvent *event)
+      {
+      QDockWidget::changeEvent(event);
+      if (event->type() == QEvent::LanguageChange)
+            retranslate();
       }
 
 //---------------------------------------------------------
@@ -315,24 +474,73 @@ void HPiano::wheelEvent(QWheelEvent* event)
       deltaSum += event->delta();
       int step = deltaSum / 120;
       deltaSum %= 120;
-
+      qreal mag = scaleVal;
       if (event->modifiers() & Qt::ControlModifier) {
             if (step > 0) {
-                  for (int i = 0; i < step; ++i) {
-                        scaleVal *= 1.1;
-                        }
+                  for (int i = 0; i < step; ++i)
+                        mag *= 1.1;
                   }
             else {
-                  for (int i = 0; i < -step; ++i) {
-                        scaleVal /= 1.1;
-                        }
+                  for (int i = 0; i < -step; ++i)
+                        mag /= 1.1;
                   }
-            if (scaleVal > 4.0)
-                  scaleVal = 4.0;
-            else if (scaleVal < .5)
-                  scaleVal = .5;
-            setScale(scaleVal);
+            setScale(mag);
             }
       }
-}
 
+//---------------------------------------------------------
+//   gestureEvent
+//    fired on touchscreen gestures as well as Mac touchpad gestures
+//---------------------------------------------------------
+
+bool HPiano::event(QEvent* event)
+      {
+      if (event->type() == QEvent::Gesture) {
+            return gestureEvent(static_cast<QGestureEvent*>(event));
+            }
+      return QGraphicsView::event(event);
+      }
+
+//---------------------------------------------------------
+//   gestureEvent
+//    fired on touchscreen gestures as well as Mac touchpad gestures
+//---------------------------------------------------------
+
+bool HPiano::gestureEvent(QGestureEvent *event)
+      {
+      if (QGesture *gesture = event->gesture(Qt::PinchGesture)) {
+            // Zoom in/out when receiving a pinch gesture
+            QPinchGesture *pinch = static_cast<QPinchGesture *>(gesture);
+
+            static qreal magStart = 1.0;
+            if (pinch->state() == Qt::GestureStarted) {
+                  magStart = scaleVal;
+                  }
+            if (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged) {
+                  // On Windows, totalScaleFactor() contains the net magnification.
+                  // On OS X, totalScaleFactor() is 1, and scaleFactor() contains the net magnification.
+                  qreal value = pinch->totalScaleFactor();
+                  if (value == 1) {
+                        value = pinch->scaleFactor();
+                        }
+                  // Qt 5.4 doesn't report pinch->centerPoint() correctly
+                  setScale(magStart*value);
+                  }
+            }
+      return true;
+      }
+
+//---------------------------------------------------------
+//   changeSelection
+//---------------------------------------------------------
+
+void PianoTools::changeSelection(const Selection& selection)
+      {
+      _piano->changeSelection(selection);
+      }
+
+void PianoTools::clearSelection()
+      {
+      _piano->clearSelection();
+      }
+}

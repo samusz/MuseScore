@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>525</width>
-    <height>266</height>
+    <width>664</width>
+    <height>343</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string/>
+   <string notr="true"/>
   </property>
   <layout class="QVBoxLayout">
    <item>
@@ -168,6 +168,13 @@
           </property>
          </widget>
         </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="durationType">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="3" colspan="2">
          <widget class="QSpinBox" name="dots">
           <property name="sizePolicy">
@@ -186,7 +193,7 @@
            <enum>QAbstractSpinBox::NoButtons</enum>
           </property>
           <property name="maximum">
-           <number>3</number>
+           <number>4</number>
           </property>
          </widget>
         </item>
@@ -236,13 +243,6 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="duration">
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_9">
           <property name="toolTip">
@@ -256,44 +256,21 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="tick">
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-          <property name="buttonSymbols">
-           <enum>QAbstractSpinBox::NoButtons</enum>
-          </property>
-          <property name="maximum">
-           <number>2000000000</number>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="2">
          <widget class="QLabel" name="label_5">
           <property name="toolTip">
            <string notr="true"/>
           </property>
           <property name="text">
-           <string notr="true">ticks:</string>
+           <string notr="true">actualTicks:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
           </property>
          </widget>
         </item>
-        <item row="0" column="3" colspan="2">
-         <widget class="QSpinBox" name="ticks">
-          <property name="toolTip">
-           <string notr="true"/>
-          </property>
-          <property name="buttonSymbols">
-           <enum>QAbstractSpinBox::NoButtons</enum>
-          </property>
-          <property name="maximum">
-           <number>9999999</number>
-          </property>
-         </widget>
+        <item row="1" column="7">
+         <widget class="QComboBox" name="beamMode"/>
         </item>
         <item row="1" column="5">
          <widget class="QLabel" name="label">
@@ -305,66 +282,22 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="7">
-         <widget class="QComboBox" name="beamMode"/>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_11">
-          <property name="toolTip">
-           <string notr="true"/>
-          </property>
-          <property name="text">
-           <string notr="true">Space-L</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="duration">
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
-         <widget class="QDoubleSpinBox" name="spaceL">
-          <property name="buttonSymbols">
-           <enum>QAbstractSpinBox::NoButtons</enum>
-          </property>
-          <property name="minimum">
-           <double>-9999999.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>999999.989999999990687</double>
+        <item row="0" column="3" colspan="2">
+         <widget class="QLineEdit" name="ticks">
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
-        <item row="3" column="2">
-         <widget class="QLabel" name="label_12">
-          <property name="toolTip">
-           <string notr="true"/>
-          </property>
-          <property name="text">
-           <string notr="true">Space-R</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="3" colspan="2">
-         <widget class="QDoubleSpinBox" name="spaceR">
-          <property name="toolTip">
-           <string notr="true"/>
-          </property>
-          <property name="buttonSymbols">
-           <enum>QAbstractSpinBox::NoButtons</enum>
-          </property>
-          <property name="minimum">
-           <double>-9999999.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>999999.989999999990687</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="durationType">
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="tick">
           <property name="readOnly">
            <bool>true</bool>
           </property>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>373</width>
-    <height>276</height>
+    <width>840</width>
+    <height>560</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,7 +27,7 @@
       <string>Title</string>
      </property>
      <property name="accessibleDescription">
-      <string>Insert title here</string>
+      <string>Enter score title</string>
      </property>
     </widget>
    </item>
@@ -44,7 +44,7 @@
       <string>Subtitle</string>
      </property>
      <property name="accessibleDescription">
-      <string>Insert subtitle here</string>
+      <string>Enter score subtitle</string>
      </property>
     </widget>
    </item>
@@ -61,7 +61,7 @@
       <string>Composer</string>
      </property>
      <property name="accessibleDescription">
-      <string>Insert composer's name here</string>
+      <string>Enter the composer's name</string>
      </property>
     </widget>
    </item>
@@ -78,7 +78,7 @@
       <string>Lyricist</string>
      </property>
      <property name="accessibleDescription">
-      <string>Insert lyricist's name here</string>
+      <string>Enter the lyricist's name</string>
      </property>
     </widget>
    </item>
@@ -95,24 +95,7 @@
       <string>Copyright</string>
      </property>
      <property name="accessibleDescription">
-      <string>Insert copyright here</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0" colspan="2">
-    <widget class="QRadioButton" name="rb1">
-     <property name="text">
-      <string>Create new score from template</string>
-     </property>
-    </widget>
-   </item>
-   <item row="7" column="0" colspan="2">
-    <widget class="QRadioButton" name="rb2">
-     <property name="text">
-      <string>Create new score from scratch</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
+      <string>Enter copyright information</string>
      </property>
     </widget>
    </item>

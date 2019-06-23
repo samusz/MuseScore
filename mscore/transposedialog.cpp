@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: transposedialog.cpp 4391 2011-06-18 14:28:24Z wschweer $
 //
 //  Copyright (C) 2008-2010 Werner Schweer and others
 //
@@ -45,10 +44,14 @@ namespace Ms {
 TransposeDialog::TransposeDialog(QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("TransposeDialog");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
       connect(transposeByKey, SIGNAL(clicked(bool)), SLOT(transposeByKeyToggled(bool)));
       connect(transposeByInterval, SIGNAL(clicked(bool)), SLOT(transposeByIntervalToggled(bool)));
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -92,6 +95,17 @@ void TransposeDialog::enableTransposeByKey(bool val)
       }
 
 //---------------------------------------------------------
+//   enableTransposeChordNames
+//---------------------------------------------------------
+
+void TransposeDialog::enableTransposeChordNames(bool val)
+      {
+      transposeChordNames->setEnabled(val);
+      transposeChordNames->setChecked(!val);
+      transposeChordNames->setChecked(val);
+      }
+
+//---------------------------------------------------------
 //   direction
 //---------------------------------------------------------
 
@@ -121,5 +135,15 @@ void TransposeDialog::on_diatonicBox_toggled(bool val)
 {
     chromaticBox->setChecked(!val);
 }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void TransposeDialog::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
 }
 

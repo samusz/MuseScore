@@ -2,22 +2,37 @@
 <ui version="4.0">
  <class>SynthControl</class>
  <widget class="QWidget" name="SynthControl">
+  <property name="windowModality">
+   <enum>Qt::NonModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>616</width>
-    <height>281</height>
+    <width>602</width>
+    <height>407</height>
    </rect>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::ClickFocus</enum>
   </property>
   <property name="windowTitle">
    <string>Synthesizer</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
-   <item row="1" column="0">
+  <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0">
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="horizontalSpacing">
+    <number>10</number>
+   </property>
+   <item row="2" column="0">
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="0" column="3">
       <widget class="QPushButton" name="storeButton">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="text">
         <string>Set as Default</string>
        </property>
@@ -25,8 +40,11 @@
      </item>
      <item row="0" column="0">
       <widget class="QPushButton" name="saveButton">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="toolTip">
-        <string>Save to Score</string>
+        <string>Save to score</string>
        </property>
        <property name="text">
         <string>Save to Score</string>
@@ -48,8 +66,11 @@
      </item>
      <item row="0" column="1">
       <widget class="QPushButton" name="loadButton">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="toolTip">
-        <string>Load from Score</string>
+        <string>Load from score</string>
        </property>
        <property name="text">
         <string>Load from Score</string>
@@ -58,6 +79,9 @@
      </item>
      <item row="0" column="4">
       <widget class="QPushButton" name="recallButton">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="text">
         <string>Load Default</string>
        </property>
@@ -65,14 +89,23 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="1" rowspan="2">
+   <item row="0" column="1" rowspan="3">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="Awl::MeterSlider" name="gain">
+      <widget class="Awl::MeterSlider" name="gain" native="true">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="statusTip">
         <string>Master volume</string>
        </property>
-       <property name="channel">
+       <property name="accessibleName">
+        <string>Master volume</string>
+       </property>
+       <property name="accessibleDescription">
+        <string>Use up and down arrows to modify</string>
+       </property>
+       <property name="channel" stdset="0">
         <number>2</number>
        </property>
       </widget>
@@ -86,7 +119,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Vol</string>
+        <string extracomment="volume">Vol.</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -95,12 +128,18 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="0">
+   <item row="0" column="0" rowspan="2">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="masterEffectsTab">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <attribute name="title">
        <string>Master Effects</string>
       </attribute>
@@ -108,7 +147,7 @@
        <item row="1" column="0" colspan="6">
         <widget class="QStackedWidget" name="effectStackA">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -130,10 +169,20 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="accessibleName">
+          <string>Effect A</string>
+         </property>
         </widget>
        </item>
        <item row="2" column="0" colspan="6">
-        <widget class="QStackedWidget" name="effectStackB"/>
+        <widget class="QStackedWidget" name="effectStackB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
@@ -149,6 +198,9 @@
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="accessibleName">
+          <string>Effect B</string>
          </property>
         </widget>
        </item>
@@ -168,6 +220,12 @@
       </layout>
      </widget>
      <widget class="QWidget" name="tab">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <attribute name="title">
        <string>Tuning</string>
       </attribute>
@@ -181,8 +239,14 @@
        </item>
        <item row="0" column="1">
         <widget class="QDoubleSpinBox" name="masterTuning">
+         <property name="accessibleName">
+          <string>Master tuning</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Hertz</string>
+         </property>
          <property name="suffix">
-          <string extracomment="Frequency Herz">Hz</string>
+          <string extracomment="Hertz">Hz</string>
          </property>
          <property name="decimals">
           <number>1</number>
@@ -226,9 +290,144 @@
        </item>
        <item row="2" column="0">
         <widget class="QPushButton" name="changeTuningButton">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="text">
           <string>Change Tuning</string>
          </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="dynamicsTab">
+      <attribute name="title">
+       <string>Dynamics</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,0,0,0" columnstretch="1,0">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Dynamics method:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="dynamicsMethodList">
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
+         <item>
+          <property name="text">
+           <string>Velocity only (no single-note dynamics)</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Default (single-note dynamics and velocity)</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CC events only (constant velocity)</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="ccToUseList">
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
+         <item>
+          <property name="text">
+           <string>CC 1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CC 2 (default)</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CC 4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CC 11</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>CC to use:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="2">
+        <widget class="QGroupBox" name="advancedSettings">
+         <property name="accessibleName">
+          <string>Advanced Settings</string>
+         </property>
+         <property name="title">
+          <string>Advanced Settings</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_6">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Switch all patches:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="1">
+           <widget class="QPushButton" name="switchExpr">
+            <property name="accessibleName">
+             <string>Switch all patches to expressive</string>
+            </property>
+            <property name="text">
+             <string>To Expressive</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="switchNonExpr">
+            <property name="accessibleName">
+             <string>Switch all patches to non-expressive</string>
+            </property>
+            <property name="text">
+             <string>To Non-Expressive</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QPushButton" name="resetExpr">
+            <property name="accessibleName">
+             <string>Reset all patches to defaults</string>
+            </property>
+            <property name="text">
+             <string>Reset All</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -237,7 +436,6 @@
    </item>
   </layout>
  </widget>
- <pixmapfunction>getIconPixmap</pixmapfunction>
  <customwidgets>
   <customwidget>
    <class>Awl::Slider</class>
@@ -255,6 +453,18 @@
    <header>awl/mslider.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>effectA</tabstop>
+  <tabstop>effectB</tabstop>
+  <tabstop>masterTuning</tabstop>
+  <tabstop>changeTuningButton</tabstop>
+  <tabstop>gain</tabstop>
+  <tabstop>saveButton</tabstop>
+  <tabstop>loadButton</tabstop>
+  <tabstop>storeButton</tabstop>
+  <tabstop>recallButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

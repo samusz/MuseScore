@@ -6,16 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>344</width>
-    <height>136</height>
+    <width>311</width>
+    <height>158</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <widget class="QListWidget" name="soundFonts"/>
+    <widget class="QListWidget" name="soundFonts">
+     <property name="accessibleName">
+      <string>SoundFonts</string>
+     </property>
+    </widget>
    </item>
    <item row="0" column="1">
     <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -23,28 +33,51 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QPushButton" name="soundFontUp">
+      <widget class="QToolButton" name="soundFontUp">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Move SoundFont up</string>
+       </property>
+       <property name="accessibleDescription">
+        <string/>
+       </property>
        <property name="text">
-        <string>Up</string>
+        <string notr="true"/>
+       </property>
+       <property name="icon">
+        <iconset resource="../mscore/musescore.qrc">
+         <normaloff>:/data/icons/arrow_up.svg</normaloff>:/data/icons/arrow_up.svg</iconset>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="soundFontDown">
+      <widget class="QToolButton" name="soundFontDown">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Move SoundFont down</string>
+       </property>
        <property name="text">
-        <string>Down</string>
+        <string notr="true"/>
+       </property>
+       <property name="icon">
+        <iconset resource="../mscore/musescore.qrc">
+         <normaloff>:/data/icons/arrow_down.svg</normaloff>:/data/icons/arrow_down.svg</iconset>
        </property>
       </widget>
      </item>
@@ -69,6 +102,9 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="text">
         <string>Delete</string>
        </property>
@@ -76,6 +112,9 @@
      </item>
      <item>
       <widget class="QPushButton" name="soundFontAdd">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
        <property name="text">
         <string>Add</string>
        </property>
@@ -85,6 +124,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../mscore/musescore.qrc"/>
+ </resources>
  <connections/>
 </ui>

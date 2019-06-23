@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -31,7 +30,7 @@ class TestBenchmark : public QObject, public MTest
       {
       Q_OBJECT
 
-      Score* score;
+      MasterScore* score;
       void beam(const char* path);
 
    private slots:
@@ -39,6 +38,7 @@ class TestBenchmark : public QObject, public MTest
       void benchmark3();
       void benchmark1();
       void benchmark2();
+      void benchmark4();            // incremental layout (one page)
       };
 
 //---------------------------------------------------------
@@ -57,18 +57,17 @@ void TestBenchmark::initTestCase()
 void TestBenchmark::benchmark3()
       {
       QString path = root + "/" + DIR + "goldberg.mscx";
-      score = new Score(mscore->baseStyle());
+      score = new MasterScore(mscore->baseStyle());
       score->setName(path);
       MScore::testMode = true;
       QBENCHMARK {
             score->loadMsc(path, false);
             }
-//      Ms::dumpTags();
       }
 
 void TestBenchmark::benchmark1()
       {
-      score = readScore(DIR + "goldberg.mscx");
+      // score = readScore(DIR + "goldberg.mscx");
       QBENCHMARK {                        // cold run
             score->doLayout();
             }
@@ -79,6 +78,14 @@ void TestBenchmark::benchmark2()
       score->doLayout();
       QBENCHMARK {                        // warm run
             score->doLayout();
+            }
+      }
+void TestBenchmark::benchmark4()
+      {
+      QBENCHMARK {
+            score->startCmd();
+            score->setLayout(Fraction(1,4));
+            score->endCmd();
             }
       }
 

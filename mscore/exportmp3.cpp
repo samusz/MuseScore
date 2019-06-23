@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: MP3Exporter.cpp 2992 2010-04-22 14:42:39Z lasconic $
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -43,7 +42,7 @@ MP3Exporter::MP3Exporter()
 
       mBitrate = 128;
       mQuality = QUALITY_2;
-      mChannel = CHANNEL_STEREO;
+      mChannel = CHANNEL_JOINT;
       mMode = MODE_CBR;
       mRoutine = ROUTINE_FAST;
       }
@@ -65,7 +64,7 @@ bool MP3Exporter::findLibrary()
       if (!mLibPath.isEmpty()) {
             QFileInfo fi(mLibPath);
             path = fi.absolutePath();
-            name = fi.baseName();
+            name = fi.completeBaseName();
             }
       else {
             path = getLibraryPath();
@@ -78,7 +77,10 @@ bool MP3Exporter::findLibrary()
       QString libPath = QFileDialog::getOpenFileName(
            0, qApp->translate("MP3Exporter", "Where is %1 ?").arg(getLibraryName()),
            path,
-           getLibraryTypeString());
+           getLibraryTypeString(),
+           0,
+           preferences.getBool(PREF_UI_APP_USENATIVEDIALOGS) ? QFileDialog::Options() : QFileDialog::DontUseNativeDialog
+           );
 
       if (libPath.isEmpty())
             return false;
@@ -128,16 +130,16 @@ bool MP3Exporter::loadLibrary(AskUser askuser)
             }
 
       // If not successful, must ask the user
-      if (!validLibraryLoaded()) {
+      if (!validLibraryLoaded() && askuser != MP3Exporter::AskUser::NO) {
             qDebug("(Maybe) ask user for library");
             int ret = QMessageBox::question(0, qApp->translate("MP3Exporter", "Save as MP3"),
-                  qApp->translate("MP3Exporter", "MuseScore does not export MP3 files directly, but instead uses \n"
-                   "the freely available LAME library.  You must obtain %1 \n"
-                   "separately, and then locate the file for MuseScore.\n"
+                  qApp->translate("MP3Exporter", "MuseScore does not export MP3 files directly, but instead uses "
+                   "the freely available LAME library. You must obtain %1 "
+                   "separately (for details check the handbook), and then locate the file for MuseScore.\n"
                    "You only need to do this once.\n\n"
                    "Would you like to locate %2 now?").arg(getLibraryName()).arg(getLibraryName()),
                    QMessageBox::Yes|QMessageBox::No, QMessageBox::NoButton);
-            if (ret == QMessageBox::Yes && askuser == MP3Exporter::AskUser::MAYBE && findLibrary()) {
+            if (ret == QMessageBox::Yes && findLibrary()) {
                   mLibraryLoaded = initLibrary(mLibPath);
                   }
             }
@@ -190,9 +192,6 @@ bool MP3Exporter::initLibrary(QString libpath)
             qDebug("load failed <%s>", qPrintable(lame_lib->errorString()));
             return false;
             }
-
-      /*qDebug("Actual LAME path %s",
-                FileNames::PathFromAddr(lame_lib->resolve("lame_init")));*/
 
       lame_init = (lame_init_t *)
         lame_lib->resolve("lame_init");
@@ -531,7 +530,7 @@ void MP3Exporter::cancelEncoding()
       else if (beWriteInfoTag) {
          f.flush();
          QFileInfo fi(f);
-         beWriteInfoTag(mGF, qPrintable(fi.baseName()));
+         beWriteInfoTag(mGF, qPrintable(fi.completeBaseName()));
          mGF = NULL;
       }
 #endif
@@ -573,7 +572,7 @@ QString MP3Exporter::getLibraryTypeString()
 
 QString MP3Exporter::getLibraryPath()
       {
-      return QString("/usr/local/lib/audacity");
+      return QString("%1/../Resources/Frameworks/").arg(qApp->applicationDirPath());
       }
 
 QString MP3Exporter::getLibraryName()
@@ -605,234 +604,5 @@ QString MP3Exporter::getLibraryTypeString()
       }
 #endif //mac
 
-
-//---------------------------------------------------------
-//   saveMp3
-//---------------------------------------------------------
-
-bool MuseScore::saveMp3(Score* score, const QString& name)
-      {
-      EventMap events;
-      score->renderMidi(&events);
-      if(events.size() == 0)
-            return false;
-
-      MP3Exporter exporter;
-      if (!exporter.loadLibrary(MP3Exporter::AskUser::MAYBE)) {
-            QSettings settings;
-            settings.setValue("/Export/lameMP3LibPath", "");
-            if(!MScore::noGui)
-                  QMessageBox::warning(0,
-                               tr("Error Opening LAME library"),
-                               tr("Could not open MP3 encoding library!"),
-                               QString::null, QString::null);
-            qDebug("Could not open MP3 encoding library!");
-            return false;
-            }
-
-      if (!exporter.validLibraryLoaded()) {
-            QSettings settings;
-            settings.setValue("/Export/lameMP3LibPath", "");
-            if(!MScore::noGui)
-                  QMessageBox::warning(0,
-                               tr("Error Opening LAME library"),
-                               tr("Not a valid or supported MP3 encoding library!"),
-                               QString::null, QString::null);
-            qDebug("Not a valid or supported MP3 encoding library!");
-            return false;
-            }
-
-      // Retrieve preferences
-//      int highrate = 48000;
-//      int lowrate = 8000;
-      int bitrate = 0;
-//      int brate = 128;
-//      int rmode = MODE_CBR;
-//      int vmode = ROUTINE_FAST;
-//      int cmode = CHANNEL_STEREO;
-
-      int channels = 2;
-
-      int oldSampleRate = MScore::sampleRate;
-      int sampleRate = preferences.exportAudioSampleRate;
-
-      exporter.setMode(MODE_CBR);
-      exporter.setBitrate(bitrate);
-      exporter.setChannel(CHANNEL_STEREO);
-
-      int inSamples = exporter.initializeStream(channels, sampleRate);
-      if (inSamples < 0) {
-            if (!MScore::noGui) {
-                  QMessageBox::warning(0, tr("Encoding Error"),
-                     tr("Unable to initialize MP3 stream"),
-                     QString::null, QString::null);
-                  }
-            qDebug("Unable to initialize MP3 stream");
-            MScore::sampleRate = oldSampleRate;
-            return false;
-            }
-
-      QFile file(name);
-      if (!file.open(QIODevice::WriteOnly)) {
-            if (!MScore::noGui) {
-                  QMessageBox::warning(0,
-                     tr("Encoding Error"),
-                     tr("Unable to open target file for writing"),
-                     QString::null, QString::null);
-                  }
-            MScore::sampleRate = oldSampleRate;
-            return false;
-            }
-
-      int bufferSize   = exporter.getOutBufferSize();
-      uchar* bufferOut = new uchar[bufferSize];
-      MasterSynthesizer* synti = synthesizerFactory();
-      synti->init();
-      synti->setSampleRate(sampleRate);
-      synti->setState(score->synthesizerState());
-
-      MScore::sampleRate = sampleRate;
-
-      QProgressBar* pBar = showProgressBar();
-      pBar->reset();
-
-      static const int FRAMES = 512;
-      float bufferL[FRAMES];
-      float bufferR[FRAMES];
-
-      float  peak = 0.0;
-      double gain = 1.0;
-      EventMap::const_iterator endPos = events.cend();
-      --endPos;
-      const int et = (score->utick2utime(endPos->first) + 1) * MScore::sampleRate;
-      pBar->setRange(0, et);
-
-      for (int pass = 0; pass < 2; ++pass) {
-            EventMap::const_iterator playPos;
-            playPos = events.cbegin();
-            //
-            // init instruments
-            //
-            foreach(Part* part, score->parts()) {
-                  InstrumentList* il = part->instrList();
-                  for(auto i = il->begin(); i!= il->end(); i++) {
-                        foreach(const Channel& a, i->second.channel()) {
-                              a.updateInitList();
-                              foreach(MidiCoreEvent e, a.init) {
-                                    if (e.type() == ME_INVALID)
-                                          continue;
-                                    e.setChannel(a.channel);
-                                    int syntiIdx= synti->index(score->midiMapping(a.channel)->articulation->synti);
-                                    synti->play(e, syntiIdx);
-                                    }
-                              }
-                        }
-                  }
-
-            int playTime = 0.0;
-
-            for (;;) {
-                  unsigned frames = FRAMES;
-                  //
-                  // collect events for one segment
-                  //
-                  memset(bufferL, 0, sizeof(float) * FRAMES);
-                  memset(bufferR, 0, sizeof(float) * FRAMES);
-                  double endTime = playTime + frames;
-
-                  float* l = bufferL;
-                  float* r = bufferR;
-
-                  for (; playPos != events.cend(); ++playPos) {
-                        double f = score->utick2utime(playPos->first) * MScore::sampleRate;
-                        if (f >= endTime)
-                              break;
-                        int n = f - playTime;
-                        if (n) {
-                              float bu[n * 2];
-                              memset(bu, 0, sizeof(float) * 2 * n);
-
-                              synti->process(n, bu);
-                              float* sp = bu;
-                              for (int i = 0; i < n; ++i) {
-                                    *l++ = *sp++;
-                                    *r++ = *sp++;
-                                    }
-                              playTime  += n;
-                              frames    -= n;
-                              }
-                        const NPlayEvent& e = playPos->second;
-                        if (e.isChannelEvent()) {
-                              int channelIdx = e.channel();
-                              Channel* c = score->midiMapping(channelIdx)->articulation;
-                              if (!c->mute) {
-                                    synti->play(e, synti->index(c->synti));
-                                    }
-                              }
-                        }
-                  if (frames) {
-                        float bu[frames * 2];
-                        memset(bu, 0, sizeof(float) * 2 * frames);
-                        synti->process(frames, bu);
-                        float* sp = bu;
-                        for (unsigned i = 0; i < frames; ++i) {
-                              *l++ = *sp++;
-                              *r++ = *sp++;
-                              }
-                        playTime += frames;
-                        }
-
-                  if (pass == 1) {
-                        for (int i = 0; i < FRAMES; ++i) {
-                              bufferL[i] *= gain;
-                              bufferR[i] *= gain;
-                              }
-                        long bytes;
-                        if (FRAMES < inSamples)
-                              bytes = exporter.encodeRemainder(bufferL, bufferR,  FRAMES , bufferOut);
-                        else
-                              bytes = exporter.encodeBuffer(bufferL, bufferR, bufferOut);
-                        if (bytes < 0) {
-                              if (MScore::noGui)
-                                    qDebug("exportmp3: error from encoder: %ld", bytes);
-                              else
-                                    QMessageBox::warning(0,
-                                       tr("Encoding Error"),
-                                       tr("Error %1 returned from MP3 encoder").arg(bytes),
-                                       QString::null, QString::null);
-                              break;
-                              }
-                        else
-                              file.write((char*)bufferOut, bytes);
-                        }
-                  else {
-                        for (int i = 0; i < FRAMES; ++i) {
-                              peak = qMax(peak, qAbs(bufferL[i]));
-                              peak = qMax(peak, qAbs(bufferR[i]));
-                              }
-                        }
-                  playTime = endTime;
-                  pBar->setValue((pass * et + playTime) / 2);
-                  if (playTime >= et)
-                        break;
-                  }
-            if (pass == 0 && peak == 0.0) {
-                  qDebug("song is empty");
-                  break;
-                  }
-            gain = 0.99 / peak;
-            }
-
-      long bytes = exporter.finishStream(bufferOut);
-      if (bytes > 0L)
-            file.write((char*)bufferOut, bytes);
-
-      hideProgressBar();
-      delete synti;
-      delete bufferOut;
-      file.close();
-      MScore::sampleRate = oldSampleRate;
-      return true;
-      }
 }
 

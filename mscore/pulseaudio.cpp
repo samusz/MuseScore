@@ -56,12 +56,13 @@ class PulseAudio : public Driver {
 void PulseAudio::paCallback(pa_stream* s, size_t len, void* data)
       {
       PulseAudio* pa = (PulseAudio*)data;
-      size_t n = FRAMES * 2 * sizeof(float);
-      if (len > n)
+      constexpr size_t n = FRAMES * 2 * sizeof(float);
+      if (len > n) {
+            qDebug("PulseAudio:: buffer too large!");
             len = n;
-      float* p = pa->buffer;
-      pa->seq->process(len / (2 * sizeof(float)), p);
-      pa_stream_write(s, p, len, NULL, 0LL, PA_SEEK_RELATIVE);
+            }
+      pa->seq->process(len / (2 * sizeof(float)), pa->buffer);
+      pa_stream_write(s, pa->buffer, len, nullptr, int64_t(0), PA_SEEK_RELATIVE);
       }
 
 //---------------------------------------------------------
@@ -71,7 +72,7 @@ void PulseAudio::paCallback(pa_stream* s, size_t len, void* data)
 PulseAudio::PulseAudio(Seq* s)
    : Driver(s)
       {
-      _sampleRate = preferences.alsaSampleRate;
+      _sampleRate = preferences.getInt(PREF_IO_ALSA_SAMPLERATE);
       state       = Transport::STOP;
       runState    = 0;
       }
@@ -120,8 +121,10 @@ bool PulseAudio::init(bool)
       pa_ml                     = pa_mainloop_new();
       pa_mainloop_api* pa_mlapi = pa_mainloop_get_api(pa_ml);
       pa_context* pa_ctx        = pa_context_new(pa_mlapi, "MuseScore");
-      if (pa_context_connect(pa_ctx, NULL, pa_context_flags_t(0), NULL) != 0)
+      if (pa_context_connect(pa_ctx, NULL, pa_context_flags_t(0), NULL) != 0) {
             qDebug("PulseAudio Context Connect Failed with Error: %s", pa_strerror(pa_context_errno(pa_ctx)));
+            return false;
+            }
 
       int pa_ready = 0;
       pa_context_set_state_callback(pa_ctx, pa_state_cb, &pa_ready);
@@ -137,7 +140,7 @@ bool PulseAudio::init(bool)
 
       pa_stream* playstream = pa_stream_new(pa_ctx, "Playback", &ss, NULL);
       if (!playstream) {
-            qDebug("pa_stream_new failed");
+            qDebug("pa_stream_new failed: %s", pa_strerror(pa_context_errno(pa_ctx)));
             return false;
             }
       pa_stream_set_write_callback(playstream, paCallback, this);
@@ -147,19 +150,10 @@ bool PulseAudio::init(bool)
       bufattr.minreq    = FRAMES * 1 * sizeof(float); // pa_usec_to_bytes(0, &ss);
       bufattr.prebuf    = (uint32_t)-1;
       bufattr.tlength   = bufattr.maxlength;
-      int r = pa_stream_connect_playback(playstream, NULL, &bufattr,
-         pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
-         | PA_STREAM_ADJUST_LATENCY
-         | PA_STREAM_AUTO_TIMING_UPDATE),
-         NULL, NULL);
 
-      if (r < 0) {
-            // Old pulse audio servers don't like the ADJUST_LATENCY flag, so retry without that
-            r = pa_stream_connect_playback(playstream, NULL, &bufattr,
-               pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
-               | PA_STREAM_AUTO_TIMING_UPDATE),
-               NULL, NULL);
-            }
+      int r = pa_stream_connect_playback(playstream, nullptr, &bufattr,
+         PA_STREAM_NOFLAGS, nullptr, nullptr);
+
       if (r < 0) {
             qDebug("pa_stream_connect_playback failed");
             pa_context_disconnect(pa_ctx);
@@ -179,8 +173,9 @@ void* PulseAudio::paLoop(void* data)
       {
       PulseAudio* pa = (PulseAudio*)data;
       pa->runState = 2;
-      while (pa->runState == 2)
+      while (pa->runState == 2) {
             pa_mainloop_iterate(pa->pa_ml, 1, NULL);
+            }
       pa->runState = 0;
       return 0;
       }

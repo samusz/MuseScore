@@ -32,9 +32,10 @@ static bool defaultSizeIsSpatium    = true;
 //---------------------------------------------------------
 
 Image::Image(Score* s)
-   : BSymbol(s)
+   : BSymbol(s, ElementFlag::MOVABLE)
       {
       imageType        = ImageType::NONE;
+      rasterDoc        = 0;
       _size            = QSizeF(0, 0);
       _storeItem       = 0;
       _dirty           = false;
@@ -42,10 +43,6 @@ Image::Image(Score* s)
       _autoScale       = defaultAutoScale;
       _sizeIsSpatium   = defaultSizeIsSpatium;
       _linkIsValid     = false;
-      // set default Z order high so image is drawn on top of everything else
-      // but not above MEASURE, or it won't be selectable while on staff
-      // use of transparent background allows image to coexist with staff and other elements
-      setZ(int(Element::Type::MEASURE) * 100 - 1);
       }
 
 Image::Image(const Image& img)
@@ -64,9 +61,9 @@ Image::Image(const Image& img)
       _linkPath        = img._linkPath;
       _linkIsValid     = img._linkIsValid;
       if (imageType == ImageType::RASTER)
-            rasterDoc = img.rasterDoc;
+            rasterDoc = img.rasterDoc ? new QImage(*img.rasterDoc) : 0;
       else if (imageType == ImageType::SVG)
-            svgDoc = img.svgDoc;
+            svgDoc = img.svgDoc ? new QSvgRenderer(_storeItem->buffer()) : 0;
       setZ(img.z());
       }
 
@@ -105,140 +102,9 @@ void Image::setImageType(ImageType t)
 
 QSizeF Image::imageSize() const
       {
-      if (imageType == ImageType::RASTER)
-            return rasterDoc->size();
-      else
-            return svgDoc->defaultSize();
-      }
-
-//---------------------------------------------------------
-//   scaleFactor
-//---------------------------------------------------------
-
-qreal Image::scaleFactor() const
-      {
-      if (imageType == ImageType::RASTER)
-            return ( (_sizeIsSpatium ? spatium() : MScore::DPMM) / 0.4 );
-      else
-            return (_sizeIsSpatium ? 10.0 : MScore::DPMM);
-      }
-
-//---------------------------------------------------------
-//   scale
-//    return image scale in percent
-//---------------------------------------------------------
-
-QSizeF Image::scale() const
-      {
-      return scaleForSize(size());
-      }
-
-//---------------------------------------------------------
-//   setScale
-//---------------------------------------------------------
-
-void Image::setScale(const QSizeF& scale)
-      {
-      setSize(sizeForScale(scale));
-      }
-
-//---------------------------------------------------------
-//   scaleForSize
-//---------------------------------------------------------
-
-QSizeF Image::scaleForSize(const QSizeF& s) const
-      {
-      if(!isValid())
+      if (!isValid())
             return QSizeF();
-      QSizeF sz = s * scaleFactor();
-      return QSizeF(
-               (sz.width()  * 100.0)/ imageSize().width(),
-               (sz.height() * 100.0)/ imageSize().height()
-               );
-      }
-
-//---------------------------------------------------------
-//   sizeForScale
-//---------------------------------------------------------
-
-QSizeF Image::sizeForScale(const QSizeF& scale) const
-      {
-      QSizeF s = scale / 100.0;
-//      qreal sz = _sizeIsSpatium ? spatium() : MScore::DPMM;
-//      QSizeF oSize = imageSize() / sz;
-      QSizeF oSize = imageSize() / scaleFactor();
-      return QSizeF(s.width() * oSize.width(), s.height() * oSize.height());
-      }
-
-//---------------------------------------------------------
-//   getProperty
-//---------------------------------------------------------
-
-QVariant Image::getProperty(P_ID propertyId) const
-      {
-      switch(propertyId) {
-            case P_ID::AUTOSCALE:
-                  return autoScale();
-            case P_ID::SIZE:
-                  return size();
-            case P_ID::SCALE:
-                  return scale();
-            case P_ID::LOCK_ASPECT_RATIO:
-                  return lockAspectRatio();
-            case P_ID::SIZE_IS_SPATIUM:
-                  return sizeIsSpatium();
-            default:
-                  return Element::getProperty(propertyId);
-            }
-      }
-
-//---------------------------------------------------------
-//   setProperty
-//---------------------------------------------------------
-
-bool Image::setProperty(P_ID propertyId, const QVariant& v)
-      {
-      bool rv = true;
-      score()->addRefresh(canvasBoundingRect());
-      switch(propertyId) {
-            case P_ID::AUTOSCALE:
-                  setAutoScale(v.toBool());
-                  break;
-            case P_ID::SIZE:
-                  setSize(v.toSizeF());
-                  break;
-            case P_ID::SCALE:
-                  setScale(v.toSizeF());
-                  break;
-            case P_ID::LOCK_ASPECT_RATIO:
-                  setLockAspectRatio(v.toBool());
-                  break;
-            case P_ID::SIZE_IS_SPATIUM:
-                  setSizeIsSpatium(v.toBool());
-                  break;
-            default:
-                  rv = Element::setProperty(propertyId, v);
-                  break;
-            }
-      setGenerated(false);
-      score()->setLayoutAll(true);
-      return rv;
-      }
-
-//---------------------------------------------------------
-//   propertyDefault
-//---------------------------------------------------------
-
-QVariant Image::propertyDefault(P_ID id) const
-      {
-      switch(id) {
-            case P_ID::AUTOSCALE:             return defaultAutoScale;
-            case P_ID::SIZE:                  break;
-            case P_ID::LOCK_ASPECT_RATIO:     return defaultLockAspectRatio;
-            case P_ID::SIZE_IS_SPATIUM:       return defaultSizeIsSpatium;
-            default:                      return Element::propertyDefault(id);
-            }
-      return QVariant();
+      return imageType == ImageType::RASTER ? rasterDoc->size() : svgDoc->defaultSize();
       }
 
 //---------------------------------------------------------
@@ -263,9 +129,9 @@ void Image::draw(QPainter* painter) const
                   if (_sizeIsSpatium)
                         s = _size * spatium();
                   else
-                        s = _size * MScore::DPMM;
-                  if (score()->printing()) {
-                        // use original image size for printing
+                        s = _size * DPMM;
+                  if (score()->printing() && !MScore::svgPrinting) {
+                        // use original image size for printing, but not for svg for reasonable file size.
                         painter->scale(s.width() / rasterDoc->width(), s.height() / rasterDoc->height());
                         painter->drawPixmap(QPointF(0, 0), QPixmap::fromImage(*rasterDoc));
                         }
@@ -304,21 +170,21 @@ void Image::draw(QPainter* painter) const
 //   write
 //---------------------------------------------------------
 
-void Image::write(Xml& xml) const
+void Image::write(XmlWriter& xml) const
       {
       // attempt to convert the _linkPath to a path relative to the score
       //
-      // TODO : on Save As, _score->fileInfo() still contains the old path and fname
+      // TODO : on Save As, score()->fileInfo() still contains the old path and fname
       //          if the Save As path is different, image relative path will be wrong!
       //
       QString relativeFilePath= QString();
       if (!_linkPath.isEmpty() && _linkIsValid) {
             QFileInfo fi(_linkPath);
-            // _score->fileInfo()->canonicalPath() would be better
+            // score()->fileInfo()->canonicalPath() would be better
             // but we are saving under a temp file name and the 'final' file
             // might not exist yet, so canonicalFilePath() may return only "/"
             // OTOH, the score 'final' file name is practically always canonical, at this point
-            QString scorePath = _score->fileInfo()->absolutePath();
+            QString scorePath = score()->masterScore()->fileInfo()->absolutePath();
             QString imgFPath  = fi.canonicalFilePath();
             // if imgFPath is in (or below) the directory of scorePath
             if (imgFPath.startsWith(scorePath, Qt::CaseSensitive)) {
@@ -348,17 +214,17 @@ void Image::write(Xml& xml) const
       if (relativeFilePath.isEmpty())
             relativeFilePath = _linkPath;
 
-      xml.stag("Image");
+      xml.stag(this);
       BSymbol::writeProperties(xml);
       // keep old "path" tag, for backward compatibility and because it is used elsewhere
       // (for instance by Box:read(), Measure:read(), Note:read(), ...)
       xml.tag("path", _storeItem ? _storeItem->hashName() : relativeFilePath);
       xml.tag("linkPath", relativeFilePath);
 
-      writeProperty(xml, P_ID::AUTOSCALE);
-      writeProperty(xml, P_ID::SIZE);
-      writeProperty(xml, P_ID::LOCK_ASPECT_RATIO);
-      writeProperty(xml, P_ID::SIZE_IS_SPATIUM);
+      writeProperty(xml, Pid::AUTOSCALE);
+      writeProperty(xml, Pid::SIZE);
+      writeProperty(xml, Pid::LOCK_ASPECT_RATIO);
+      writeProperty(xml, Pid::SIZE_IS_SPATIUM);
 
       xml.etag();
       }
@@ -369,19 +235,24 @@ void Image::write(Xml& xml) const
 
 void Image::read(XmlReader& e)
       {
-      if (score()->mscVersion() <= 123)
+      if (score()->mscVersion() <= 114)
             _sizeIsSpatium = false;
 
       while (e.readNextStartElement()) {
             const QStringRef& tag(e.name());
             if (tag == "autoScale")
-                  setProperty(P_ID::AUTOSCALE, Ms::getProperty(P_ID::AUTOSCALE, e));
+                  readProperty(e, Pid::AUTOSCALE);
             else if (tag == "size")
-                  setProperty(P_ID::SIZE, Ms::getProperty(P_ID::SIZE, e));
+                  readProperty(e, Pid::SIZE);
             else if (tag == "lockAspectRatio")
-                  setProperty(P_ID::LOCK_ASPECT_RATIO, Ms::getProperty(P_ID::LOCK_ASPECT_RATIO, e));
+                  readProperty(e, Pid::LOCK_ASPECT_RATIO);
             else if (tag == "sizeIsSpatium")
-                  setProperty(P_ID::SIZE_IS_SPATIUM, Ms::getProperty(P_ID::SIZE_IS_SPATIUM, e));
+                  // setting this using the property Pid::SIZE_IS_SPATIUM breaks, because the
+                  // property setter attempts to maintain a constant size. If we're reading, we
+                  // don't want to do that, because the stored size will be in:
+                  //    mm if size isn't spatium
+                  //    sp if size is spatium
+                  _sizeIsSpatium = e.readBool();
             else if (tag == "path")
                   _storePath = e.readElementText();
             else if (tag == "linkPath")
@@ -412,7 +283,7 @@ void Image::read(XmlReader& e)
                   loaded = load(_storePath);
             path = _storePath;
             }
-      // if no succes from store path, attempt loading from link path (for .mscx files)
+      // if no success from store path, attempt loading from link path (for .mscx files)
       if (!loaded) {
             _linkIsValid = load(_linkPath);
             path = _linkPath;
@@ -437,7 +308,7 @@ bool Image::load(const QString& ss)
       // if file path is relative, prepend score path
       QFileInfo fi(path);
       if (fi.isRelative()) {
-            path.prepend(_score->fileInfo()->absolutePath() + "/");
+            path.prepend(score()->masterScore()->fileInfo()->absolutePath() + "/");
             fi.setFile(path);
             }
 
@@ -462,10 +333,52 @@ bool Image::load(const QString& ss)
       }
 
 //---------------------------------------------------------
+//   loadFromData
+//    load image from data and put into ImageStore
+//    return true on success
+//---------------------------------------------------------
+
+bool Image::loadFromData(const QString& ss, const QByteArray& ba)
+      {
+      qDebug("Image::loadFromData <%s>", qPrintable(ss));
+
+      _linkIsValid = false;
+      _linkPath = "";
+      _storeItem = imageStore.add(ss, ba);
+      _storeItem->reference(this);
+      if (ss.endsWith(".svg"))
+            setImageType(ImageType::SVG);
+      else
+            setImageType(ImageType::RASTER);
+      return true;
+      }
+
+//---------------------------------------------------------
+//   ImageEditData
+//---------------------------------------------------------
+
+class ImageEditData : public ElementEditData {
+   public:
+      QSizeF size;
+      };
+
+//---------------------------------------------------------
+//   startDrag
+//---------------------------------------------------------
+
+void Image::startEditDrag(EditData& data)
+      {
+      ImageEditData* ed = new ImageEditData();
+      ed->e    = this;
+      ed->size = _size;
+      data.addData(ed);
+      }
+
+//---------------------------------------------------------
 //   editDrag
 //---------------------------------------------------------
 
-void Image::editDrag(const EditData& ed)
+void Image::editDrag(EditData& ed)
       {
       qreal ratio = _size.width() / _size.height();
       qreal dx = ed.delta.x();
@@ -476,10 +389,10 @@ void Image::editDrag(const EditData& ed)
             dy /= _spatium;
             }
       else {
-            dx /= MScore::DPMM;
-            dy /= MScore::DPMM;
+            dx /= DPMM;
+            dy /= DPMM;
             }
-      if (ed.curGrip == 0) {
+      if (ed.curGrip == Grip::START) {
             _size.setWidth(_size.width() + dx);
             if (_lockAspectRatio)
                   _size.setHeight(_size.width() / ratio);
@@ -493,16 +406,43 @@ void Image::editDrag(const EditData& ed)
       }
 
 //---------------------------------------------------------
+//   endEditDrag
+//---------------------------------------------------------
+
+void Image::endEditDrag(EditData& ed)
+      {
+      ImageEditData* ied = static_cast<ImageEditData*>(ed.getData(this));
+      if (_size != ied->size)
+            score()->undoPropertyChanged(this, Pid::SIZE, ied->size);
+      }
+
+//---------------------------------------------------------
 //   updateGrips
 //---------------------------------------------------------
 
-void Image::updateGrips(int* grips, int* defaultGrip, QRectF* grip) const
+void Image::updateGrips(EditData& ed) const
       {
-      *grips = 2;
-      *defaultGrip = 1;
       QRectF r(pageBoundingRect());
-      grip[0].translate(QPointF(r.x() + r.width(), r.y() + r.height() * .5));
-      grip[1].translate(QPointF(r.x() + r.width() * .5, r.y() + r.height()));
+      ed.grip[0].translate(QPointF(r.x() + r.width(), r.y() + r.height() * .5));
+      ed.grip[1].translate(QPointF(r.x() + r.width() * .5, r.y() + r.height()));
+      }
+
+//---------------------------------------------------------
+//   pixel2Size
+//---------------------------------------------------------
+
+QSizeF Image::pixel2size(const QSizeF& s) const
+      {
+      return s / (_sizeIsSpatium ? spatium() : DPMM);
+      }
+
+//---------------------------------------------------------
+//   size2pixel
+//---------------------------------------------------------
+
+QSizeF Image::size2pixel(const QSizeF& s) const
+      {
+      return s * (_sizeIsSpatium ? spatium() : DPMM);
       }
 
 //---------------------------------------------------------
@@ -511,39 +451,26 @@ void Image::updateGrips(int* grips, int* defaultGrip, QRectF* grip) const
 
 void Image::layout()
       {
+      setPos(0.0, 0.0);
       if (imageType == ImageType::SVG && !svgDoc) {
-            if (_storeItem) {
+            if (_storeItem)
                   svgDoc = new QSvgRenderer(_storeItem->buffer());
-                  if (svgDoc->isValid()) {
-                        if (_size.isNull()) {
-                              _size = svgDoc->defaultSize();
-                              if (_sizeIsSpatium)
-                                    _size /= 10.0;    // by convention
-                              }
-                        }
-                  }
             }
       else if (imageType == ImageType::RASTER && !rasterDoc) {
             if (_storeItem) {
                   rasterDoc = new QImage;
                   rasterDoc->loadFromData(_storeItem->buffer());
-                  if (!rasterDoc->isNull()) {
-                        if (_size.isNull()) {
-                              _size = rasterDoc->size() * 0.4;
-                              if (_sizeIsSpatium)
-                                    _size /= spatium();
-                              else
-                                    _size /= MScore::DPMM;
-                              }
+                  if (!rasterDoc->isNull())
                         _dirty = true;
-                        }
                   }
             }
+      if (_size.isNull())
+            _size = pixel2size(imageSize());
 
-      qreal f = _sizeIsSpatium ? spatium() : MScore::DPMM;
       // if autoscale && inside a box, scale to box relevant size
-      if (autoScale() && parent() && ((parent()->type() == Element::Type::HBOX || parent()->type() == Element::Type::VBOX))) {
+      if (autoScale() && parent() && ((parent()->isHBox() || parent()->isVBox()))) {
             if (_lockAspectRatio) {
+                  qreal f = _sizeIsSpatium ? spatium() : DPMM;
                   QSizeF size(imageSize());
                   qreal ratio = size.width() / size.height();
                   qreal w = parent()->width();
@@ -558,12 +485,97 @@ void Image::layout()
                         }
                   }
             else
-                  _size = parent()->bbox().size() / f;
+                  _size = pixel2size(parent()->bbox().size());
             }
 
       // in any case, adjust position relative to parent
-      adjustReadPos();
-      bbox().setRect(0.0, 0.0, _size.width() * f, _size.height() * f);
+      setbbox(QRectF(QPointF(), size2pixel(_size)));
+      }
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+QVariant Image::getProperty(Pid propertyId) const
+      {
+      switch(propertyId) {
+            case Pid::AUTOSCALE:
+                  return autoScale();
+            case Pid::SIZE:
+                  return size();
+            case Pid::LOCK_ASPECT_RATIO:
+                  return lockAspectRatio();
+            case Pid::SIZE_IS_SPATIUM:
+                  return sizeIsSpatium();
+            default:
+                  return Element::getProperty(propertyId);
+            }
+      }
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool Image::setProperty(Pid propertyId, const QVariant& v)
+      {
+      bool rv = true;
+      score()->addRefresh(canvasBoundingRect());
+      switch(propertyId) {
+            case Pid::AUTOSCALE:
+                  setAutoScale(v.toBool());
+                  break;
+            case Pid::SIZE:
+                  setSize(v.toSizeF());
+                  break;
+            case Pid::LOCK_ASPECT_RATIO:
+                  setLockAspectRatio(v.toBool());
+                  break;
+            case Pid::SIZE_IS_SPATIUM:
+                  {
+                  QSizeF s = size2pixel(_size);
+                  setSizeIsSpatium(v.toBool());
+                  _size = pixel2size(s);
+                  }
+                  break;
+            default:
+                  rv = Element::setProperty(propertyId, v);
+                  break;
+            }
+      setGenerated(false);
+      _dirty = true;
+      triggerLayout();
+      return rv;
+      }
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+QVariant Image::propertyDefault(Pid id) const
+      {
+      switch(id) {
+            case Pid::AUTOSCALE:
+                  return defaultAutoScale;
+            case Pid::SIZE:
+                  return pixel2size(imageSize());
+            case Pid::LOCK_ASPECT_RATIO:
+                  return defaultLockAspectRatio;
+            case Pid::SIZE_IS_SPATIUM:
+                  return defaultSizeIsSpatium;
+            default:
+                  return Element::propertyDefault(id);
+            }
+      }
+
+//---------------------------------------------------------
+//   startEdit
+//---------------------------------------------------------
+
+void Image::startEdit(EditData& ed)
+      {
+      Element::startEdit(ed);
+      ed.grips   = 2;
+      ed.curGrip = Grip(1);
       }
 
 }

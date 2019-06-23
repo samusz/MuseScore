@@ -23,42 +23,12 @@ namespace Ms {
 extern QString dataPath;
 
 //---------------------------------------------------------
-//   default buildin SynthesizerState
-//    used if synthesizer.xml does not exist or is not
-//    readable
-//---------------------------------------------------------
-
-static SynthesizerState defaultState = {
-      { "master", {
-            { 0, "Zita1" },
-            { 2, "1.0"   },
-            { 3, "440"   }
-            },
-            },
-      { "Fluid", {
-            { 0, "FluidR3Mono_GM.sf3" },
-            },
-            },
-//      { "Zerberus", {
-//            { 0, "SalamanderGrandPiano.sfz" },
-//            },
-//            },
-      };
-
-//---------------------------------------------------------
 //   MasterSynthesizer
 //---------------------------------------------------------
 
 MasterSynthesizer::MasterSynthesizer()
    : QObject(0)
       {
-      lock1 = false;
-      lock2 = true;
-      _synthesizer.reserve(4);
-      _gain = 1.0;
-      _masterTuning = 440.0;
-      for (int i = 0; i < MAX_EFFECTS; ++i)
-            _effect[i] = 0;
       }
 
 //---------------------------------------------------------
@@ -82,7 +52,10 @@ void MasterSynthesizer::init()
             else
                   e.unknown();
             }
-      setState(state);
+      if (!setState(state)) {
+            f.remove();
+            setState(defaultState);
+            }
       }
 
 //---------------------------------------------------------
@@ -93,8 +66,11 @@ MasterSynthesizer::~MasterSynthesizer()
       {
       for (Synthesizer* s : _synthesizer)
             delete s;
-      for (int i = 0; i < MAX_EFFECTS; ++i)
-            delete _effect[i];
+      for (int i = 0; i < MAX_EFFECTS; ++i) {
+            for (Effect* e : _effectList[i])
+                  delete e;
+            // delete _effect[i];   // _effect takes from _effectList
+            }
       }
 
 //---------------------------------------------------------
@@ -161,6 +137,21 @@ QList<MidiPatch*> MasterSynthesizer::getPatchInfo() const
       }
 
 //---------------------------------------------------------
+//   getPatchInfo
+//---------------------------------------------------------
+
+MidiPatch* MasterSynthesizer::getPatchInfo(QString synti, int bank, int program)
+      {
+      for (Synthesizer* s : _synthesizer) {
+            for (MidiPatch* p: s->getPatchInfo()) {
+                  if (p->synti == synti && p->bank == bank && p->prog == program)
+                        return p;
+                  }
+            }
+      return nullptr;
+      }
+
+//---------------------------------------------------------
 //   allSoundsOff
 //---------------------------------------------------------
 
@@ -223,8 +214,12 @@ void MasterSynthesizer::setEffect(int ab, int idx)
             return;
             }
       lock2 = true;
-      while (lock1)
-            sleep(1);
+      while(lock1)
+#if (!defined (_MSCVER) && !defined (_MSC_VER))
+         sleep(1);
+#else
+         Sleep(1000);      // MS-equivalent function, time in ms instead of seconds.
+#endif
       _effect[ab] = _effectList[ab][idx];
       lock2 = false;
       }
@@ -263,9 +258,6 @@ void MasterSynthesizer::setSampleRate(float val)
 
 void MasterSynthesizer::process(unsigned n, float* p)
       {
-//      memset(effect1Buffer, 0, n * sizeof(float) * 2);
-//      memset(effect2Buffer, 0, n * sizeof(float) * 2);
-
       if (lock2)
             return;
       lock1 = true;
@@ -274,12 +266,13 @@ void MasterSynthesizer::process(unsigned n, float* p)
             return;
             }
       // avoid overflow
-      if( n > MAX_BUFFERSIZE / 2)
+      if (n > MAX_BUFFERSIZE / 2)
             return;
       for (Synthesizer* s : _synthesizer) {
             if (s->active())
                   s->process(n, p, effect1Buffer, effect2Buffer);
             }
+
       if (_effect[0] && _effect[1]) {
             memset(effect1Buffer, 0, n * sizeof(float) * 2);
             _effect[0]->process(n, p, effect1Buffer);
@@ -292,8 +285,9 @@ void MasterSynthesizer::process(unsigned n, float* p)
             else
                   _effect[1]->process(n, effect1Buffer, p);
             }
+      float g = _gain * _boost;
       for (unsigned i = 0; i < n * 2; ++i)
-            *p++ *= _gain;
+            *p++ *= g;
       lock1 = false;
       }
 
@@ -315,6 +309,8 @@ int MasterSynthesizer::indexOfEffect(int ab, const QString& name)
 
 int MasterSynthesizer::indexOfEffect(int ab)
       {
+      if (!_effect[ab])
+            return 0;
       return indexOfEffect(ab, _effect[ab]->name());
       }
 
@@ -322,8 +318,9 @@ int MasterSynthesizer::indexOfEffect(int ab)
 //   setState
 //---------------------------------------------------------
 
-void MasterSynthesizer::setState(const SynthesizerState& ss)
+bool MasterSynthesizer::setState(const SynthesizerState& ss)
       {
+      bool result = true;
       for (const SynthesizerGroup& g : ss) {
             if (g.name() == "master") {
                   for (const IdValue& v : g) {
@@ -342,6 +339,12 @@ void MasterSynthesizer::setState(const SynthesizerState& ss)
                               case 3:
                                     setMasterTuning(v.data.toDouble());
                                     break;
+                              case 4:
+                                    setDynamicsMethod(v.data.toInt());
+                                    break;
+                              case 5:
+                                    setCcToUseIndex(v.data.toInt());
+                                    break;
                               default:
                                     qDebug("MasterSynthesizer::setState: unknown master id <%d>", v.id);
                               }
@@ -349,8 +352,10 @@ void MasterSynthesizer::setState(const SynthesizerState& ss)
                   }
             else {
                   Synthesizer* s = synthesizer(g.name());
-                  if (s)
-                        s->setState(g);
+                  if (s) {
+                        bool r = s->setState(g);
+                        result = result && r;
+                        }
                   else {
                         if (effect(0) && effect(0)->name() == g.name())
                               effect(0)->setState(g);
@@ -361,7 +366,7 @@ void MasterSynthesizer::setState(const SynthesizerState& ss)
                         }
                   }
             }
-
+      return result;
       }
 
 //---------------------------------------------------------
@@ -377,6 +382,8 @@ SynthesizerState MasterSynthesizer::state() const
       g.push_back(IdValue(1, QString("%1").arg(_effect[1] ? _effect[1]->name() : "NoEffect")));
       g.push_back(IdValue(2, QString("%1").arg(gain())));
       g.push_back(IdValue(3, QString("%1").arg(masterTuning())));
+      g.push_back(IdValue(4, QString("%1").arg(dynamicsMethod())));
+      g.push_back(IdValue(5, QString("%1").arg(ccToUseIndex())));
       ss.push_back(g);
       for (Synthesizer* s : _synthesizer)
             ss.push_back(s->state());
@@ -385,6 +392,26 @@ SynthesizerState MasterSynthesizer::state() const
       if (_effect[1])
             ss.push_back(_effect[1]->state());
       return ss;
+      }
+
+//---------------------------------------------------------
+//   storeState
+//---------------------------------------------------------
+
+bool MasterSynthesizer::storeState()
+      {
+      QString s(dataPath + "/synthesizer.xml");
+      QFile f(s);
+      if (!f.open(QIODevice::WriteOnly)) {
+            qDebug("cannot write synthesizer settings <%s>", qPrintable(s));
+            return false;
+            }
+      XmlWriter xml(0, &f);
+      xml.header();
+      // force the write, since the msynth state is created when state() is called and so will
+      // automatically have _isDefault = true, when in fact we need to write the state here, default or not
+      state().write(xml, true);
+      return true;
       }
 
 //---------------------------------------------------------
@@ -409,5 +436,4 @@ void MasterSynthesizer::setMasterTuning(double val)
       for (Synthesizer* s : _synthesizer)
             s->setMasterTuning(_masterTuning);
       }
-}
-
+} // namespace Ms

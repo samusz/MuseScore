@@ -29,6 +29,8 @@ class ClefList : public std::map<int, ClefTypeList> {
       ClefList() {}
       ClefTypeList clef(int tick) const;
       void setClef(int tick, ClefTypeList);
+      int nextClefTick(int tick) const;
+      int currentClefTick(int tick) const;
       };
 
 }     // namespace Ms

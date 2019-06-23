@@ -13,6 +13,11 @@
 #include "score.h"
 #include "image.h"
 #include "xml.h"
+#include "staff.h"
+#include "segment.h"
+#include "page.h"
+#include "system.h"
+#include "measure.h"
 
 namespace Ms {
 
@@ -20,20 +25,17 @@ namespace Ms {
 //   BSymbol
 //---------------------------------------------------------
 
-BSymbol::BSymbol(Score* s)
-   : Element(s)
+BSymbol::BSymbol(Score* s, ElementFlags f)
+   : Element(s, f)
       {
-      _z = int(Element::Type::SYMBOL) * 100;
-      setFlags(ElementFlag::MOVABLE | ElementFlag::SELECTABLE);
-      _systemFlag = false;
+      _align = Align::LEFT | Align::BASELINE;
       }
 
 BSymbol::BSymbol(const BSymbol& s)
-   : Element(s), ElementLayout(s)
+   : Element(s)
       {
-      _z          = s._z;
-      _systemFlag = s._systemFlag;
-      foreach(Element* e, s._leafs) {
+      _align = s._align;
+      for (Element* e : s._leafs) {
             Element* ee = e->clone();
             ee->setParent(this);
             _leafs.append(ee);
@@ -44,11 +46,9 @@ BSymbol::BSymbol(const BSymbol& s)
 //   writeProperties
 //---------------------------------------------------------
 
-void BSymbol::writeProperties(Xml& xml) const
+void BSymbol::writeProperties(XmlWriter& xml) const
       {
-      if (_systemFlag)
-            xml.tag("systemFlag", _systemFlag);
-      foreach(const Element* e, leafs())
+      for (const Element* e : leafs())
             e->write(xml);
       Element::writeProperties(xml);
       }
@@ -64,7 +64,7 @@ bool BSymbol::readProperties(XmlReader& e)
       if (Element::readProperties(e))
             return true;
       else if (tag == "systemFlag")
-            _systemFlag = e.readInt();
+            setSystemFlag(e.readInt());
       else if (tag == "Symbol" || tag == "FSymbol") {
             Element* element = name2Element(tag, score());
             element->read(e);
@@ -90,10 +90,10 @@ bool BSymbol::readProperties(XmlReader& e)
 
 void BSymbol::add(Element* e)
       {
-      if (e->type() == Element::Type::SYMBOL || e->type() == Element::Type::IMAGE) {
+      if (e->isSymbol() || e->isImage()) {
             e->setParent(this);
             _leafs.append(e);
-            static_cast<BSymbol*>(e)->setZ(z() - 1);    // draw on top of parent
+            toBSymbol(e)->setZ(z() - 1);    // draw on top of parent
             }
       else
             qDebug("BSymbol::add: unsupported type %s", e->name());
@@ -105,7 +105,7 @@ void BSymbol::add(Element* e)
 
 void BSymbol::remove(Element* e)
       {
-      if (e->type() == Element::Type::SYMBOL || e->type() == Element::Type::IMAGE) {
+      if (e->isSymbol() || e->isImage()) {
             if (!_leafs.removeOne(e))
                   qDebug("BSymbol::remove: element <%s> not found", e->name());
             }
@@ -128,23 +128,22 @@ void BSymbol::scanElements(void* data, void (*func)(void*, Element*), bool all)
 //   acceptDrop
 //---------------------------------------------------------
 
-bool BSymbol::acceptDrop(const DropData& data) const
+bool BSymbol::acceptDrop(EditData& data) const
       {
-      Element::Type type = data.element->type();
-      return type == Element::Type::SYMBOL || type == Element::Type::IMAGE;
+      return data.dropElement->isSymbol() || data.dropElement->isImage();
       }
 
 //---------------------------------------------------------
 //   drop
 //---------------------------------------------------------
 
-Element* BSymbol::drop(const DropData& data)
+Element* BSymbol::drop(EditData& data)
       {
-      Element* el = data.element;
-      if (el->type() == Element::Type::SYMBOL || el->type() == Element::Type::IMAGE) {
+      Element* el = data.dropElement;
+      if (el->isSymbol() || el->isImage()) {
             el->setParent(this);
             QPointF p = data.pos - pagePos() - data.dragOffset;
-            el->setUserOff(p);
+            el->setOffset(p);
             score()->undoAddElement(el);
             return el;
             }
@@ -159,42 +158,108 @@ Element* BSymbol::drop(const DropData& data)
 
 void BSymbol::layout()
       {
+      if (staff())
+            setMag(staff()->mag(tick()));
+      if (!parent()) {
+            setOffset(.0, .0);
+            setPos(.0, .0);
+            }
       for (Element* e : _leafs)
             e->layout();
-      adjustReadPos();
       }
 
 //---------------------------------------------------------
 //   drag
 //---------------------------------------------------------
 
-QRectF BSymbol::drag(EditData* data)
+QRectF BSymbol::drag(EditData& ed)
       {
       QRectF r(canvasBoundingRect());
       foreach(const Element* e, _leafs)
             r |= e->canvasBoundingRect();
 
-      qreal x = data->delta.x();
-      qreal y = data->delta.y();
+      qreal x = ed.delta.x();
+      qreal y = ed.delta.y();
 
       qreal _spatium = spatium();
-      if (data->hRaster) {
+      if (ed.hRaster) {
             qreal hRaster = _spatium / MScore::hRaster();
             int n = lrint(x / hRaster);
             x = hRaster * n;
             }
-      if (data->vRaster) {
+      if (ed.vRaster) {
             qreal vRaster = _spatium / MScore::vRaster();
             int n = lrint(y / vRaster);
             y = vRaster * n;
             }
 
-      setUserOff(QPointF(x, y));
+      setOffset(QPointF(x, y));
 
       r |= canvasBoundingRect();
       foreach(const Element* e, _leafs)
             r |= e->canvasBoundingRect();
       return r;
+      }
+
+//---------------------------------------------------------
+//   dragAnchor
+//---------------------------------------------------------
+
+QLineF BSymbol::dragAnchor() const
+      {
+      if (parent() && parent()->type() == ElementType::SEGMENT) {
+            System* system = segment()->measure()->system();
+            qreal y        = system->staffCanvasYpage(staffIdx());
+            QPointF anchor(segment()->canvasPos().x(), y);
+            return QLineF(canvasPos(), anchor);
+            }
+      else {
+            return QLineF(canvasPos(), parent()->canvasPos());
+            }
+      }
+
+//---------------------------------------------------------
+//   pagePos
+//---------------------------------------------------------
+
+QPointF BSymbol::pagePos() const
+      {
+      if (parent() && (parent()->type() == ElementType::SEGMENT)) {
+            QPointF p(pos());
+            System* system = segment()->measure()->system();
+            if (system) {
+                  p.ry() += system->staff(staffIdx())->y() + system->y();
+                  }
+            p.rx() = pageX();
+            return p;
+            }
+      else
+            return Element::pagePos();
+      }
+
+//---------------------------------------------------------
+//   canvasPos
+//---------------------------------------------------------
+
+QPointF BSymbol::canvasPos() const
+      {
+      if (parent() && (parent()->type() == ElementType::SEGMENT)) {
+            QPointF p(pos());
+            Segment* s = toSegment(parent());
+
+            System* system = s->measure()->system();
+            if (system) {
+                  int si = staffIdx();
+                  p.ry() += system->staff(si)->y() + system->y();
+                  Page* page = system->page();
+                  if (page)
+                        p.ry() += page->y();
+                  }
+            p.rx() = canvasX();
+            return p;
+            }
+      else
+            return Element::canvasPos();
       }
 
 

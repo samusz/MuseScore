@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2009-2011 Werner Schweer and others
 //
@@ -91,9 +90,6 @@ void KeyCanvas::clear()
 
 void KeyCanvas::paintEvent(QPaintEvent*)
       {
-      double spatium = 2.0 * PALETTE_SPATIUM / extraMag;
-      gscore->setSpatium(spatium);
-
       QPainter painter(this);
       painter.setRenderHint(QPainter::Antialiasing, true);
       qreal wh = double(height());
@@ -115,11 +111,11 @@ void KeyCanvas::paintEvent(QPaintEvent*)
       painter.fillRect(background, Qt::white);
 
       QPen pen(Qt::black);
-      pen.setWidthF(MScore::defaultStyle()->value(StyleIdx::staffLineWidth).toDouble() * spatium);
+      pen.setWidthF(MScore::defaultStyle().value(Sid::staffLineWidth).toDouble() * gscore->spatium());
       painter.setPen(pen);
 
       for (int i = 0; i < 5; ++i) {
-            qreal yy = r.y() + i * spatium;
+            qreal yy = r.y() + i * gscore->spatium();
             painter.drawLine(QLineF(r.x(), yy, r.x() + r.width(), yy));
             }
       if (dragElement) {
@@ -193,16 +189,16 @@ void KeyCanvas::mouseReleaseEvent(QMouseEvent*)
 
 void KeyCanvas::dragEnterEvent(QDragEnterEvent* event)
       {
-      const QMimeData* data = event->mimeData();
-      if (data->hasFormat(mimeSymbolFormat)) {
-            QByteArray a = data->data(mimeSymbolFormat);
+      const QMimeData* dta = event->mimeData();
+      if (dta->hasFormat(mimeSymbolFormat)) {
+            QByteArray a = dta->data(mimeSymbolFormat);
 
             XmlReader e(a);
 
             QPointF dragOffset;
             Fraction duration;
-            Element::Type type = Element::readType(e, &dragOffset, &duration);
-            if (type != Element::Type::ACCIDENTAL)
+            ElementType type = Element::readType(e, &dragOffset, &duration);
+            if (type != ElementType::ACCIDENTAL)
                   return;
 
             event->acceptProposedAction();
@@ -240,7 +236,7 @@ void KeyCanvas::dragMoveEvent(QDragMoveEvent* event)
 
 void KeyCanvas::dropEvent(QDropEvent*)
       {
-      foreach(Accidental* a, accidentals)
+      for (Accidental* a : accidentals)
             a->setSelected(false);
       dragElement->setSelected(true);
       accidentals.append(dragElement);
@@ -255,11 +251,11 @@ void KeyCanvas::dropEvent(QDropEvent*)
 
 void KeyCanvas::snap(Accidental* a)
       {
-      double y = a->ipos().y();
-      double spatium2 = PALETTE_SPATIUM / extraMag;
-      int line = int(y / spatium2);
-      y = line * spatium2;
-      a->rypos() = y;
+      double y        = a->ipos().y();
+      double spatium2 = gscore->spatium() * .5;
+      int line        = int((y + spatium2 * .5) / spatium2);
+      y               = line * spatium2;
+      a->rypos()      = y;
       }
 
 //---------------------------------------------------------
@@ -270,7 +266,7 @@ KeyEditor::KeyEditor(QWidget* parent)
    : QWidget(parent, Qt::WindowFlags(Qt::Dialog | Qt::Window))
       {
       setupUi(this);
-      setWindowTitle(tr("MuseScore: Key Signatures"));
+      setWindowTitle(tr("Key Signatures"));
 
       // create key signature palette
 
@@ -313,9 +309,9 @@ KeyEditor::KeyEditor(QWidget* parent)
             sp->setCellReadOnly(i, true);
 
       if (!useFactorySettings) {
-            QFile f(dataPath + "/" + "keysigs.xml");
-            if (f.exists() && sp->read(&f))
-                  return;
+            QString path = dataPath + "/keysigs";
+            if (!sp->read(path))
+                  qDebug("KeyEditor: read <%s> failed", qPrintable(dataPath + "/keysigs.mpal"));
             }
       }
 
@@ -325,28 +321,31 @@ KeyEditor::KeyEditor(QWidget* parent)
 
 void KeyEditor::addClicked()
       {
-      QList<KeySym> symbols;
-
-      double extraMag = 2.0;
+      // double extraMag = 2.0;
       const QList<Accidental*> al = canvas->getAccidentals();
-      double spatium = 2.0 * PALETTE_SPATIUM / extraMag;
+      // qreal mag  = PALETTE_SPATIUM * extraMag / gscore->spatium();
+      // double spatium = 2.0 * PALETTE_SPATIUM / extraMag;
+      double spatium = gscore->spatium();
       double xoff = 10000000.0;
-      foreach(Accidental* a, al) {
+
+      for (Accidental* a : al) {
             QPointF pos = a->ipos();
             if (pos.x() < xoff)
                   xoff = pos.x();
             }
-      foreach(Accidental* a, al) {
-            KeySym s;
-            s.sym = a->symbol();
-            QPointF pos = a->ipos();
-            pos.rx() -= xoff;
-            s.spos = pos / spatium;
-            symbols.append(s);
-            }
 
+      KeySigEvent e;
+      e.setCustom(true);
+      for (Accidental* a : al) {
+            KeySym s;
+            s.sym       = a->symbol();
+            QPointF pos = a->ipos();
+            pos.rx()   -= xoff;
+            s.spos      = pos / spatium;
+            e.keySymbols().append(s);
+            }
       KeySig* ks = new KeySig(gscore);
-      ks->setCustom(symbols);
+      ks->setKeySigEvent(e);
       sp->append(ks, "custom");
       _dirty = true;
       }
@@ -368,7 +367,7 @@ void KeyEditor::save()
       {
       QDir dir;
       dir.mkpath(dataPath);
-      sp->write(dataPath + "/" + "keysigs.xml");
+      sp->write(dataPath + "/keysigs");
       }
 
 //---------------------------------------------------------

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: pa.h 4147 2011-04-07 14:39:44Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -28,6 +27,7 @@ namespace Ms {
 class Synth;
 class Seq;
 class MidiDriver;
+class NPlayEvent;
 enum class Transport : char;
 
 //---------------------------------------------------------
@@ -56,6 +56,9 @@ class Portaudio : public Driver {
       virtual Transport getState() override;
       virtual int sampleRate() const { return _sampleRate; }
       virtual void midiRead();
+#ifdef USE_PORTMIDI
+      virtual void putEvent(const NPlayEvent&, unsigned framePos);
+#endif
 
       int framePos() const;
       float* getLBuffer(long n);
@@ -67,7 +70,7 @@ class Portaudio : public Driver {
       int deviceIndex(int apiIdx, int apiDevIdx);
       int currentApi() const;
       int currentDevice() const;
-      MidiDriver* mididriver() {return midiDriver;}
+      MidiDriver* mididriver() { return midiDriver; }
       };
 
 

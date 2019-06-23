@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="nl_NL">
+<TS version="2.0" language="nl">
 <context>
     <name>MAC_APPLICATION_MENU</name>
     <message>
@@ -25,7 +25,7 @@
     </message>
     <message>
         <source>Quit %1</source>
-        <translation>Stoppen %1</translation>
+        <translation>%1 afsluiten</translation>
     </message>
     <message>
         <source>About %1</source>
@@ -938,6 +938,13 @@ niet hernoemen naar
     </message>
 </context>
 <context>
+    <name>QCocoaTheme</name>
+    <message>
+        <source>Don&apos;t Save</source>
+        <translation>Niet opslaan</translation>
+    </message>
+</context>
+<context>
     <name>QPlatformTheme</name>
     <message>
         <source>OK</source>
@@ -945,7 +952,7 @@ niet hernoemen naar
     </message>
     <message>
         <source>Save</source>
-        <translation>Opslaan</translation>
+        <translation>&amp;Opslaan</translation>
     </message>
     <message>
         <source>Open</source>
@@ -972,12 +979,8 @@ niet hernoemen naar
         <translation>Help</translation>
     </message>
     <message>
-        <source>Don&apos;t Save</source>
-        <translation>Niet opslaan</translation>
-    </message>
-    <message>
         <source>Discard</source>
-        <translation>Verwerpen</translation>
+        <translation>&amp;Niet opslaan</translation>
     </message>
     <message>
         <source>&amp;Yes</source>

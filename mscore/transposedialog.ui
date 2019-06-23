@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MuseScore: Transpose</string>
+   <string>Transpose</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
@@ -20,7 +20,7 @@
       <item>
        <widget class="QGroupBox" name="chromaticBox">
         <property name="title">
-         <string>Transpose chromatically</string>
+         <string>Transpose Chromatically</string>
         </property>
         <property name="checkable">
          <bool>true</bool>
@@ -29,10 +29,7 @@
          <item>
           <widget class="QGroupBox" name="transposeByKey">
            <property name="title">
-            <string>By key</string>
-           </property>
-           <property name="flat">
-            <bool>false</bool>
+            <string>By Key</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
@@ -159,10 +156,7 @@
          <item>
           <widget class="QGroupBox" name="transposeByInterval">
            <property name="title">
-            <string>By interval</string>
-           </property>
-           <property name="flat">
-            <bool>false</bool>
+            <string>By Interval</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
@@ -350,7 +344,7 @@
       <item>
        <widget class="QGroupBox" name="diatonicBox">
         <property name="title">
-         <string>Transpose diatonically</string>
+         <string>Transpose Diatonically</string>
         </property>
         <property name="checkable">
          <bool>true</bool>
@@ -437,9 +431,6 @@
         <property name="title">
          <string>Options</string>
         </property>
-        <property name="flat">
-         <bool>false</bool>
-        </property>
         <layout class="QVBoxLayout" name="verticalLayout">
          <property name="spacing">
           <number>5</number>
@@ -464,12 +455,12 @@
            </property>
            <item>
             <property name="text">
-             <string>Single sharps and flats only</string>
+             <string>Single ♯ and ♭ Only</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Use double sharps and flats</string>
+             <string>Use Double ♯ and ♭</string>
             </property>
            </item>
           </widget>
@@ -496,26 +487,23 @@
   <tabstop>chromaticBox</tabstop>
   <tabstop>transposeByKey</tabstop>
   <tabstop>closestKey</tabstop>
+  <tabstop>keyList</tabstop>
   <tabstop>upKey</tabstop>
   <tabstop>downKey</tabstop>
-  <tabstop>keyList</tabstop>
-  <tabstop>transposeByInterval</tabstop>
   <tabstop>upInterval</tabstop>
+  <tabstop>transposeByInterval</tabstop>
+  <tabstop>intervalList</tabstop>
   <tabstop>downInterval</tabstop>
   <tabstop>transposeKeys</tabstop>
-  <tabstop>intervalList</tabstop>
-  <tabstop>upDiatonic</tabstop>
   <tabstop>diatonicBox</tabstop>
+  <tabstop>upDiatonic</tabstop>
+  <tabstop>degreeList</tabstop>
   <tabstop>downDiatonic</tabstop>
   <tabstop>keepDegreeAlterations</tabstop>
-  <tabstop>degreeList</tabstop>
   <tabstop>transposeChordNames</tabstop>
   <tabstop>accidentalOptions</tabstop>
-  <tabstop>buttonBox</tabstop>
  </tabstops>
- <resources>
-  <include location="musescore.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>

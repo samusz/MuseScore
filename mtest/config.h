@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE
 //  Linux Music Editor
-//  $Id:$
 //
 //  Copyright (C) 2002-2010 by Werner Schweer and others
 //
@@ -17,6 +16,9 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 //=============================================================================
+
+#ifndef MUSESCORE_CONFIG_H
+#define MUSESCORE_CONFIG_H
 
 #define USE_ALSA
 #define USE_JACK
@@ -36,7 +38,7 @@
 #define VERSION           "2.0.0"
 
 #define AEOLUS
-// #define OMR
+/* #undef OMR */
 /* #undef OCR */
 #define OSC
 /* #undef OPENGL */
@@ -45,9 +47,6 @@
 /* #undef Q_OS_UIKIT */
 
 #define USE_BSP         true
-#define SCRIPT_INTERFACE
+#define SCRIPT_INTERFACE true
 
-#if QT_VERSION >= 0x040800
-//#define USE_GLYPHS  1
-#endif
-
+#endif /* MUSESCORE_CONFIG_H */

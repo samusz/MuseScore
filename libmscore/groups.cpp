@@ -28,7 +28,7 @@ static std::vector<NoteGroup> noteGroups {
             Groups( { { 4, 512}, { 8, 272}, {12, 512}, {16, 273}, {20, 512}, {24, 272}, {28, 512} })
             },
       { Fraction(4,4),
-            Groups( { { 4, 512}, { 8, 272}, {12, 512}, {16, 273}, {20, 512}, {24, 272}, {28, 512} })
+            Groups( { { 4, 0x200}, { 8, 0x110}, {12, 0x200}, {16, 0x111}, {20, 0x200}, {24, 0x110}, {28, 0x200} })
             },
       { Fraction(3,4),
             Groups( { { 4, 512}, { 8, 273}, { 12, 512}, {16, 273}, { 20, 512} })
@@ -66,25 +66,39 @@ static std::vector<NoteGroup> noteGroups {
 //   endBeam
 //---------------------------------------------------------
 
-Beam::Mode Groups::endBeam(ChordRest* cr)
+Beam::Mode Groups::endBeam(ChordRest* cr, ChordRest* prev)
       {
       if (cr->isGrace() || cr->beamMode() != Beam::Mode::AUTO)
             return cr->beamMode();
       Q_ASSERT(cr->staff());
 
-      if (cr->tuplet() && !cr->tuplet()->elements().isEmpty()) {
-            if (cr->tuplet()->elements().front() == cr)     // end beam at new tuplet
-                  return Beam::Mode::BEGIN;
-            if (cr->tuplet()->elements().back() == cr)      // end beam at tuplet end
-                  return Beam::Mode::END;
-            return Beam::Mode::AUTO;
+      TDuration d      = cr->durationType();
+      const Groups& g  = cr->staff()->group(cr->tick());
+      Fraction stretch = cr->staff()->timeStretch(cr->tick());
+      Fraction tick    = cr->rtick() * stretch;
+
+      Beam::Mode val = g.beamMode(tick.ticks(), d.type());
+
+      // context-dependent checks
+      if (val == Beam::Mode::AUTO && tick.isNotZero()) {
+            // if current or previous cr is in tuplet (but not both in same tuplet):
+            // consider it as if this were next shorter duration
+            if (prev && (cr->tuplet() != prev->tuplet()) && (d == prev->durationType())) {
+                  if (d >= TDuration::DurationType::V_EIGHTH)
+                        val = g.beamMode(tick.ticks(), TDuration::DurationType::V_16TH);
+                  else if (d == TDuration::DurationType::V_16TH)
+                        val = g.beamMode(tick.ticks(), TDuration::DurationType::V_32ND);
+                  else
+                        val = g.beamMode(tick.ticks(), TDuration::DurationType::V_64TH);
+                  }
+            // if there is a hole between previous and current cr, break beam
+            // exclude tuplets from this check; tick calculations can be unreliable
+            // and they seem to be handled well anyhow
+            if (cr->voice() && prev && !prev->tuplet() && prev->tick() + prev->actualTicks() < cr->tick())
+                  val = Beam::Mode::BEGIN;
             }
 
-      TDuration d = cr->durationType();
-      const Groups& g = cr->staff()->group(cr->tick());
-      Fraction stretch = cr->staff()->timeStretch(cr->tick());
-      int tick = (cr->rtick() * stretch.numerator()) / stretch.denominator();
-      return g.beamMode(tick, d.type());
+      return val;
       }
 
 //---------------------------------------------------------
@@ -102,10 +116,11 @@ Beam::Mode Groups::beamMode(int tick, TDuration::DurationType d) const
             default:
                   return Beam::Mode::AUTO;
             }
+      const int dm = MScore::division / 8;
       for (const GroupNode& e : *this) {
-            if (e.pos * 60 < tick)
+            if (e.pos * dm < tick)
                   continue;
-            if (e.pos * 60 > tick)
+            if (e.pos * dm > tick)
                   break;
 
             int action = (e.action >> shift) & 0xf;
@@ -138,7 +153,7 @@ const Groups& Groups::endings(const Fraction& f)
       noteGroups.push_back(g);
 
       int pos = 0;
-      switch(f.denominator()) {
+      switch (f.denominator()) {
             case 2:     pos = 16; break;
             case 4:     pos = 8; break;
             case 8:     pos = 4; break;
@@ -159,11 +174,11 @@ const Groups& Groups::endings(const Fraction& f)
 //   write
 //---------------------------------------------------------
 
-void Groups::write(Xml& xml) const
+void Groups::write(XmlWriter& xml) const
       {
       xml.stag("Groups");
       for (const GroupNode& n : *this)
-            xml.tagE(QString("Node pos=\"%1\" action=\"%3\"")
+            xml.tagE(QString("Node pos=\"%1\" action=\"%2\"")
                .arg(n.pos).arg(n.action));
       xml.etag();
       }

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: articulation.h -1   $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -36,6 +35,7 @@ class ArticulationProperties : public QDialog, public Ui::ArticulationProperties
       Q_OBJECT
 
       Articulation* articulation;
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       void saveValues();

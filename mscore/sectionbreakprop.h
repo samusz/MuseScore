@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: layoutbreak.h -1   $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -34,6 +33,7 @@ class LayoutBreak;
 class SectionBreakProperties : public QDialog, public Ui::SectionBreakProperties {
       Q_OBJECT
 
+      virtual void hideEvent(QHideEvent*);
    public:
       SectionBreakProperties(LayoutBreak*, QWidget* parent = 0);
       double pause() const;

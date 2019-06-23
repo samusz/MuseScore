@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  The webview is shown on startup with a local file inviting user
 //  to start connecting with the community. They can press start and
@@ -117,6 +116,7 @@ MyWebView::MyWebView(QWidget *parent):
 #endif
       m_page.setNetworkAccessManager(networkManager);
       setPage(&m_page);
+      setZoomFactor(guiScaling);
 
       //set cookie jar for persistent cookies
       CookieJar* jar = new CookieJar(QString(dataPath + "/cookies.txt"));
@@ -169,10 +169,10 @@ void MyWebView::stopBusy(bool val)
             "  <div align=\"center\"><a class=\"close\" href=\"#\" onclick=\"return closePermanently();\">%4</div>"
             "</div></div>"
             "</body></html>")
-            .arg(tr("Could not<br /> connect"))
-            .arg(tr("To connect with the community, <br /> you need to have internet <br /> connection enabled"))
+            .arg(tr("Could not\nconnect"))
+            .arg(tr("To connect with the community,\nyou need to have internet\nconnection enabled")                 )
             .arg(tr("Retry"))
-            .arg(tr("Close this permanently")),
+            .arg(tr("Close this permanently")).replace("\n", "<br/>"),
             QUrl("qrc:/"));
             }
       mscore->hideProgressBar();
@@ -196,7 +196,8 @@ void MyWebView::link(const QUrl& url)
       {
       QString path(url.path());
       QFileInfo fi(path);
-      if (fi.suffix() == "mscz" || fi.suffix() == "xml" || fi.suffix() == "mxl")
+      if (fi.suffix() == "mscz" || fi.suffix() == "xml"
+          || fi.suffix() == "musicxml" || fi.suffix() == "mxl")
             mscore->loadFile(url);
       else if(url.host().startsWith("connect."))
             load(QNetworkRequest(url));
@@ -238,7 +239,7 @@ WebPageDockWidget::WebPageDockWidget(MuseScore* /*mscore*/, QWidget* parent)
       
       setWidget(web);
 
-      //removing every widget from the tabbing order until suport for
+      //removing every widget from the tabbing order until support for
       //accessibility is provided
       QList<QWidget*> widgets = this->findChildren<QWidget*>();
       for(int i = 0; i < widgets.size(); i++){

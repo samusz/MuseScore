@@ -1,9 +1,8 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: musicxml.h 5595 2012-04-29 15:30:32Z lvinken $
 //
-//  Copyright (C) 2002-2009 Werner Schweer and others
+//  Copyright (C) 2002-2015 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -29,48 +28,11 @@
 #include "libmscore/fraction.h"
 #include "libmscore/mscore.h"
 #include "libmscore/pitchspelling.h"
+#include "libmscore/line.h"
 #include "importxmlfirstpass.h"
 #include "musicxmlsupport.h"
 
 namespace Ms {
-
-class Instrument;
-class Measure;
-class Tuplet;
-class Tie;
-class Slur;
-class Part;
-class Score;
-class Note;
-class Ottava;
-class Trill;
-class Pedal;
-class Volta;
-class TextLine;
-class Chord;
-class Harmony;
-class Hairpin;
-class Spanner;
-class Lyrics;
-class ChordRest;
-class Beam;
-class FiguredBass;
-enum class StaffTypes : char;
-
-//---------------------------------------------------------
-//   MusicXmlWedge
-//---------------------------------------------------------
-
-struct MusicXmlWedge {
-      int number;
-      int startTick;
-      int subType;
-      qreal rx;
-      qreal ry;
-      bool above;
-      bool hasYoffset;
-      qreal yoffset;
-      };
 
 //---------------------------------------------------------
 //   MusicXmlPartGroup
@@ -137,101 +99,33 @@ public:
 typedef QList<JumpMarkerDesc> JumpMarkerDescList;
 
 //---------------------------------------------------------
+//   SlurDesc
+//---------------------------------------------------------
+
+/**
+ The description of Slurs being handled
+ */
+
+class SlurDesc {
+public:
+      enum class State : char { NONE, START, STOP };
+      SlurDesc() : _slur(0), _state(State::NONE) {}
+      Slur* slur() const { return _slur; }
+      void start(Slur* slur) { _slur = slur; _state = State::START; }
+      void stop(Slur* slur) { _slur = slur; _state = State::STOP; }
+      bool isStart() const { return _state == State::START; }
+      bool isStop() const { return _state == State::STOP; }
+private:
+      Slur* _slur;
+      State _state;
+      };
+
+//---------------------------------------------------------
 //   MusicXml
 //---------------------------------------------------------
 
 typedef std::vector<MusicXmlPartGroup*> MusicXmlPartGroupList;
 typedef QMap<SLine*, QPair<int, int> > MusicXmlSpannerMap;
-
-/**
- The MusicXML importer.
-*/
-
-class MusicXml {
-      Score* score;
-      QMap<QString, VoiceDesc> voicelist;
-      QVector<Fraction> measureLength;          ///< Length of each measure as Fraction
-      QVector<int> measureStart;                ///< Start tick of each measure
-      Fraction fractionTSig;                    ///< Current timesig as fraction
-
-      Slur* slur[MAX_NUMBER_LEVEL];
-      TextLine* bracket[MAX_BRACKETS];
-      TextLine* dashes[MAX_DASHES];
-
-      Tie* tie;
-      Volta* lastVolta;
-
-      QDomDocument* doc;
-      MxmlReaderFirstPass const& pass1;
-      int tick;                                 ///< Current position in MuseScore time
-      int maxtick;                              ///< Maxtick of a measure, used to calculate measure len
-      int prevtick;                             ///< Previous notes tick (used to insert additional notes to chord)
-      int lastMeasureLen;
-      int multiMeasureRestCount;                ///< Remaining measures in a multi measure rest
-      bool startMultiMeasureRest;               ///< Multi measure rest started in this measure
-
-      int divisions;                            ///< Current MusicXML divisions
-      QVector<Tuplet*> tuplets;                 ///< Current tuplet for each track in the current part
-
-      CreditWordsList credits;
-      JumpMarkerDescList jumpsMarkers;
-
-      MusicXmlPartGroupList partGroupList;
-      MusicXmlSpannerMap spanners;
-
-      Ottava* ottava;                            ///< Current ottava
-      Trill* trill;                              ///< Current trill
-      Pedal* pedal;                              ///< Current pedal
-      Pedal* pedalContinue;                      ///< Current pedal type="change" requiring fixup
-      Harmony* harmony;                          ///< Current harmony
-      Hairpin* hairpin;                          ///< Current hairpin (obsoletes wedgelist)
-      Chord* tremStart;                          ///< Starting chord for current tremolo
-      FiguredBass* figBass;                      ///< Current figured bass element (to attach to next note)
-      bool figBassExtend;                        ///< Current figured bass extend
-      Beam::Mode beamMode;                       ///< Current beam mode
-      QString glissandoText;                     ///< Glissando text at glissando start
-      QString glissandoColor;                    ///< Glissando color at glissando start
-
-      int pageWidth;                             ///< Page width read from defaults
-      int pageHeight;                            ///< Page height read from defaults
-
-      QMap<QString, MusicXMLDrumset> drumsets;   ///< Drumset for each part
-
-      //-----------------------------
-
-      void doCredits();
-      void direction(Measure* measure, int staff, QDomElement node);
-      void scorePartwise(QDomElement);
-      void xmlPartList(QDomElement);
-      void xmlPart(QDomElement, QString id);
-      void xmlScorePart(QDomElement node, QString id, int& parts);
-      Measure* xmlMeasure(Part*, QDomElement, int, Fraction measureLen, KeySig*);
-      void xmlAttributes(Measure*, int stave, QDomElement node, KeySig*);
-      void xmlLyric(int trk, QDomElement e,
-                    QMap<int, Lyrics*>& numbrdLyrics,
-                    QMap<int, Lyrics*>& defyLyrics,
-                    QList<Lyrics*>& unNumbrdLyrics);
-      void xmlNotations(Note* note, ChordRest* cr, int trk, int tick, int ticks, QDomElement node);
-      Note* xmlNote(Measure*, int stave, const QString& partId, Beam*& beam, QString& currentVoice, QDomElement node, QList<Chord*>& graceNotes, int& alt);
-      void xmlHarmony(QDomElement node, int tick, Measure* m, int staff);
-      StaffTypes xmlClef(QDomElement, int staffIdx, Measure*);
-      void readPageFormat(PageFormat* pf, QDomElement de, qreal conversion);
-      QList<QDomElement> findSlurElements(QDomElement);
-      void addGraceNoteAfter(Chord*, Segment*);
-      void initPartState();
-public:
-      MusicXml(QDomDocument* d, MxmlReaderFirstPass const& p1);
-      void import(Score*);
-      };
-
-//---------------------------------------------------------
-//   XmlChordExtension
-//---------------------------------------------------------
-
-struct XmlChordExtension {
-      int idx;
-      const char* xmlName;
-      };
 
 enum {
       NoSystem          = 0,
@@ -239,9 +133,6 @@ enum {
       NewSystem         = 2,
       NewPage           = 3
       };
-
-extern const XmlChordExtension chordExtensions[];
-
 
 } // namespace Ms
 #endif

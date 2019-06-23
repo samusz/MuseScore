@@ -1,7 +1,6 @@
 #=============================================================================
 #  Mscore
 #  Linux Music Score Editor
-#  $Id:$
 #
 #  Copyright (C) 2010 by Werner Schweer and others
 #
@@ -27,11 +26,9 @@ else (APPLE)
 endif (APPLE)
 
 
-QT4_WRAP_CPP(aeolusMocs aeolusgui.h)
-QT4_WRAP_UI (aeolusUi aeolus_gui.ui)
+QT5_WRAP_UI (aeolusUi aeolus_gui.ui)
 
 add_library (aeolus STATIC
-      ${aeolusMocs}
       ${aeolusUi}
       aeolus.cpp audio.cpp model.cpp addsynth.cpp scales.cpp
       asection.cpp division.cpp rankwave.cpp
@@ -42,11 +39,19 @@ add_library (aeolus STATIC
       ${INCS}
       )
 
-set_target_properties (
+if (NOT MSVC)
+   set_target_properties (
       aeolus
       PROPERTIES
          COMPILE_FLAGS "${PCH_INCLUDE} -g -Wall -Wextra -Winvalid-pch"
       )
+else (NOT MSVC)
+   set_target_properties (
+      aeolus
+      PROPERTIES
+         COMPILE_FLAGS "${PCH_INCLUDE} ${PCH_FORCE_USE}"
+      )
+endif (NOT MSVC)   
 
 install(DIRECTORY
       stops

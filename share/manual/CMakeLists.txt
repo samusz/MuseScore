@@ -1,7 +1,6 @@
 #=============================================================================
 #  MusE
 #  Linux Music Editor
-#  $Id:$
 #
 #  Copyright (C) 2002-2012 by Werner Schweer and others
 #
@@ -29,7 +28,6 @@ install (DIRECTORY
       )
 
 install(FILES
-      reference-en.pdf
       DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}manual
       )
 

@@ -17,14 +17,19 @@
 #include "measure.h"
 #include "score.h"
 #include "xml.h"
+#include "staff.h"
 
 namespace Ms {
 
-SymId Breath::symList[Breath::breathSymbols] = {
-      SymId::breathMarkComma,
-      SymId::breathMarkComma,      // TODO-smufl SymId(lcommaSym),
-      SymId::caesuraCurved,
-      SymId::caesura
+const std::vector<BreathType> Breath::breathList {
+      { SymId::breathMarkComma,      false, 0.0 },
+      { SymId::breathMarkTick,       false, 0.0 },
+      { SymId::breathMarkSalzedo,    false, 0.0 },
+      { SymId::breathMarkUpbow,      false, 0.0 },
+      { SymId::caesuraCurved,        true,  2.0 },
+      { SymId::caesura,              true,  2.0 },
+      { SymId::caesuraShort,         true,  2.0 },
+      { SymId::caesuraThick,         true,  2.0 },
       };
 
 //---------------------------------------------------------
@@ -32,10 +37,23 @@ SymId Breath::symList[Breath::breathSymbols] = {
 //---------------------------------------------------------
 
 Breath::Breath(Score* s)
-  : Element(s)
+   : Element(s, ElementFlag::MOVABLE)
       {
-      _breathType = 0;
-      setFlags(ElementFlag::MOVABLE | ElementFlag::SELECTABLE);
+      _symId = SymId::breathMarkComma;
+      _pause = 0.0;
+      }
+
+//---------------------------------------------------------
+//   isCaesura
+//---------------------------------------------------------
+
+bool Breath::isCaesura() const
+      {
+      for (const BreathType& bt : breathList) {
+            if (bt.id == _symId)
+                  return bt.isCaesura;
+            }
+      return false;
       }
 
 //---------------------------------------------------------
@@ -44,19 +62,29 @@ Breath::Breath(Score* s)
 
 void Breath::layout()
       {
-      setbbox(symBbox(symList[breathType()]));
+      bool palette = (track() == -1);
+      if (!palette) {
+            if (isCaesura())
+                  setPos(rxpos(), spatium());
+            else if ((score()->styleSt(Sid::MusicalSymbolFont) == "Emmentaler") && (symId() == SymId::breathMarkComma))
+                  setPos(rxpos(), 0.5 * spatium());
+            else
+                  setPos(rxpos(), -0.5 * spatium());
+            }
+      setbbox(symBbox(_symId));
       }
 
 //---------------------------------------------------------
 //   write
 //---------------------------------------------------------
 
-void Breath::write(Xml& xml) const
+void Breath::write(XmlWriter& xml) const
       {
       if (!xml.canWrite(this))
             return;
-      xml.stag("Breath");
-      xml.tag("subtype", _breathType);
+      xml.stag(this);
+      writeProperty(xml, Pid::SYMBOL);
+      writeProperty(xml, Pid::PAUSE);
       Element::writeProperties(xml);
       xml.etag();
       }
@@ -68,11 +96,37 @@ void Breath::write(Xml& xml) const
 void Breath::read(XmlReader& e)
       {
       while (e.readNextStartElement()) {
-            if (e.name() == "subtype")
-                  _breathType = e.readInt();
+            const QStringRef& tag(e.name());
+            if (tag == "subtype") {             // obsolete
+                  switch (e.readInt()) {
+                        case 0:
+                        case 1:
+                              _symId = SymId::breathMarkComma;
+                              break;
+                        case 2:
+                              _symId = SymId::caesuraCurved;
+                              break;
+                        case 3:
+                              _symId = SymId::caesura;
+                              break;
+                        }
+                  }
+            else if (tag == "symbol")
+                  _symId = Sym::name2id(e.readElementText());
+            else if (tag == "pause")
+                  _pause = e.readDouble();
             else if (!Element::readProperties(e))
                   e.unknown();
             }
+      }
+
+//---------------------------------------------------------
+//   mag
+//---------------------------------------------------------
+
+qreal Breath::mag() const
+      {
+      return staff() ? staff()->mag(tick()) : 1.0;
       }
 
 //---------------------------------------------------------
@@ -82,16 +136,7 @@ void Breath::read(XmlReader& e)
 void Breath::draw(QPainter* p) const
       {
       p->setPen(curColor());
-      drawSymbol(symList[_breathType], p);
-      }
-
-//---------------------------------------------------------
-//   space
-//---------------------------------------------------------
-
-Space Breath::space() const
-      {
-      return Space(0.0, spatium() * 1.5);
+      drawSymbol(_symId, p);
       }
 
 //---------------------------------------------------------
@@ -110,19 +155,73 @@ QPointF Breath::pagePos() const
       }
 
 //---------------------------------------------------------
-//   nextElement
+//   getProperty
 //---------------------------------------------------------
 
-Element* Breath::nextElement()
+QVariant Breath::getProperty(Pid propertyId) const
+      {
+      switch (propertyId) {
+            case Pid::SYMBOL:
+                  return QVariant::fromValue(_symId);
+            case Pid::PAUSE:
+                  return _pause;
+            default:
+                  return Element::getProperty(propertyId);
+            }
+      }
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool Breath::setProperty(Pid propertyId, const QVariant& v)
+      {
+      switch (propertyId) {
+            case Pid::SYMBOL:
+                  setSymId(v.value<SymId>());
+                  break;
+
+            case Pid::PAUSE:
+                  setPause(v.toDouble());
+                  break;
+            default:
+                  if (!Element::setProperty(propertyId, v))
+                        return false;
+                  break;
+            }
+      triggerLayout();
+      setGenerated(false);
+      return true;
+      }
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+QVariant Breath::propertyDefault(Pid id) const
+      {
+      switch(id) {
+            case Pid::PAUSE:
+                  return 0.0;
+            default:
+                  return Element::propertyDefault(id);
+            }
+      }
+
+//---------------------------------------------------------
+//   nextSegmentElement
+//---------------------------------------------------------
+
+Element* Breath::nextSegmentElement()
       {
       return segment()->firstInNextSegments(staffIdx());
       }
 
 //---------------------------------------------------------
-//   prevElement
+//   prevSegmentElement
 //---------------------------------------------------------
 
-Element* Breath::prevElement()
+Element* Breath::prevSegmentElement()
       {
       return segment()->lastInPrevSegments(staffIdx());
       }
@@ -131,15 +230,9 @@ Element* Breath::prevElement()
 //   accessibleInfo
 //---------------------------------------------------------
 
-QString Breath::accessibleInfo()
+QString Breath::accessibleInfo() const
       {
-      switch (breathType()) {
-            case 2:
-            case 3:
-                  return tr("Caesura");
-            default:
-                  return tr("Breath");
-            }
+      return Sym::id2userName(_symId);
       }
 }
 

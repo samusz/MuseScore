@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: capella.h 3833 2011-01-04 13:55:40Z wschweer $
 //
 //  Copyright (C) 2009-2013 Werner Schweer and others
 //
@@ -422,8 +421,10 @@ class GuitarObj : public BasicDrawObj {
 
 class TrillObj : public BasicDrawObj {
    public:
-      TrillObj(Capella* c) : BasicDrawObj(CapellaType::TRILL, c) {}
+      TrillObj(Capella* c) : BasicDrawObj(CapellaType::TRILL, c), x0(0),
+           x1(0), y(0), trillSign(true) {}
       void read();
+      void readCapx(XmlReader& e);
 
       int x0, x1, y;
       QColor color;
@@ -478,6 +479,7 @@ class SimpleTextObj : public BasicDrawObj {
       QString text() const { return _text; }
       QFont font() const { return _font; }
       QPointF pos() const { return relPos; }
+      unsigned char textalign() const { return align; }
       };
 
 //---------------------------------------------------------
@@ -500,8 +502,10 @@ class BracketObj : public LineObj {
 class WedgeObj : public LineObj {
 
    public:
-      WedgeObj(Capella* c) : LineObj(CapellaType::WEDGE, c) {}
+      WedgeObj(Capella* c) : LineObj(CapellaType::WEDGE, c), height(32),
+           decresc(false) {}
       void read();
+      void readCapx(XmlReader& e);
 
       int height;
       bool decresc;
@@ -531,7 +535,7 @@ class BasicDurationalObj : public CapellaObj {
       void readCapx(XmlReader& e, unsigned int& fullm);
       void readCapxDisplay(XmlReader& e);
       void readCapxObjectArray(XmlReader& e);
-      int ticks() const;
+      Fraction ticks() const;
       bool invisible;
       QList<BasicDrawObj*> objects;
       };
@@ -550,7 +554,7 @@ struct Verse {
       };
 
 struct CNote {
-      char pitch;
+      signed char pitch;
       int explAlteration;     // 1 force, 2 suppress
       int headType;
       int alteration;
@@ -565,7 +569,7 @@ class ChordObj : public BasicDurationalObj, public NoteObj {
    public:
       enum class StemDir : signed char { DOWN = -1, AUTO = 0, UP = 1, NONE = 3 };
       BeamMode beamMode;
-      char notationStave;
+      signed char notationStave;
       char dStemLength;
       unsigned char nTremoloBars;
       unsigned articulation;
@@ -581,6 +585,7 @@ class ChordObj : public BasicDurationalObj, public NoteObj {
       void readCapxLyrics(XmlReader& e);
       void readCapxNotes(XmlReader& e);
       void readCapxStem(XmlReader& e);
+      void readCapxArticulation(XmlReader& e);
       QList<Verse> verse;
       QList<CNote> notes;
       StemDir stemDir;
@@ -696,7 +701,7 @@ class Capella {
       QString readQString();
       void readExtra();
       QList<BasicDrawObj*> readDrawObjectArray();
-      void read(void* p, qint64 len);
+      bool read(void* p, qint64 len);
       QFont readFont();
       QPointF readPoint();
 

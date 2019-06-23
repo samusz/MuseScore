@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2006 by Werner Schweer and others
 //
@@ -21,7 +20,7 @@
 #ifndef __AWLPLUGIN_H__
 #define __AWLPLUGIN_H__
 
-#include <QtDesigner/QDesignerCustomWidgetInterface>
+#include <QtUiPlugin/QDesignerCustomWidgetInterface>
 
 //---------------------------------------------------------
 //   AwlPlugin
@@ -207,6 +206,7 @@ class PitchEditPlugin : public QObject, public AwlPlugin {
 
 class AwlPlugins : public QObject, public QDesignerCustomWidgetCollectionInterface {
       Q_OBJECT
+      Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetCollectionInterface")
       Q_INTERFACES(QDesignerCustomWidgetCollectionInterface)
 
    public:

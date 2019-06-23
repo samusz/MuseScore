@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -27,33 +26,15 @@ InspectorLasso::InspectorLasso(QWidget* parent)
       b.setupUi(addWidget());
 
       iList = {
-            { P_ID::LASSO_POS,    0, false, b.posX,       0 },
-            { P_ID::LASSO_POS,    1, false, b.posY,       0 },
-            { P_ID::LASSO_SIZE,   0, false, b.sizeWidth,  0 },
-            { P_ID::LASSO_SIZE,   1, false, b.sizeHeight, 0 },
+            { Pid::LASSO_POS,    0, b.pos,   0 },
+            { Pid::LASSO_SIZE,   0, b.size,  0 },
             };
+
+      b.pos->setSuffix(tr("mm"));
+      b.size->setSuffix(tr("mm"));
 
       mapSignals();
       }
-
-#if 0
-//---------------------------------------------------------
-//   setElement
-//---------------------------------------------------------
-
-void InspectorLasso::setElement(Element* e)
-      {
-      Lasso* lasso = static_cast<Lasso*>(e);
-      QRectF bb(lasso->rect());
-
-      b.posX->setValue(bb.x() / MScore::DPMM);
-      b.posY->setValue(bb.y() / MScore::DPMM);
-      b.sizeWidth->setValue(bb.width() / MScore::DPMM);
-      b.sizeHeight->setValue(bb.height() / MScore::DPMM);
-
-      InspectorBase::setElement();
-      }
-#endif
 
 }
 

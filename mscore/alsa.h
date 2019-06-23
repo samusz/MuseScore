@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: alsa.h 5660 2012-05-22 14:17:39Z wschweer $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -53,9 +52,9 @@ class AlsaDriver {
 
       enum { MAXPFD = 8, MAXPLAY = 4 };
 
-      int setHwpar(snd_pcm_t* handle, snd_pcm_hw_params_t* hwpar);
-      int setSwpar(snd_pcm_t* handle, snd_pcm_sw_params_t* swpar);
-      int recover();
+      bool setHwpar(snd_pcm_t* handle, snd_pcm_hw_params_t* hwpar);
+      bool setSwpar(snd_pcm_t* handle, snd_pcm_sw_params_t* swpar);
+      bool recover();
 
       unsigned int           _rate;
       snd_pcm_uframes_t      _frsize;
@@ -136,6 +135,7 @@ class AlsaAudio : public Driver {
       void write(int n, void* l);
 
       virtual void midiRead();
+      virtual void updateOutPortCount(int maxport);
       };
 
 }

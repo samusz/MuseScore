@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0">
+<TS version="2.0" language="eu">
 <context>
     <name>AudioOutput</name>
     <message>
@@ -890,6 +890,13 @@ to
     </message>
 </context>
 <context>
+    <name>QCocoaTheme</name>
+    <message>
+        <source>Don&apos;t Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>QPlatformTheme</name>
     <message>
         <source>OK</source>
@@ -921,10 +928,6 @@ to
     </message>
     <message>
         <source>Help</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Don&apos;t Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

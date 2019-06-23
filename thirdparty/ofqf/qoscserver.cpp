@@ -82,13 +82,13 @@ void QOscServer::readyRead()
         		      for ( ; i<size && data[ i ] != char( 0 ); ++i )
         		            path += data[ i ];
         
-        			    while ( data[ i ] != ',' ) ++i;
-        			    ++i;
+        		      while ( data[ i ] != ',' ) ++i;
+        		      ++i;
         		      while ( data[ i ] != char( 0 ) )
         		            args += data[ i++ ];
                   i++; //move one byte more!
         			    if ( ! args.isEmpty() ) {
-        				        QList<QVariant> list;
+        				        QList<QVariant> list1;
         				        foreach( QChar type, args ) {
         					            while ( i%4 != 0 ) ++i;
         					            //qDebug() << i << "\ttrying to convert to" << type;
@@ -96,9 +96,10 @@ void QOscServer::readyRead()
         					            QByteArray tmp = data.right( data.size()-i );
         					            QVariant value;
                               if ( type == 's' ) {
-        						                QString s = toString( tmp );
-        						                value = s;
-                                    i += s.size();
+                                    QString s = toString( tmp );
+                                    value = s;
+                                    // string size plus one for the null terminator
+                                    i += s.size() + 1;
                                     }
                               if ( type == 'i' ) {
                                     value = toInt32( tmp );
@@ -111,13 +112,13 @@ void QOscServer::readyRead()
                               //qDebug() << " got" << value;
         
                               if ( args.size() > 1 )
-                                    list.append( value );
+                                    list1.append( value );
                               else
                                     arguments = value;
                               }
         
                               if ( args.size() > 1 )
-                                    arguments = list;
+                                    arguments = list1;
                         }
         		      }
         		      qDebug() << "path seems to be" << path << "args are" << args << ":" << arguments;

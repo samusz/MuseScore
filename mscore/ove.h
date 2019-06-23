@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id: importove.cpp 3763 2010-12-15 15:52:09Z vanferry $
 //
 //  Copyright (C) 2002-2009 Werner Schweer and others
 //
@@ -360,81 +359,6 @@ inline int NoteTypeToTick(NoteType type, int quarter) {
       int c = int(pow(2.0, int(type))) ;
       return quarter * 4 * 2 / c ;
       }
-
-enum class HarmonyType : char {
-      H_maj = 0,
-      H_min,
-      H_aug,
-      H_dim,
-      H_dim7,
-      H_sus2,
-      H_sus4,
-      H_sus24,
-      H_add2,
-      H_add9,
-      H_omit3,
-      H_omit5,
-      H_2,
-      H_5,
-      H_6,
-      H_69,
-      H_7,
-      H_7b5,
-      H_7b9,
-      H_7s9,
-      H_7s11,
-      H_7b5s9,
-      H_7b5b9,
-      H_7b9s9,
-      H_7b9s11,
-      H_7sus4,
-      H_9,
-      H_9b5,
-      H_9s11,
-      H_9sus4,
-      H_11,
-      H_13,
-      H_13b5,
-      H_13b9,
-      H_13s9,
-      H_13s11,
-      H_13sus4,
-      H_min_add2,
-      H_min_add9,
-      H_min_maj7,
-      H_min6,
-      H_min6_add9,
-      H_min7,
-      H_min7b5,
-      H_min7_add4,
-      H_min7_add11,
-      H_min9,
-      H_min9_b5,
-      H_min9_maj7,
-      H_min11,
-      H_min13,
-      H_maj7,
-      H_maj7_b5,
-      H_maj7_s5,
-      H_maj7_69,
-      H_maj7_add9,
-      H_maj7_s11,
-      H_maj9,
-      H_maj9_sus4,
-      H_maj9_b5,
-      H_maj9_s5,
-      H_maj9_s11,
-      H_maj13,
-      H_maj13_b5,
-      H_maj13_b9,
-      H_maj13_b9b5,
-      H_maj13_s11,
-      H_aug7,
-      H_aug7_b9,
-      H_aug7_s9,
-
-      H_None
-      };
 
 enum class DynamicsType : char {
       PPPP = 0,
@@ -1538,14 +1462,20 @@ public:
       virtual ~Harmony(){}
 
 public:
-      void setHarmonyType(HarmonyType type);
-      HarmonyType getHarmonyType() const;
+      void setHarmonyType(QString type);
+      QString getHarmonyType() const;
 
       void setRoot(int root=0);//C
       int getRoot() const;
 
       void setBass(int bass);
       int getBass() const;
+
+      void setAlterRoot(int val);
+      int getAlterRoot() const;
+
+      void setAlterBass(int val);
+      int getAlterBass() const;
 
       void setBassOnBottom(bool on);
       bool getBassOnBottom() const;
@@ -1554,9 +1484,11 @@ public:
       int getAngle() const;
 
 private:
-      HarmonyType harmonyType_;
+      QString harmonyType_;
       int root_;
       int bass_;
+      int alterRoot_;
+      int alterBass_;
       bool bassOnBottom_;
       int angle_;
       };
@@ -1756,6 +1688,9 @@ public:
       void setOctaveShiftType(OctaveShiftType type);
       OctaveShiftType getOctaveShiftType() const;
 
+      void setOctaveShiftPosition(OctaveShiftPosition position);
+      OctaveShiftPosition getOctaveShiftPosition() const;
+
       int getNoteShift() const;
 
       void setEndTick(int tick);
@@ -1819,9 +1754,9 @@ public:
       void setShowParenthesis(bool show);
       bool getShowParenthesis() const;
 
-      void setTypeTempo(int tempo); //0x2580 = 96.00
-      int getTypeTempo() const;
-      int getQuarterTempo() const;
+      void setTypeTempo(double tempo); //0x2580 = 96.00
+      double getTypeTempo() const;
+      double getQuarterTempo() const;
 
       void setLeftText(const QString& str);// string at left of the mark
       QString getLeftText() const;
@@ -1833,18 +1768,30 @@ public:
       bool getSwingEighth() const;
 
       void setRightNoteType(int type);
-      int getRightNoteType() const;
+      NoteType getRightNoteType() const;
+
+      void setLeftNoteDot(bool showDot);
+      bool getLeftNoteDot() const;
+
+      void setRightNoteDot(bool showDot);
+      bool getRightNoteDot() const;
+
+      void setRightSideType(int type);
+      int getRightSideType() const;
 
 private:
       int leftNoteType_;
       bool showMark_;
       bool showText_;
       bool showParenthesis_;
-      int typeTempo_;
+      double typeTempo_;
       QString leftText_;
       QString rightText_;
       bool swingEighth_;
       int rightNoteType_;
+      bool leftNoteDot_;
+      bool rightNoteDot_;
+      int rightSideType_;
       };
 
 class Text: public MusicData, public LengthElement {
@@ -2309,7 +2256,7 @@ public:
             }
 
 public:
-      // ingore data more than 4 bytes
+      // ignore data more than 4 bytes
       bool isEqual(const QString& name) const;
       };
 

@@ -1,7 +1,6 @@
 //=============================================================================
 //  Awl
 //  Audio Widget Library
-//  $Id:$
 //
 //  Copyright (C) 2002-2006 by Werner Schweer and others
 //
@@ -38,9 +37,6 @@ namespace Awl {
 
 class VolSlider : public Slider {
       Q_OBJECT
-
-   protected:
-      virtual void mouseDoubleClickEvent(QMouseEvent*);
 
    public slots:
       virtual void setValue(double v);

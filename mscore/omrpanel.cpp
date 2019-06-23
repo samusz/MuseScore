@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -11,8 +10,8 @@
 //  the file LICENSE.GPL
 //=============================================================================
 
-#include "omrpanel.h"
 #include "musescore.h"
+#include "omrpanel.h"
 #include "scoreview.h"
 #include "omr/omrview.h"
 #include "omr/omr.h"
@@ -50,7 +49,7 @@ void MuseScore::showOmrPanel(bool visible)
 //---------------------------------------------------------
 
 OmrPanel::OmrPanel(QWidget* parent)
-   : QDockWidget(tr("OMR Panel"), parent)
+   : QDockWidget(tr("PDF Transcribing Assistant"), parent)
       {
       setObjectName("omrpanel");
       setAllowedAreas(Qt::DockWidgetAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea));
@@ -190,10 +189,12 @@ void OmrPanel::setOmrView(OmrView* v)
 void OmrPanel::processClicked()
       {
       if (omrView) {
-            omrView->omr()->process();
+            //omrView->omr()->process();
             omrView->update();
             setOmrView(omrView);    // update values
             }
       }
+
 }
+
 

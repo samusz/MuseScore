@@ -18,14 +18,33 @@
  Definition of class Accidental
 */
 
+#include "config.h"
 #include "element.h"
-
-class QPainter;
 
 namespace Ms {
 
 class Note;
 enum class SymId;
+enum class AccidentalVal : signed char;
+
+//---------------------------------------------------------
+//   AccidentalRole
+//---------------------------------------------------------
+
+enum class AccidentalRole : char {
+      AUTO,               // layout created accidental
+      USER                // user created accidental
+      };
+
+//---------------------------------------------------------
+//   AccidentalBracket
+//---------------------------------------------------------
+
+enum class AccidentalBracket : char {
+      NONE,
+      PARENTHESIS,
+      BRACKET
+      };
 
 //---------------------------------------------------------
 //   SymElement
@@ -39,119 +58,77 @@ struct SymElement {
 
 //---------------------------------------------------------
 //   @@ Accidental
-//   @P hasBracket  bool
+//   @P role        enum  (Accidental.AUTO, .USER) (read only)
 //   @P small       bool
-//   @P acctype     Ms::Accidental::Type  (NONE, SHARP, FLAT, SHARP2, FLAT2, NATURAL, ...) (read only)
-//   @P role        Ms::Accidental::Role  (AUTO, USER) (read only)
 //---------------------------------------------------------
 
-class Accidental : public Element {
-   public:
-      enum class Role : char {
-            AUTO,               // layout created accidental
-            USER                // user created accidental
-            };
-      enum class Type : char {
-            NONE,
-            SHARP,
-            FLAT,
-            SHARP2,
-            FLAT2,
-            NATURAL,
-
-            FLAT_SLASH,
-            FLAT_SLASH2,
-            MIRRORED_FLAT2,
-            MIRRORED_FLAT,
-            MIRRORED_FLAT_SLASH,
-            FLAT_FLAT_SLASH,
-
-            SHARP_SLASH,
-            SHARP_SLASH2,
-            SHARP_SLASH3,
-            SHARP_SLASH4,
-
-            SHARP_ARROW_UP,
-            SHARP_ARROW_DOWN,
-            SHARP_ARROW_BOTH,
-            FLAT_ARROW_UP,
-            FLAT_ARROW_DOWN,
-            FLAT_ARROW_BOTH,
-            NATURAL_ARROW_UP,
-            NATURAL_ARROW_DOWN,
-            NATURAL_ARROW_BOTH,
-            SORI,
-            KORON,
-            END
-            };
-
-
-   private:
-      Q_OBJECT
-      Q_PROPERTY(bool                 hasBracket  READ hasBracket  WRITE undoSetHasBracket)
-      Q_PROPERTY(bool                 small       READ small       WRITE undoSetSmall)
-      Q_PROPERTY(Ms::Accidental::Type accType     READ accidentalType)
-      Q_PROPERTY(Ms::Accidental::Role role        READ role)
-      Q_ENUMS(Type)
-      Q_ENUMS(Role)
-
+class Accidental final : public Element {
       QList<SymElement> el;
-      Type _accidentalType;
-      bool _hasBracket;
-      bool _small;
-      Role _role;
+      AccidentalType _accidentalType { AccidentalType::NONE };
+      bool _small                    { false                   };
+      AccidentalBracket _bracket     { AccidentalBracket::NONE };
+      AccidentalRole _role           { AccidentalRole::AUTO    };
 
    public:
       Accidental(Score* s = 0);
-      virtual Accidental* clone() const     { return new Accidental(*this); }
-      virtual Element::Type type() const    { return Element::Type::ACCIDENTAL; }
+      virtual Accidental* clone() const override  { return new Accidental(*this); }
+      virtual ElementType type() const override   { return ElementType::ACCIDENTAL; }
 
-      const char* subtypeUserName() const;
+      QString subtypeUserName() const;
       void setSubtype(const QString& s);
-      void setAccidentalType(Type t)        { _accidentalType = t;    }
-      Type accidentalType() const           { return _accidentalType; }
-      virtual int subtype() const           { return (int)_accidentalType; }
-      virtual QString subtypeName() const   { return QString(subtype2name(_accidentalType)); }
+      void setAccidentalType(AccidentalType t)     { _accidentalType = t;    }
 
-      virtual bool acceptDrop(const DropData&) const override;
-      virtual Element* drop(const DropData&);
-      virtual void layout();
-      virtual void draw(QPainter*) const;
-      virtual bool isEditable() const                        { return true; }
-      virtual void startEdit(MuseScoreView*, const QPointF&) { setGenerated(false); }
+      AccidentalType accidentalType() const        { return _accidentalType; }
+      AccidentalRole role() const                  { return _role;           }
+
+      virtual int subtype() const override         { return (int)_accidentalType; }
+      virtual QString subtypeName() const override { return QString(subtype2name(_accidentalType)); }
+
+      virtual bool acceptDrop(EditData&) const override;
+      virtual Element* drop(EditData&) override;
+      virtual void layout() override;
+      virtual void draw(QPainter*) const override;
+      virtual bool isEditable() const override               { return true; }
+      virtual void startEdit(EditData&) override { setGenerated(false); }
 
       SymId symbol() const;
-      Note* note() const                  { return (Note*)parent(); }
+      Note* note() const                        { return (parent() && parent()->isNote()) ? toNote(parent()) : 0; }
 
-      bool hasBracket() const             { return _hasBracket;     }
-      void setHasBracket(bool val)        { _hasBracket = val;      }
-      void undoSetHasBracket(bool val);
+      AccidentalBracket bracket() const         { return _bracket;     }
+      void setBracket(AccidentalBracket val)    { _bracket = val;      }
 
-      Role role() const                   { return _role;           }
-      void setRole(Role r)                { _role = r;              }
+      void setRole(AccidentalRole r)            { _role = r;              }
 
-      bool small() const                  { return _small;          }
-      void setSmall(bool val)             { _small = val;           }
+      bool small() const                        { return _small;          }
+      void setSmall(bool val)                   { _small = val;           }
+
       void undoSetSmall(bool val);
 
-      virtual void read(XmlReader&);
-      virtual void write(Xml& xml) const;
+      virtual void read(XmlReader&) override;
+      virtual void write(XmlWriter& xml) const override;
 
-      virtual QVariant getProperty(P_ID propertyId) const;
-      virtual bool setProperty(P_ID propertyId, const QVariant&);
+      virtual QVariant getProperty(Pid propertyId) const override;
+      virtual bool setProperty(Pid propertyId, const QVariant&) override;
+      virtual QVariant propertyDefault(Pid propertyId) const override;
+      virtual Pid propertyId(const QStringRef& xmlName) const override;
+      virtual QString propertyUserValue(Pid) const override;
 
-      static AccidentalVal subtype2value(Type);             // return effective pitch offset
-      static const char* subtype2name(Type);
-      static Type value2subtype(AccidentalVal);
-      static Type name2subtype(const QString&);
+      static AccidentalVal subtype2value(AccidentalType);             // return effective pitch offset
+      static const char* subtype2name(AccidentalType);
+      static AccidentalType value2subtype(AccidentalVal);
+      static AccidentalType name2subtype(const QString&);
+      static bool isMicrotonal(AccidentalType t)  { return t > AccidentalType::FLAT2; }
 
-      QString accessibleInfo() override;
+      QString accessibleInfo() const override;
       };
+
+extern AccidentalVal sym2accidentalVal(SymId id);
 
 }     // namespace Ms
 
-Q_DECLARE_METATYPE(Ms::Accidental::Role);
-Q_DECLARE_METATYPE(Ms::Accidental::Type);
+Q_DECLARE_METATYPE(Ms::AccidentalRole);
+Q_DECLARE_METATYPE(Ms::AccidentalType);
+
 
 #endif
 

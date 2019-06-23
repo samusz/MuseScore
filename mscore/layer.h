@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: mscore.cpp 4220 2011-04-22 10:31:26Z wschweer $
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -35,6 +34,8 @@ class LayerManager : public QDialog, public Ui::LayerManager {
       Q_OBJECT
 
       Score* score;
+
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       void createClicked();

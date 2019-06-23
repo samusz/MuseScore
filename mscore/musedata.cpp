@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id: musedata.cpp 5497 2012-03-26 10:59:16Z lasconic $
 //
 //  Copyright (C) 2007 Werner Schweer and others
 //
@@ -40,6 +39,7 @@
 #include "libmscore/measure.h"
 #include "libmscore/timesig.h"
 #include "libmscore/segment.h"
+#include "libmscore/sym.h"
 
 namespace Ms {
 
@@ -53,8 +53,10 @@ void MuseData::musicalAttribute(QString s, Part* part)
       foreach(QString item, al) {
             if (item.startsWith("K:")) {
                   int key = item.mid(2).toInt();
-                  foreach(Staff* staff, *(part->staves()))
-                        staff->setKey(curTick, Key(key));
+                  KeySigEvent ke;
+                  ke.setKey(Key(key));
+                  for (Staff* staff : *(part->staves()))
+                        staff->setKey(curTick, ke);
                   }
             else if (item.startsWith("Q:")) {
                   _division = item.mid(2).toInt();
@@ -72,9 +74,9 @@ void MuseData::musicalAttribute(QString s, Part* part)
                         TimeSig* ts = new TimeSig(score);
                         Staff* staff = part->staff(0);
                         ts->setTrack(staff->idx() * VOICES);
-                        Measure* measure = score->tick2measure(curTick);
-                        Segment* s = measure->getSegment(ts, curTick);
-                        s->add(ts);
+                        Measure* mes = score->tick2measure(curTick);
+                        Segment* seg = mes->getSegment(SegmentType::TimeSig, curTick);
+                        seg->add(ts);
                         }
                   }
             else if (item.startsWith("X:"))
@@ -153,16 +155,16 @@ void MuseData::readChord(Part*, const QString& s)
 //   openSlur
 //---------------------------------------------------------
 
-void MuseData::openSlur(int idx, int tick, Staff* staff, int voice)
+void MuseData::openSlur(int idx, const Fraction& tick, Staff* staff, int voc)
       {
       int staffIdx = staff->idx();
       if (slur[idx]) {
-            qDebug("%06d: slur %d already open", tick, idx+1);
+            qDebug("%06d: slur %d already open", tick.ticks(), idx+1);
             return;
             }
       slur[idx] = new Slur(score);
       slur[idx]->setTick(tick);
-      slur[idx]->setTrack(staffIdx * VOICES + voice);
+      slur[idx]->setTrack(staffIdx * VOICES + voc);
       score->addElement(slur[idx]);
       }
 
@@ -170,16 +172,16 @@ void MuseData::openSlur(int idx, int tick, Staff* staff, int voice)
 //   closeSlur
 //---------------------------------------------------------
 
-void MuseData::closeSlur(int idx, int tick, Staff* staff, int voice)
+void MuseData::closeSlur(int idx, const Fraction& tick, Staff* staff, int voc)
       {
       int staffIdx = staff->idx();
       if (slur[idx]) {
             slur[idx]->setTick2(tick);
-            slur[idx]->setTrack2(staffIdx * VOICES + voice);
+            slur[idx]->setTrack2(staffIdx * VOICES + voc);
             slur[idx] = 0;
             }
       else
-            qDebug("%06d: slur %d not open", tick, idx+1);
+            qDebug("%06d: slur %d not open", tick.ticks(), idx+1);
       }
 
 //---------------------------------------------------------
@@ -204,12 +206,12 @@ void MuseData::readNote(Part* part, const QString& s)
                   break;
                   }
             }
-      MScore::Direction dir = MScore::Direction::AUTO;
+      Direction dir = Direction::AUTO;
       if (s.size() >= 23) {
             if (s[22] == 'u')
-                  dir = MScore::Direction::UP;
+                  dir = Direction::UP;
             else if (s[22] == 'd')
-                  dir = MScore::Direction::DOWN;
+                  dir = Direction::DOWN;
             }
 
       int staffIdx = 0;
@@ -225,9 +227,8 @@ void MuseData::readNote(Part* part, const QString& s)
             pitch = 0;
       if (pitch > 127)
             pitch = 127;
-      int ticks = s.mid(5, 3).toInt();
-      ticks     = (ticks * MScore::division + _division/2) / _division;
-      int tick  = curTick;
+      Fraction ticks = Fraction::fromTicks((s.mid(5, 3).toInt() * MScore::division + _division/2) / _division);
+      Fraction tick  = curTick;
       curTick  += ticks;
 
       Tuplet* tuplet = 0;
@@ -271,10 +272,10 @@ void MuseData::readNote(Part* part, const QString& s)
             --ntuplet;
             }
       TDuration d;
-      d.setVal(ticks);
+      d.setVal(ticks.ticks());
       chord->setDurationType(d);
 
-      Segment* segment = measure->getSegment(chord, tick);
+      Segment* segment = measure->getSegment(SegmentType::ChordRest, tick);
 
       voice = 0;
       for (; voice < VOICES; ++voice) {
@@ -317,46 +318,46 @@ void MuseData::readNote(Part* part, const QString& s)
                   closeSlur(3, tick, staff, voice);
             else if (an[i] == '.') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Staccato);
+                  atr->setSymId(SymId::articStaccatoAbove);
                   chord->add(atr);
                   }
             else if (an[i] == '_') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Tenuto);
+                  atr->setSymId(SymId::articTenutoAbove);
                   chord->add(atr);
                   }
             else if (an[i] == 'v') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Upbow);
+                  atr->setSymId(SymId::stringsUpBow);
                   chord->add(atr);
                   }
             else if (an[i] == 'n') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Downbow);
+                  atr->setSymId(SymId::stringsDownBow);
                   chord->add(atr);
                   }
             else if (an[i] == 't') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Trill);
+                  atr->setSymId(SymId::ornamentTrill);
                   chord->add(atr);
                   }
             else if (an[i] == 'F') {
                   Articulation* atr = new Articulation(score);
                   atr->setUp(true);
-                  atr->setArticulationType(ArticulationType::Fermata);
+                  atr->setSymId(SymId::fermataAbove);
                   chord->add(atr);
                   }
             else if (an[i] == 'E') {
                   Articulation* atr = new Articulation(score);
                   atr->setUp(false);
-                  atr->setArticulationType(ArticulationType::Fermata);
+                  atr->setSymId(SymId::fermataBelow);
                   chord->add(atr);
                   }
             else if (an[i] == 'O') {
                   // Articulation* atr = new Articulation(score);
                   // atr->setArticulationType(ArticulationType::Downbow);
                   // chord->add(atr);
-                  qDebug("%06d: open string '%c' not implemented", tick, an[i].toLatin1());
+                  qDebug("%06d: open string '%c' not implemented", tick.ticks(), an[i].toLatin1());
                   }
             else if (an[i] == '&') {
                   // skip editorial level
@@ -382,15 +383,15 @@ void MuseData::readNote(Part* part, const QString& s)
             else if (an[i] == ' ')
                   ;
             else {
-                  qDebug("%06d: notation '%c' not implemented", tick, an[i].toLatin1());
+                  qDebug("%06d: notation '%c' not implemented", tick.ticks(), an[i].toLatin1());
                   }
             }
       if (!dynamics.isEmpty()) {
             Dynamic* dyn = new Dynamic(score);
             dyn->setDynamicType(dynamics);
             dyn->setTrack(gstaff * VOICES);
-            Segment* s = measure->getSegment(Segment::Type::ChordRest, tick);
-            s->add(dyn);
+            Segment* seg = measure->getSegment(SegmentType::ChordRest, tick);
+            seg->add(dyn);
             }
 
       QString txt = s.mid(43, 36);
@@ -400,11 +401,11 @@ void MuseData::readNote(Part* part, const QString& s)
             foreach(QString w, sl) {
                   w = diacritical(w);
                   Lyrics* l = new Lyrics(score);
-                  l->setText(w);
+                  l->setPlainText(w);
                   l->setNo(no++);
                   l->setTrack(gstaff * VOICES);
-                  Segment* segment = measure->tick2segment(tick);
-                  segment->add(l);
+                  Segment* seg = measure->tick2segment(tick);
+                  seg->add(l);
                   }
             }
       }
@@ -443,10 +444,9 @@ QString MuseData::diacritical(QString s)
 
 void MuseData::readRest(Part* part, const QString& s)
       {
-      int ticks = s.mid(5, 3).toInt();
-      ticks     = (ticks * MScore::division + _division/2) / _division;
+      Fraction ticks = Fraction::fromTicks((s.mid(5, 3).toInt() * MScore::division + _division/2) / _division);
 
-      int tick  = curTick;
+      Fraction tick  = curTick;
       curTick  += ticks;
 
       int staffIdx = 0;
@@ -458,12 +458,12 @@ void MuseData::readRest(Part* part, const QString& s)
       int gstaff   = staff->idx();
 
       TDuration d;
-      d.setVal(ticks);
+      d.setVal(ticks.ticks());
       Rest* rest = new Rest(score, d);
-      rest->setDuration(d.fraction());
+      rest->setTicks(d.fraction());
       chordRest  = rest;
       rest->setTrack(gstaff * VOICES);
-      Segment* segment = measure->getSegment(rest, tick);
+      Segment* segment = measure->getSegment(SegmentType::ChordRest, tick);
 
       voice = 0;
       for (; voice < VOICES; ++voice) {
@@ -487,8 +487,7 @@ void MuseData::readRest(Part* part, const QString& s)
 
 void MuseData::readBackup(const QString& s)
       {
-      int ticks = s.mid(5, 3).toInt();
-      ticks     = (ticks * MScore::division + _division/2) / _division;
+      Fraction ticks = Fraction::fromTicks((s.mid(5, 3).toInt() * MScore::division + _division/2) / _division);
       if (s[0] == 'b')
             curTick  -= ticks;
       else
@@ -502,11 +501,11 @@ void MuseData::readBackup(const QString& s)
 Measure* MuseData::createMeasure()
       {
       for (MeasureBase* mb = score->first(); mb; mb = mb->next()) {
-            if (mb->type() != Element::Type::MEASURE)
+            if (mb->type() != ElementType::MEASURE)
                   continue;
             Measure* m = (Measure*)mb;
-            int st = m->tick();
-            int l  = m->ticks();
+            Fraction st = m->tick();
+            Fraction l  = m->ticks();
             if (curTick == st)
                   return m;
             if (curTick > st && curTick < (st+l)) {
@@ -519,24 +518,24 @@ Measure* MuseData::createMeasure()
                   break;
                   }
             if (curTick < st + l) {
-                  qDebug("cannot create measure at %d", curTick);
+                  qDebug("cannot create measure at %d", curTick.ticks());
                   return 0;
                   }
             }
-      Measure* measure  = new Measure(score);
-      measure->setTick(curTick);
+      Measure* mes  = new Measure(score);
+      mes->setTick(curTick);
 
 #if 0
       foreach(Staff* s, score->staves()) {
             if (s->isTop()) {
                   BarLine* barLine = new BarLine(score);
                   barLine->setStaff(s);
-                  measure->setEndBarLine(barLine);
+                  mes->setEndBarLine(barLine);
                   }
             }
 #endif
-      score->measures()->add(measure);
-      return measure;
+      score->measures()->add(mes);
+      return mes;
       }
 
 //---------------------------------------------------------
@@ -556,7 +555,7 @@ void MuseData::readPart(QStringList sl, Part* part)
             qDebug(" $ not found in part");
             return;
             }
-      curTick = 0;
+      curTick = Fraction(0,1);
       slur[0] = 0;
       slur[1] = 0;
       slur[2] = 0;
@@ -565,7 +564,7 @@ void MuseData::readPart(QStringList sl, Part* part)
       measure = createMeasure();
       for (; line < sl.size(); ++line) {
             s = sl[line];
-// qDebug("%6d: <%s>", curTick, qPrintable(s));
+// qDebug("%6d: <%s>", curTick.ticks(), qPrintable(s));
             char c = s[0].toLatin1();
             switch(c) {
                   case 'A':
@@ -687,13 +686,13 @@ bool MuseData::read(const QString& name)
                         mpart->insertStaff(staff, i);
                         score->staves().push_back(staff);
                         if ((staves == 2) && (i == 0)) {
-                              staff->setBracket(0, BracketType::BRACE);
+                              staff->setBracketType(0, BracketType::BRACE);
                               staff->setBracketSpan(0, 2);
                               }
                         }
                   score->appendPart(mpart);
                   if(part.size() > 8)
-                        mpart->setLongName(part[8]);
+                        mpart->setPlainLongName(part[8]);
                   part.clear();
                   continue;
                   }
@@ -740,7 +739,7 @@ void MuseData::convert()
 //    return true on success
 //---------------------------------------------------------
 
-Score::FileError importMuseData(Score* score, const QString& name)
+Score::FileError importMuseData(MasterScore* score, const QString& name)
       {
       if(!QFileInfo(name).exists())
             return Score::FileError::FILE_NOT_FOUND;

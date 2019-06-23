@@ -17,9 +17,9 @@
 
 namespace Ms {
 
-class Xml;
+class XmlWriter;
 class XmlReader;
-
+class SynthesizerState;
 
 //---------------------------------------------------------
 //   IdValue
@@ -53,6 +53,7 @@ class SynthesizerGroup : public std::list<IdValue> {
 //---------------------------------------------------------
 
 class SynthesizerState : public std::list<SynthesizerGroup> {
+      bool _isDefault        { true };
 
    public:
       SynthesizerState(std::initializer_list<SynthesizerGroup> l) {
@@ -60,10 +61,40 @@ class SynthesizerState : public std::list<SynthesizerGroup> {
             }
       SynthesizerState() : std::list<SynthesizerGroup>() {}
 
-      void write(Xml&) const;
+      void write(XmlWriter&, bool force = false) const;
       void read(XmlReader&);
+      SynthesizerGroup group(const QString& name) const;
+      bool isDefaultSynthSoundfont();
+      int ccToUse() const;
+      int method() const;
+      bool isDefault() const        { return _isDefault; }
+      void setIsDefault(bool val)   { _isDefault = val; }
       };
 
+//---------------------------------------------------------
+//   default buildin SynthesizerState
+//    used if synthesizer.xml does not exist or is not
+//    readable
+//---------------------------------------------------------
+
+static SynthesizerState defaultState = {
+      { "master", {
+            { 0, "Zita1" },
+            { 2, "0.1"   },
+            { 3, "440"   },
+            { 4, "1"     },
+            { 5, "1"     }
+            },
+            },
+      { "Fluid", {
+            { 0, "MuseScore_General.sf3" },
+            },
+            },
+//      { "Zerberus", {
+//            { 0, "SalamanderGrandPiano.sfz" },
+//            },
+//            },
+      };
 
 }     // namespace Ms
 #endif

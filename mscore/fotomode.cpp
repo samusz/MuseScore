@@ -1,21 +1,13 @@
 //=============================================================================
 //  MuseScore
-//  Linux Music Score Editor
-//  $Id: scoreview.cpp 3446 2010-09-10 20:18:16Z wschweer $
+//  Music Composition & Notation
 //
-//  Copyright (C) 2002-2011 Werner Schweer and others
+//  Copyright (C) 2002-2017 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 2.
-//
-//  This program is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with this program; if not, write to the Free Software
-//  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+//  it under the terms of the GNU General Public License version 2
+//  as published by the Free Software Foundation and appearing in
+//  the file LICENCE.GPL
 //=============================================================================
 
 #include "scoreview.h"
@@ -29,335 +21,88 @@
 #include "libmscore/mscore.h"
 #include "svggenerator.h"
 #include "inspector/inspector.h"
+#include "fotomode.h"
 
 namespace Ms {
 
 //---------------------------------------------------------
-//   FotoScoreViewDragTransition
+//   startEdit
 //---------------------------------------------------------
 
-class FotoScoreViewDragTransition : public QMouseEventTransition
+void FotoLasso::startEdit(EditData& ed)
       {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* event) {
-            if (!QMouseEventTransition::eventTest(event))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(event);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            if (me->modifiers() & Qt::ShiftModifier)
-                  return false;
-            return canvas->fotoScoreViewDragTest(me);
+      Element::startEdit(ed);
+      ed.grips   = 8;
+      ed.curGrip = Grip(0);
+      QRectF view = ((ScoreView*)ed.view)->toLogical(QRect(0.0, 0.0, ed.view->geometry().width(), ed.view->geometry().height()));
+      if (bbox().isEmpty() || !view.intersects(bbox())) {
+            // rect not found - construct new rect with default size & relative position
+            qreal w = view.width();
+            qreal h = view.height();
+            QRectF rect(w * .3, h * .3, w * .4, h * .4);
+            // convert to absolute position
+            setbbox(rect.translated(view.topLeft()));
             }
-   public:
-      FotoScoreViewDragTransition(ScoreView* c, QState* target)
-         : QMouseEventTransition(c, QEvent::MouseButtonPress, Qt::LeftButton), canvas(c) {
-            setTargetState(target);
-            }
-      };
-
-//---------------------------------------------------------
-//   FotoScoreViewDragRectTransition
-//---------------------------------------------------------
-
-class FotoScoreViewDragRectTransition : public QMouseEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* event) {
-            if (!QMouseEventTransition::eventTest(event))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(event);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            if (me->modifiers() & Qt::ShiftModifier)
-                  return false;
-            return canvas->fotoScoreViewDragRectTest(me);
-            }
-   public:
-      FotoScoreViewDragRectTransition(ScoreView* c, QState* target)
-         : QMouseEventTransition(c, QEvent::MouseButtonPress, Qt::LeftButton), canvas(c) {
-            setTargetState(target);
-            }
-      };
-
-//---------------------------------------------------------
-//   FotoFrameTransition
-//---------------------------------------------------------
-
-class FotoFrameTransition : public QMouseEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* event) {
-            if (!QMouseEventTransition::eventTest(event))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(event);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            return !canvas->fotoRectHit(me->pos());
-            }
-   public:
-      FotoFrameTransition(ScoreView* c, QState* target)
-         : QMouseEventTransition(c, QEvent::MouseButtonPress, Qt::LeftButton), canvas(c) {
-            setTargetState(target);
-            setModifierMask(Qt::ShiftModifier);
-            }
-      };
-
-//---------------------------------------------------------
-//   FotoEditElementDragTransition
-//---------------------------------------------------------
-
-class FotoEditElementDragTransition : public QMouseEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* event) {
-            if (!QMouseEventTransition::eventTest(event))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(event);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            return canvas->fotoEditElementDragTransition(me);
-            }
-   public:
-      FotoEditElementDragTransition(ScoreView* c, QState* target)
-         : QMouseEventTransition(c, QEvent::MouseButtonPress, Qt::LeftButton), canvas(c) {
-            setTargetState(target);
-            }
-      };
-
-//---------------------------------------------------------
-//   FotoDragEditTransition
-//---------------------------------------------------------
-
-class FotoDragEditTransition : public QEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual void onTransition(QEvent* e) {
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(e);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            canvas->doFotoDragEdit(me);
-            }
-   public:
-      FotoDragEditTransition(ScoreView* c)
-         : QEventTransition(c, QEvent::MouseMove), canvas(c) {}
-      };
-
-//---------------------------------------------------------
-//   FotoDragTransition
-//---------------------------------------------------------
-
-class FotoDragTransition : public QEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual void onTransition(QEvent* e) {
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(e);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            canvas->doDragFoto(me);
-            }
-   public:
-      FotoDragTransition(ScoreView* c)
-         : QEventTransition(c, QEvent::MouseMove), canvas(c) {}
-      };
-
-//---------------------------------------------------------
-//   FotoDragRectTransition
-//---------------------------------------------------------
-
-class FotoDragRectTransition : public QEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual void onTransition(QEvent* e) {
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(e);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            canvas->doDragFotoRect(me);
-            }
-   public:
-      FotoDragRectTransition(ScoreView* c)
-         : QEventTransition(c, QEvent::MouseMove), canvas(c) {}
-      };
-
-//---------------------------------------------------------
-//   FotoContextTransition
-//---------------------------------------------------------
-
-class FotoContextTransition : public QEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* e) {
-            if (!QEventTransition::eventTest(e))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(e);
-            QContextMenuEvent* me = static_cast<QContextMenuEvent*>(we->event());
-            return canvas->fotoRectHit(me->pos());
-            }
-      virtual void onTransition(QEvent* e) {
-            QContextMenuEvent* me = static_cast<QContextMenuEvent*>(static_cast<QStateMachine::WrappedEvent*>(e)->event());
-            canvas->fotoContextPopup(me);
-            }
-   public:
-      FotoContextTransition(ScoreView* c)
-         : QEventTransition(c, QEvent::ContextMenu), canvas(c) {}
-      };
-
-//---------------------------------------------------------
-//   FotoDragDropTransition
-//---------------------------------------------------------
-
-class FotoDragDropTransition : public QMouseEventTransition
-      {
-      ScoreView* canvas;
-
-   protected:
-      virtual bool eventTest(QEvent* event) {
-            if (!QMouseEventTransition::eventTest(event))
-                  return false;
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(event);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            return canvas->fotoRectHit(me->pos());
-            }
-      virtual void onTransition(QEvent* e) {
-            QStateMachine::WrappedEvent* we = static_cast<QStateMachine::WrappedEvent*>(e);
-            QMouseEvent* me = static_cast<QMouseEvent*>(we->event());
-            canvas->fotoDragDrop(me);
-            }
-   public:
-      FotoDragDropTransition(ScoreView* c)
-         : QMouseEventTransition(c, QEvent::MouseButtonPress, Qt::LeftButton), canvas(c)
-            {
-            setModifierMask(Qt::KeyboardModifiers(Qt::ShiftModifier | Qt::ControlModifier));
-            }
-      };
-
-//---------------------------------------------------------
-//   setupFotoMode
-//---------------------------------------------------------
-
-void ScoreView::setupFotoMode()
-      {
-      QState* s = states[FOTOMODE];
-      s->assignProperty(this, "cursor", QCursor(Qt::ArrowCursor));
-      s->addTransition(new CommandTransition("escape", states[NORMAL]));    // ->normal
-      s->addTransition(new CommandTransition("fotomode", states[NORMAL]));  // ->normal
-      s->addTransition(new ScoreViewDragTransition(this, states[DRAG]));    // ->stateDrag
-
-      QState* f1 = new QState(s);
-      f1->setObjectName("foto-normal");
-      connect(f1, SIGNAL(entered()), SLOT(enterState()));
-      connect(f1, SIGNAL(exited()), SLOT(exitState()));
-
-      //
-      // in the f2 state the canvas is dragged
-      //
-      QState* f2 = new QState(s);
-      f2->setObjectName("foto-drag");
-      connect(f2, SIGNAL(entered()), SLOT(enterState()));
-      connect(f2, SIGNAL(exited()), SLOT(exitState()));
-
-      //
-      // state f3 draws the foto rectangle
-      //
-      QState* f3 = new QState(s);
-      f3->setObjectName("foto-frame");
-      connect(f3, SIGNAL(entered()), SLOT(enterState()));
-      connect(f3, SIGNAL(exited()), SLOT(exitState()));
-
-      //
-      // f4 drags the foto rectangle grips
-      //
-      QState* f4 = new QState(s);
-      f4->setObjectName("foto-drag-edit");
-      connect(f4, SIGNAL(entered()), SLOT(enterState()));
-      connect(f4, SIGNAL(exited()), SLOT(exitState()));
-
-      //
-      // f5 drags the foto rectangle itself
-      //
-      QState* f5 = new QState(s);
-      f5->setObjectName("foto-drag-rect");
-      connect(f5, SIGNAL(entered()), SLOT(enterState()));
-      connect(f5, SIGNAL(exited()), SLOT(exitState()));
-
-      f1->assignProperty(this, "cursor", QCursor(Qt::ArrowCursor));
-      f1->addTransition(new FotoScoreViewDragTransition(this,   f2));   // ->stateDrag
-      f1->addTransition(new FotoFrameTransition(this,           f3));   // ->stateLasso
-      f1->addTransition(new FotoEditElementDragTransition(this, f4));   // ->editDrag
-      f1->addTransition(new FotoScoreViewDragRectTransition(this, f5)); // ->foto-drag-rect
-      f1->addTransition(new FotoContextTransition(this));               // context menu
-      f1->addTransition(new FotoDragDropTransition(this));
-
-      // drag canvas in foto state
-      f2->assignProperty(this, "cursor", QCursor(Qt::SizeAllCursor));
-      QEventTransition* cl = new QEventTransition(this, QEvent::MouseButtonRelease);
-      cl->setTargetState(f1);
-      f2->addTransition(cl);
-      f2->addTransition(new DragTransition(this));
-
-      // drag foto frame
-      f3->assignProperty(this, "cursor", QCursor(Qt::ArrowCursor));
-      cl = new QEventTransition(this, QEvent::MouseButtonRelease);
-      cl->setTargetState(f1);
-      f3->addTransition(cl);
-      f3->addTransition(new class FotoDragTransition(this));
-      connect(f3, SIGNAL(entered()), SLOT(startFotoDrag()));
-      connect(f3, SIGNAL(exited()),  SLOT(endFotoDrag()));
-
-      // foto drag edit state
-      f4->assignProperty(this, "cursor", QCursor(Qt::ArrowCursor));
-      cl = new QEventTransition(this, QEvent::MouseButtonRelease);
-      cl->setTargetState(f1);
-      f4->addTransition(cl);
-      f4->addTransition(new FotoDragEditTransition(this));
-      connect(f4, SIGNAL(exited()), SLOT(endFotoDragEdit()));
-
-      f5->assignProperty(this, "cursor", QCursor(Qt::SizeAllCursor));
-      cl = new QEventTransition(this, QEvent::MouseButtonRelease);
-      cl->setTargetState(f1);
-      f5->addTransition(cl);
-      f5->addTransition(new class FotoDragRectTransition(this));
-
-      s->setInitialState(f1);
-      s->addTransition(new ScoreViewDragTransition(this, f2));
-
-      connect(s, SIGNAL(entered()), SLOT(startFotomode()));
-      connect(s, SIGNAL(exited()),  SLOT(stopFotomode()));
+      setVisible(false);
       }
 
 //---------------------------------------------------------
-//   startFotomode
+//   endEdit
+//---------------------------------------------------------
+
+void FotoLasso::endEdit(EditData&)
+      {
+      setVisible(false);
+      }
+
+//---------------------------------------------------------
+//   updateGrips
+//---------------------------------------------------------
+
+void FotoLasso::updateGrips(EditData& ed) const
+      {
+      Lasso::updateGrips(ed);
+      }
+
+//---------------------------------------------------------
+//   drawEditMode
+//---------------------------------------------------------
+
+void FotoLasso::drawEditMode(QPainter* p, EditData& ed)
+      {
+      QPointF pos(canvasPos());
+      p->translate(pos);
+      draw(p);
+      p->translate(-pos);
+      Lasso::drawEditMode(p, ed);
+      }
+
+//---------------------------------------------------------
+//   startFotoMode
 //---------------------------------------------------------
 
 void ScoreView::startFotomode()
       {
-      editObject = _foto;
-      _foto->startEdit(this, QPointF());
-      qreal w = 8.0 / _matrix.m11();
-      qreal h = 8.0 / _matrix.m22();
-      QRectF r(-w*.5, -h*.5, w, h);
-
-      if (_foto->rect().isEmpty()) {
-            qreal w = width() / _matrix.m11();
-            qreal h = height() / _matrix.m22();
-            _foto->setRect(QRectF(w * .3, h * .3, w * .4, h * .4));
+      if (!_foto)
+            _foto = new FotoLasso(_score);
+      else
+            _foto->setScore(_score);
+      QRectF view = toLogical(QRect(0.0, 0.0, width(), height()));
+      if (_foto->bbox().isEmpty() || !view.intersects(_foto->bbox())) {
+            // rect not found - construct new rect with default size & relative position
+            qreal w = view.width();
+            qreal h = view.height();
+            QRectF r(w * .3, h * .3, w * .4, h * .4);
+            // convert to absolute position
+            _foto->setbbox(toPhysical(r));
             }
-      for (int i = 0; i < MAX_GRIPS; ++i)
-            grip[i] = r;
-      curGrip = 0;
-      updateGrips();
-      _score->addRefresh(_foto->abbox());
-      _score->end();
-      mscore->changeState(STATE_FOTO);
+      _foto->setFlag(ElementFlag::MOVABLE, true);
+      _foto->setVisible(true);
+      _score->select(_foto);
+      editData.element = _foto;
+      QAction* a = getAction("fotomode");
+      a->setChecked(true);
+      startEdit();
       }
 
 //---------------------------------------------------------
@@ -368,11 +113,8 @@ void ScoreView::stopFotomode()
       {
       QAction* a = getAction("fotomode");
       a->setChecked(false);
-
-      editObject = 0;
-      grips      = 0;
-
-      _foto->endEdit();
+      _foto->setVisible(false);
+      endEdit();
       update();
       }
 
@@ -383,8 +125,8 @@ void ScoreView::stopFotomode()
 void ScoreView::startFotoDrag()
       {
       _score->addRefresh(_foto->abbox());
-      _score->end();
-      grips = 0;
+      _score->update();
+      editData.grips = 0;
       }
 
 //---------------------------------------------------------
@@ -394,12 +136,16 @@ void ScoreView::startFotoDrag()
 
 void ScoreView::doDragFoto(QMouseEvent* ev)
       {
+      _foto->setOffset(QPointF(0.0, 0.0));
       QPointF p = toLogical(ev->pos());
-      QRectF r;
-      r.setCoords(data.startMove.x(), data.startMove.y(), p.x(), p.y());
-      _foto->setRect(r.normalized());
+      QPointF sm = editData.startMove;
 
-      QRectF rr(_foto->rect());
+      QRectF r;
+      r.setCoords(sm.x(), sm.y(), p.x(), p.y());
+
+      _foto->setbbox(r.normalized());
+
+      QRectF rr(_foto->bbox());
       r = _matrix.mapRect(rr);
       //QSize sz(r.size().toSize());
       //mscore->statusBar()->showMessage(QString("%1 x %2").arg(sz.width()).arg(sz.height()), 3000);
@@ -417,12 +163,13 @@ void ScoreView::endFotoDrag()
       qreal w = 8.0 / _matrix.m11();
       qreal h = 8.0 / _matrix.m22();
       QRectF r(-w*.5, -h*.5, w, h);
+      editData.grip.resize(8);
       for (int i = 0; i < 8; ++i)
-            grip[i] = r;
-      editObject = _foto;
+            editData.grip[i] = r;
+      editData.element = _foto;
       updateGrips();
       _score->setUpdateAll();
-      _score->end();
+      _score->update();
       }
 
 //---------------------------------------------------------
@@ -432,19 +179,16 @@ void ScoreView::endFotoDrag()
 void ScoreView::doFotoDragEdit(QMouseEvent* ev)
       {
       QPointF p     = toLogical(ev->pos());
-      QPointF delta = p - data.startMove;
-      _score->setLayoutAll(false);
+      QPointF delta = p - editData.startMove;
       score()->addRefresh(_foto->abbox());
-      EditData ed;
-      ed.curGrip = curGrip;
-      ed.delta   = delta;
-      ed.view    = this;
-      _foto->editDrag(ed);
+
+      editData.delta   = delta;
+      _foto->editDrag(editData);
       updateGrips();
-      data.startMove = p;
-      _score->end();
+      editData.startMove = p;
+      _score->update();
       if (mscore->inspector())
-            mscore->inspector()->setElement(_foto);
+            mscore->inspector()->update(_foto->score());
       }
 
 //---------------------------------------------------------
@@ -461,12 +205,12 @@ void ScoreView::endFotoDragEdit()
 
 bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
       {
-      data.startMove = imatrix.map(QPointF(ev->pos()));
+      editData.startMove = imatrix.map(QPointF(ev->pos()));
       int i;
-      for (i = 0; i < grips; ++i) {
-            if (grip[i].contains(data.startMove)) {
-                  curGrip = i;
-                  switch(curGrip) {
+      for (i = 0; i < editData.grips; ++i) {
+            if (editData.grip[i].contains(editData.startMove)) {
+                  editData.curGrip = Grip(i);
+                  switch (int(editData.curGrip)) {
                         case 0:
                         case 2:
                               setCursor(Qt::SizeFDiagCursor);
@@ -485,11 +229,11 @@ bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
                               break;
                         }
                   updateGrips();
-                  score()->end();
+                  score()->update();
                   break;
                   }
             }
-      return i != grips;
+      return i != editData.grips;
       }
 
 //---------------------------------------------------------
@@ -499,13 +243,13 @@ bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
 bool ScoreView::fotoScoreViewDragTest(QMouseEvent* me)
       {
       QPointF p(imatrix.map(QPointF(me->pos())));
-      if (_foto->rect().contains(p))
+      if (_foto->bbox().contains(p))
             return false;
-      for (int i = 0; i < grips; ++i) {
-            if (grip[i].contains(p))
+      for (int i = 0; i < editData.grips; ++i) {
+            if (editData.grip[i].contains(p))
                   return false;
             }
-      data.startMove = p;
+      editData.startMove = p;
       return true;
       }
 
@@ -516,13 +260,13 @@ bool ScoreView::fotoScoreViewDragTest(QMouseEvent* me)
 bool ScoreView::fotoScoreViewDragRectTest(QMouseEvent* me)
       {
       QPointF p(toLogical(me->pos()));
-      if (!_foto->rect().contains(p))
+      if (!_foto->bbox().contains(p))
             return false;
-      for (int i = 0; i < grips; ++i) {
-            if (grip[i].contains(p))
+      for (int i = 0; i < editData.grips; ++i) {
+            if (editData.grip[i].contains(p))
                   return false;
             }
-      data.startMove = p;
+      editData.startMove = p;
       return true;
       }
 
@@ -533,16 +277,15 @@ bool ScoreView::fotoScoreViewDragRectTest(QMouseEvent* me)
 void ScoreView::doDragFotoRect(QMouseEvent* ev)
       {
       QPointF p(toLogical(ev->pos()));
-      QPointF delta = p - data.startMove;
-      _score->setLayoutAll(false);
+      QPointF delta = p - editData.startMove;
       score()->addRefresh(_foto->abbox());
-      _foto->setRect(_foto->rect().translated(delta));
+      _foto->setbbox(_foto->bbox().translated(delta));
       score()->addRefresh(_foto->abbox());
-      data.startMove = p;
+      editData.startMove = p;
       updateGrips();
-      _score->end();
+      _score->update();
       if (mscore->inspector())
-            mscore->inspector()->setElement(_foto);
+            mscore->inspector()->update(_foto->score());
       }
 
 //---------------------------------------------------------
@@ -578,27 +321,32 @@ void ScoreView::fotoContextPopup(QContextMenuEvent* ev)
       QMenu* popup = new QMenu(this);
       popup->setSeparatorsCollapsible(false);
       QAction* a = popup->addSeparator();
-      a->setText(tr("Screenshot Mode"));
+      a->setText(tr("Image Capture"));
 
       a = getAction("copy");
-      a->setEnabled(true);
+      popup->addAction(a);
+      a = new QAction(tr("Copy with Link to Score"), this);
+      a->setData("copy-link");
       popup->addAction(a);
 
       popup->addSeparator();
-      a = popup->addAction(QString(tr("Resolution (%1 DPI)...")).arg(preferences.pngResolution));
+      a = popup->addAction(tr("Resolution (%1 DPI)…").arg(preferences.getDouble(PREF_EXPORT_PNG_RESOLUTION)));
       a->setData("set-res");
-      QAction* bgAction = popup->addAction(tr("transparent background"));
+      QAction* bgAction = popup->addAction(tr("Transparent background"));
       bgAction->setCheckable(true);
-      bgAction->setChecked(preferences.pngTransparent);
+      bgAction->setChecked(preferences.getBool(PREF_EXPORT_PNG_USETRANSPARENCY));
       bgAction->setData("set-bg");
 
       popup->addSeparator();
+      a = new QAction(tr("Auto-resize to page"), this);
+      a->setData("resizePage");
+      popup->addAction(a);
       for (int i = 0; i < 4; ++i) {
             a = new QAction(qApp->translate("fotomode", resizeEntry[i].text), this);
             a->setData(resizeEntry[i].label);
             popup->addAction(a);
             }
-      QMenu* setSize = new QMenu(tr("Set Standard Size..."));
+      QMenu* setSize = new QMenu(tr("Set Standard Size…"));
       for (int i = 0; i < 4; ++i) {
             a = new QAction(qApp->translate("fotomode", setSizeEntry[i].text), this);
             a->setData(setSizeEntry[i].label);
@@ -607,10 +355,10 @@ void ScoreView::fotoContextPopup(QContextMenuEvent* ev)
       popup->addMenu(setSize);
 
       popup->addSeparator();
-      a = new QAction(tr("Save As (print mode)..."), this);
+      a = new QAction(tr("Save As (Print Mode)…"), this);
       a->setData("print");
       popup->addAction(a);
-      a = new QAction(tr("Save As (screenshot mode)..."), this);
+      a = new QAction(tr("Save As (Screenshot Mode)…"), this);
       a->setData("screenshot");
       popup->addAction(a);
 
@@ -619,64 +367,114 @@ void ScoreView::fotoContextPopup(QContextMenuEvent* ev)
             return;
       QString cmd(a->data().toString());
       if (cmd == "print")
-            saveFotoAs(true, _foto->rect());
+            saveFotoAs(true, _foto->canvasBoundingRect());
       else if (cmd == "screenshot")
-            saveFotoAs(false, _foto->rect());
-      else if (cmd == "copy") {
-            QMimeData* mimeData = new QMimeData;
-
-            // oowriter wants transparent==false
-            bool transparent = false; // preferences.pngTransparent;
-            double convDpi   = preferences.pngResolution;
-            double mag       = convDpi / MScore::DPI;
-
-            QRectF r(_foto->rect());
-
-            int w = lrint(r.width()  * mag);
-            int h = lrint(r.height() * mag);
-
-            QImage::Format f;
-            f = QImage::Format_ARGB32_Premultiplied;
-            QImage printer(w, h, f);
-            printer.setDotsPerMeterX(lrint(MScore::DPMM * 1000.0));
-            printer.setDotsPerMeterY(lrint(MScore::DPMM * 1000.0));
-            printer.fill(transparent ? 0 : 0xffffffff);
-            QPainter p(&printer);
-            paintRect(true, p, r, mag);
-            p.end();
-            mimeData->setImageData(printer);
-            QApplication::clipboard()->setMimeData(mimeData);
-            }
+            saveFotoAs(false, _foto->canvasBoundingRect());
+      else if (cmd == "copy")
+            ;
+      else if (cmd == "copy-link")
+            fotoModeCopy(true);
       else if (cmd == "set-res") {
             bool ok;
             double resolution = QInputDialog::getDouble(this,
-               tr("MuseScore: Set Output Resolution"),
-               tr("Set output resolution for PNG/SVG"),
-               preferences.pngResolution,
+               tr("Set Output Resolution"),
+               tr("Set output resolution for PNG"),
+               preferences.getDouble(PREF_EXPORT_PNG_RESOLUTION),
                16.0, 2400.0, 1,
                &ok
                );
             if (ok) {
-                  preferences.pngResolution = resolution;
-                  preferences.dirty = true;
+                  preferences.setPreference(PREF_EXPORT_PNG_RESOLUTION, resolution);
+                  }
+            }
+      else if (cmd == "resizePage") {
+            QRectF r = _foto->bbox();
+            Page* page = point2page(r.center());
+            if (page) {
+                  r = page->tbbox().translated(page->canvasPos());
+                  _foto->setbbox(r);
+                  updateGrips();
                   }
             }
       else if (cmd.startsWith("resize")) {
             QString size = QSettings().value(QString("fotoSize%1").arg(cmd[6]), "50x40").toString();
             qreal w = size.split("x")[0].toDouble();
             qreal h = size.split("x")[1].toDouble();
-            _foto->setSize(w * MScore::DPMM, h * MScore::DPMM);
+            _foto->bbox().setSize(QSizeF(w * DPMM, h * DPMM));
             updateGrips();
             }
       else if (cmd.startsWith("set")) {
-            qreal w   = _foto->rect().width() / MScore::DPMM;
-            qreal h   = _foto->rect().height() / MScore::DPMM;
+            qreal w   = _foto->bbox().width() / DPMM;
+            qreal h   = _foto->bbox().height() / DPMM;
             QString val(QString("%1x%2").arg(w).arg(h));
             QSettings().setValue(QString("fotoSize%1").arg(cmd[3]), val);
             }
-      if (bgAction->isChecked() != preferences.pngTransparent) {
-            preferences.pngTransparent = bgAction->isChecked();
-            preferences.dirty = true;
+      if (bgAction->isChecked() != preferences.getBool(PREF_EXPORT_PNG_USETRANSPARENCY)) {
+            preferences.setPreference(PREF_EXPORT_PNG_USETRANSPARENCY, bgAction->isChecked());
+            }
+      }
+
+//---------------------------------------------------------
+//   getRectImage
+//---------------------------------------------------------
+
+QImage ScoreView::getRectImage(const QRectF& rect, double dpi, bool transparent, bool printMode)
+      {
+      const double mag = dpi / DPI;
+      const int w = lrint(rect.width()  * mag);
+      const int h = lrint(rect.height() * mag);
+
+      QImage::Format f = QImage::Format_ARGB32_Premultiplied;
+      QImage img(w, h, f);
+      img.setDotsPerMeterX(lrint((dpi * 1000) / INCH));
+      img.setDotsPerMeterY(lrint((dpi * 1000) / INCH));
+      img.fill(transparent ? 0 : 0xffffffff);
+
+      const auto pr = MScore::pixelRatio;
+      MScore::pixelRatio = 1.0 / mag;
+      QPainter p(&img);
+      paintRect(printMode, p, rect, mag);
+      MScore::pixelRatio = pr;
+
+      return img;
+      }
+
+//---------------------------------------------------------
+//   fotoModeCopy
+//---------------------------------------------------------
+
+void ScoreView::fotoModeCopy(bool includeLink)
+      {
+#if defined(Q_OS_WIN)
+      // See https://bugreports.qt.io/browse/QTBUG-11463
+      // while transparent copy/paste works fine inside musescore,
+      // it does not paste into other programs in Windows though
+      bool transparent = false; // preferences.getBool(PREF_EXPORT_PNG_USETRANSPARENCY);
+#else
+      bool transparent = preferences.getBool(PREF_EXPORT_PNG_USETRANSPARENCY);
+#endif
+      double convDpi   = preferences.getDouble(PREF_EXPORT_PNG_RESOLUTION);
+      QRectF r(_foto->canvasBoundingRect());
+
+      QImage printer(getRectImage(r, convDpi, transparent, /* printMode */ true));
+      QApplication::clipboard()->clear();
+
+      if (includeLink) {
+            QUrl url = QUrl::fromLocalFile(score()->masterScore()->fileInfo()->canonicalFilePath());
+            QByteArray imageData;
+            QBuffer buffer(&imageData);
+            buffer.open(QIODevice::WriteOnly);
+            printer.save(&buffer, "PNG");
+            buffer.close();
+            QString html = "<a href=\"" + url.toString() + "\"><img src=\"data:image/png," + imageData.toPercentEncoding() + "\" /></a>";
+            QMimeData *data = new QMimeData;
+            data->setHtml(html);
+            QApplication::clipboard()->setMimeData(data);
+            // TODO: add both, with priority to html
+            //QApplication::clipboard()->setImage(printer);
+            }
+      else {
+            QApplication::clipboard()->setImage(printer);
             }
       }
 
@@ -687,12 +485,12 @@ void ScoreView::fotoContextPopup(QContextMenuEvent* ev)
 bool ScoreView::fotoRectHit(const QPoint& pos)
       {
       QPointF p = toLogical(pos);
-      for (int i = 0; i < grips; ++i) {
-            if (grip[i].contains(p))
+      for (int i = 0; i < editData.grips; ++i) {
+            if (editData.grip[i].contains(p))
                   return false;
             }
-      data.startMove = p;
-      return _foto->rect().contains(p);
+      editData.startMove = p;
+      return _foto->bbox().contains(p);
       }
 
 //---------------------------------------------------------
@@ -703,9 +501,9 @@ bool ScoreView::fotoRectHit(const QPoint& pos)
 bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
       {
       QStringList fl;
-      fl.append(tr("PNG Bitmap Graphic (*.png)"));
-      fl.append(tr("PDF File (*.pdf)"));
-      fl.append(tr("Scalable Vector Graphic (*.svg)"));
+      fl.append(tr("PNG Bitmap Graphic") + " (*.png)");
+      fl.append(tr("PDF File") + " (*.pdf)");
+      fl.append(tr("Scalable Vector Graphics") + " (*.svg)");
 
       QString selectedFilter;
       QString filter = fl.join(";;");
@@ -725,14 +523,16 @@ bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
             int idx = fl.indexOf(selectedFilter);
             if (idx != -1) {
                   static const char* extensions[] = {
-                        "png", "pdf", "svg"
+                        "png",
+                        "pdf",
+                        "svg"
                         };
                   ext = extensions[idx];
                   }
             }
 
       if (ext.isEmpty()) {
-            QMessageBox::critical(mscore, tr("MuseScore: Save As"), tr("cannot determine file type"));
+            QMessageBox::critical(mscore, tr("Save As"), tr("Cannot determine file type"));
             return false;
             }
 
@@ -740,51 +540,54 @@ bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
       if (fi.suffix().toLower() != ext)
             fn += "." + ext;
 
-      bool transparent = preferences.pngTransparent;
-      double convDpi   = preferences.pngResolution;
-      double mag       = convDpi / MScore::DPI;
+      bool transparent = preferences.getBool(PREF_EXPORT_PNG_USETRANSPARENCY);
+      double convDpi   = preferences.getDouble(PREF_EXPORT_PNG_RESOLUTION);
+      double mag       = convDpi / DPI;
+
+      if (ext == "svg")
+            mag = 1; // SVG is not scaled, it's scalable.
 
       int w = lrint(r.width()  * mag);
       int h = lrint(r.height() * mag);
 
+      double pr = MScore::pixelRatio;
       if (ext == "pdf") {
-            QPrinter printer(QPrinter::HighResolution);
-            mag = printer.logicalDpiX() / MScore::DPI;
-            printer.setPaperSize(QSizeF(r.width() * mag, r.height() * mag) , QPrinter::DevicePixel);
-            printer.setCreator("MuseScore Version: " VERSION);
-            printer.setFullPage(true);
-            printer.setColorMode(QPrinter::Color);
-            printer.setDocName(fn);
-            printer.setOutputFileName(fn);
-            if (ext == "pdf")
-                  printer.setOutputFormat(QPrinter::PdfFormat);
-            QPainter p(&printer);
+            QPdfWriter pdfWriter(fn);
+            pdfWriter.setResolution(preferences.getInt(PREF_EXPORT_PDF_DPI));
+            mag = pdfWriter.logicalDpiX() / DPI;
+            QSizeF size(r.width() / DPI, r.height() / DPI);
+            QPageSize ps(size, QPageSize::Inch, "", QPageSize::ExactMatch);
+            pdfWriter.setPageSize(ps);
+            pdfWriter.setPageMargins(QMarginsF(0.0, 0.0, 0.0, 0.0));
+            pdfWriter.setCreator("MuseScore Version: " VERSION);
+            pdfWriter.setTitle(fn);
+            MScore::pixelRatio = DPI / pdfWriter.logicalDpiX();
+            QPainter p(&pdfWriter);
+            MScore::pdfPrinting = true;
             paintRect(printMode, p, r, mag);
+            MScore::pdfPrinting = false;
             }
       else if (ext == "svg") {
             // note that clipping is not implemented
             // (as of 4.8)
             SvgGenerator printer;
-            printer.setResolution(int(convDpi));
             printer.setFileName(fn);
+            printer.setTitle(_score->title());
             printer.setSize(QSize(w, h));
             printer.setViewBox(QRect(0, 0, w, h));
-            printer.setDescription("created with MuseScore " VERSION);
+            MScore::pixelRatio = DPI / printer.logicalDpiX();
             QPainter p(&printer);
+            MScore::pdfPrinting = true;
             paintRect(printMode, p, r, mag);
+            MScore::pdfPrinting = false;
             }
       else if (ext == "png") {
-            QImage::Format f = QImage::Format_ARGB32_Premultiplied;
-            QImage printer(w, h, f);
-            printer.setDotsPerMeterX(lrint((convDpi * 1000) / INCH));
-            printer.setDotsPerMeterY(lrint((convDpi * 1000) / INCH));
-            printer.fill(transparent ? 0 : 0xffffffff);
-            QPainter p(&printer);
-            paintRect(printMode, p, r, mag);
+            QImage printer(getRectImage(r, convDpi, transparent, printMode));
             printer.save(fn, "png");
             }
       else
             qDebug("unknown extension <%s>", qPrintable(ext));
+      MScore::pixelRatio = pr;
       return true;
       }
 
@@ -810,8 +613,7 @@ void ScoreView::paintRect(bool printMode, QPainter& p, const QRectF& r, double m
                   break;
             p.translate(page->pos());
             QList<Element*> ell = page->items(r.translated(-page->pos()));
-            qStableSort(ell.begin(), ell.end(), elementLessThan);
-            drawElements(p, ell);
+            drawElements(p, ell, nullptr);
             p.translate(-page->pos());
             }
 
@@ -826,7 +628,7 @@ void ScoreView::paintRect(bool printMode, QPainter& p, const QRectF& r, double m
 void ScoreView::fotoDragDrop(QMouseEvent*)
       {
       bool printMode   = true;
-      QRectF r(_foto->rect());
+      QRectF r(_foto->bbox());
 
       QTemporaryFile tf(QDir::tempPath() + QString("/imgXXXXXX.svg"));
       tf.setAutoRemove(false);
@@ -837,17 +639,17 @@ void ScoreView::fotoDragDrop(QMouseEvent*)
 //      QString fn = "/home/ws/mops.eps";
       QString fn = tf.fileName();
 
+      int w = lrint(r.width());
+      int h = lrint(r.height());
       SvgGenerator printer;
-      double convDpi   = preferences.pngResolution;
-      double mag       = convDpi / MScore::DPI;
-      printer.setResolution(int(convDpi));
       printer.setFileName(fn);
-      printer.setSize(QSize(r.width() * mag, r.height() * mag));
-      printer.setViewBox(QRect(0, 0, r.width() * mag, r.height() * mag));
-      printer.setDescription("created with MuseScore " VERSION);
-
+      printer.setTitle(_score->title());
+      printer.setSize(QSize(w, h));
+      printer.setViewBox(QRect(0, 0, w, h));
       QPainter p(&printer);
-      paintRect(printMode, p, r, mag);
+      MScore::pdfPrinting = true;
+      paintRect(printMode, p, r, 1);
+      MScore::pdfPrinting = false;
 
       QDrag* drag = new QDrag(this);
       QMimeData* mimeData = new QMimeData;

@@ -22,13 +22,16 @@ namespace Ms {
 //    locates the key sig currently in effect at tick
 //---------------------------------------------------------
 
-Key KeyList::key(int tick) const
+KeySigEvent KeyList::key(int tick) const
       {
+      KeySigEvent ke;
+      ke.setKey(Key::C);
+
       if (empty())
-            return Key::C;
+            return ke;
       auto i = upper_bound(tick);
       if (i == begin())
-            return Key::C;
+            return ke;
       return (--i)->second;
       }
 
@@ -36,37 +39,28 @@ Key KeyList::key(int tick) const
 //   setKey
 //---------------------------------------------------------
 
-void KeyList::setKey(int tick, Key k)
+void KeyList::setKey(int tick, KeySigEvent k)
       {
-      if (key(tick) == k)
-            return;
-      if (tick > 0 && key(tick-1) == k)
-            erase(tick);
-      else  {
-            auto i = find(tick);
-            if (i == end())
-                  insert(std::pair<int, Key>(tick, k));
-            else
-                  i->second = k;
-            }
-
+      auto i = find(tick);
+      if (i == end())
+            insert(std::pair<int, KeySigEvent>(tick, k));
+      else
+            i->second = k;
       }
 
 //---------------------------------------------------------
 //   nextKeyTick
 //
 //    return the tick at which the key sig after tick is located
-//    return 0, if no such a key sig
+//    return -1, if no such a key sig
 //---------------------------------------------------------
 
 int KeyList::nextKeyTick(int tick) const
       {
       if (empty())
-            return 0;
+            return -1;
       auto i = upper_bound(tick+1);
-      if (i == end())
-            return 0;
-      return i->first;
+      return i == end() ? -1 : i->first;
       }
 
 //---------------------------------------------------------
@@ -75,16 +69,19 @@ int KeyList::nextKeyTick(int tick) const
 //    returns the key before the current key for tick
 //---------------------------------------------------------
 
-Key KeyList::prevKey(int tick) const
+KeySigEvent KeyList::prevKey(int tick) const
       {
+      KeySigEvent kc;
+      kc.setKey(Key::C);
+
       if (empty())
-            return Key::C;
+            return kc;
       auto i = upper_bound(tick);
       if (i == begin())
-            return Key::C;
+            return kc;
       --i;
       if (i == begin())
-            return Key::C;
+            return kc;
       return (--i)->second;
       }
 
@@ -120,7 +117,9 @@ void KeyList::read(XmlReader& e, Score* cs)
                         k = Key::C;      // ke.setCustomType(e.intAttribute("custom"));
                   else
                         k = Key(e.intAttribute("idx"));
-                  (*this)[cs->fileDivision(tick)] = k;
+                  KeySigEvent ke;
+                  ke.setKey(k);
+                  (*this)[cs->fileDivision(tick)] = ke;
                   e.readNext();
                   }
             else

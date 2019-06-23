@@ -1,7 +1,6 @@
 //=============================================================================
 //  MusE Score
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2011 Werner Schweer and others
 //
@@ -17,6 +16,8 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 //=============================================================================
+
+#if 0
 
 #ifndef __WEBPAGE_H__
 #define __WEBPAGE_H__
@@ -34,7 +35,7 @@ class MuseScore;
 
 class MyNetworkAccessManager: public QNetworkAccessManager
       {
-      Q_OBJECT
+      //Q_OBJECT
 
    public:
       MyNetworkAccessManager(QObject *parent) : QNetworkAccessManager(parent) {}
@@ -54,7 +55,7 @@ class MyNetworkAccessManager: public QNetworkAccessManager
 
 class MyWebPage: public QWebPage
       {
-      Q_OBJECT
+      //Q_OBJECT
 
    protected:
       QObject *createPlugin(
@@ -105,7 +106,7 @@ class MyWebView: public QWebView
 
 class WebPageDockWidget : public QDockWidget
       {
-      Q_OBJECT
+      //Q_OBJECT
 
       MyWebView* web;
 
@@ -125,7 +126,7 @@ class WebPageDockWidget : public QDockWidget
 
 class CookieJar : public QNetworkCookieJar
       {
-      Q_OBJECT
+      //Q_OBJECT
 
     public:
       CookieJar(QString path, QObject *parent = 0);  //load cookie
@@ -142,7 +143,7 @@ class CookieJar : public QNetworkCookieJar
 
 class WebScoreView : public ScoreView
       {
-      Q_OBJECT
+      //Q_OBJECT
       QNetworkAccessManager* networkManager;
 
    private slots:
@@ -158,4 +159,4 @@ Q_DECLARE_METATYPE(WebScoreView);
 #endif
 }
 #endif
-
+#endif

@@ -10,32 +10,39 @@
 //  the file LICENCE.GPL
 //=============================================================================
 
+#ifndef __DOWNLOAD_UTILS_H__
+#define __DOWNLOAD_UTILS_H__
+
 namespace Ms {
 
 class DownloadUtils : public QObject
-   {
+      {
       Q_OBJECT
 
-      private:
-          QByteArray sdata;
-          QNetworkAccessManager manager;
-          QString _target;
-          QString _localFile;
+      QByteArray sdata;
+      QNetworkAccessManager manager;
+      QString _target;
+      QString _localFile;
 
-      public:
-          explicit DownloadUtils(QWidget *parent=0);
+      QProgressDialog* progressDialog = nullptr;
 
-          void setTarget(const QString& t)      { _target = t; }
-          void setLocalFile(const QString& t)   { _localFile = t; }
-          bool saveFile();
-          QByteArray returnData();
+   public:
+      explicit DownloadUtils(QWidget *parent=0);
 
-      signals:
-          void done();
+      void setTarget(const QString& t)      { _target = t; }
+      void setLocalFile(const QString& t)   { _localFile = t; }
+      bool saveFile();
+      QByteArray returnData();
 
-      public slots:
-          void download();
-          void downloadFinished(QNetworkReply* data);
-          void downloadProgress(qint64 recieved, qint64 total);
-   };
+   signals:
+      void done();
+
+   public slots:
+      void download(bool showProgress = false);
+      void downloadFinished(QNetworkReply* data);
+      void downloadProgress(qint64 received, qint64 total);
+      };
 }
+
+#endif
+

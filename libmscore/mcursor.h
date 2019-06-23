@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id:$
 //
 //  Copyright (C) 2012 Werner Schweer
 //
@@ -18,6 +17,7 @@
 
 namespace Ms {
 
+class MasterScore;
 class Score;
 class TDuration;
 class Fraction;
@@ -30,15 +30,15 @@ enum class Key;
 //---------------------------------------------------------
 
 class MCursor {
-      Score* _score;
-      int _tick;
+      MasterScore* _score;
+      Fraction _tick;
       int _track;
       Fraction _sig;
 
       void createMeasures();
 
    public:
-      MCursor(Score* s = 0);
+      MCursor(MasterScore* s = 0);
       void createScore(const QString& s);
       void saveScore();
 
@@ -47,10 +47,10 @@ class MCursor {
       void addKeySig(Key);
       TimeSig* addTimeSig(const Fraction&);
 
-      void move(int track, int tick);
-      Score* score() const    { return _score; }
-      void setScore(Score* s) { _score = s;    }
-      void setTimeSig(Fraction f) { _sig = f; }
+      void move(int track, const Fraction& tick);
+      MasterScore* score() const    { return _score; }
+      void setScore(MasterScore* s) { _score = s;    }
+      void setTimeSig(Fraction f)   { _sig = f; }
       };
 
 

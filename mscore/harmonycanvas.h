@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Linux Music Score Editor
-//  $Id:$
 //
 //  Copyright (C) 2009-2011 Werner Schweer and others
 //
@@ -55,7 +54,7 @@ class HarmonyCanvas : public QFrame {
       virtual void dragLeaveEvent(QDragLeaveEvent*);
       virtual void dragMoveEvent(QDragMoveEvent*);
 
-      void render(const QList<RenderAction>&, double& x, double& y, int tpc, NoteSpellingType spelling, bool lowerCase);
+      void render(const QList<RenderAction>&, double&, double&, int, NoteSpellingType, NoteCaseType);
 
    private slots:
       void deleteAction();

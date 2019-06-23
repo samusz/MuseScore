@@ -1,7 +1,6 @@
 #=============================================================================
 #  MusE
 #  Linux Music Editor
-#  $Id:$
 #
 #  Copyright (C) 2002-2008 by Werner Schweer and others
 #
@@ -24,5 +23,8 @@ install(FILES
       paper3.png
       paper4.png
       paper5.png
+      paper6.png
+      paper7.png
+      background1.png
       DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}wallpaper
       )

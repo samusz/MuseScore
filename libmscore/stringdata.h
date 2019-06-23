@@ -40,25 +40,29 @@ class StringData {
 
       static bool bFretting;
 
-      void sortChordNotes(QMap<int, Note *>& sortedNotes, const Chord* chord, int* count) const;
+      bool        convertPitch(int pitch, int pitchOffset, int* string, int* fret) const;
+      int         fret(int pitch, int string, int pitchOffset) const;
+      int         getPitch(int string, int fret, int pitchOffset) const;
+      void        sortChordNotes(QMap<int, Note *>& sortedNotes, const Chord* chord, int pitchOffset, int* count) const;
 
 public:
       StringData() {}
       StringData(int numFrets, int numStrings, int strings[]);
       StringData(int numFrets, QList<instrString>& strings);
-      bool        convertPitch(int pitch, int* string, int* fret) const;
-      int         fret(int pitch, int string) const;
+      bool        convertPitch(int pitch, Staff* staff, const Fraction& tick, int* string, int* fret) const;
+      int         fret(int pitch, int string, Staff* staff, const Fraction& tick) const;
       void        fretChords(Chord * chord) const;
-      int         getPitch(int string, int fret) const;
-      int         strings() const               { return stringTable.size(); }
-      QList<instrString>  stringList() const    { return stringTable; }
+      int         getPitch(int string, int fret, Staff* staff, const Fraction& tick) const;
+      static int  pitchOffsetAt(Staff* staff, const Fraction& tick);
+      int         strings() const                   { return stringTable.size(); }
+      int         frettedStrings() const;
+      const QList<instrString>&  stringList() const { return stringTable; }
       QList<instrString>&  stringList()         { return stringTable; }
       int         frets() const                 { return _frets; }
       void        setFrets(int val)             { _frets = val; }
       void        read(XmlReader&);
-      void        write(Xml&) const;
-//      void        readMusicXML(XmlReader& de);
-      void        writeMusicXML(Xml& xml) const;
+      void        write(XmlWriter&) const;
+      void        writeMusicXML(XmlWriter& xml) const;
       bool operator==(const StringData& d) const { return d._frets == _frets && d.stringTable == stringTable; }
       };
 

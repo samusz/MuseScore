@@ -15,8 +15,6 @@
 
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 //---------------------------------------------------------
@@ -24,27 +22,19 @@ namespace Ms {
 //---------------------------------------------------------
 
 class Lasso : public Element {
-      Q_OBJECT
-
-      QRectF _rect;
-      MuseScoreView* view;        // valid in edit mode
-
    public:
       Lasso(Score*);
-      virtual Lasso* clone() const        { return new Lasso(*this); }
-      virtual Element::Type type() const  { return Element::Type::LASSO; }
-      virtual void draw(QPainter*) const;
-      virtual bool isEditable() const     { return true; }
-      virtual void editDrag(const EditData&);
-      virtual void updateGrips(int*, int*, QRectF*) const override;
-      QRectF rect() const                 { return _rect; }
-      void setRect(const QRectF& r)       { _rect = r;    }
-      void setSize(qreal w, qreal h)      { _rect.setWidth(w), _rect.setHeight(h); }
-      virtual void layout();
-      virtual void startEdit(MuseScoreView*, const QPointF&);
-      virtual void endEdit();
-      virtual QVariant getProperty(P_ID propertyId) const;
-      virtual bool setProperty(P_ID propertyId, const QVariant&);
+      virtual Lasso* clone() const override        { return new Lasso(*this); }
+      virtual ElementType type() const override    { return ElementType::LASSO; }
+      virtual void draw(QPainter*) const override;
+      virtual bool isEditable() const override     { return true; }
+      virtual void editDrag(EditData&) override;
+      virtual void updateGrips(EditData&) const override;
+      virtual void endDrag(EditData&)              {}
+
+      virtual void startEdit(EditData&) override;
+      virtual QVariant getProperty(Pid propertyId) const override;
+      virtual bool setProperty(Pid propertyId, const QVariant&) override;
       };
 
 

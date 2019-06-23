@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2002-2013 Werner Schweer
+//  Copyright (C) 2002-2017 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -32,11 +32,16 @@
 #include "timesig.h"
 #include "noteevent.h"
 #include "synthesizerstate.h"
-#include "bracket.h"
 #include "dynamic.h"
+#include "staff.h"
 #include "stafftype.h"
 #include "cleflist.h"
 #include "note.h"
+#include "drumset.h"
+#include "rest.h"
+#include "fret.h"
+
+Q_DECLARE_LOGGING_CATEGORY(undoRedo)
 
 namespace Ms {
 
@@ -55,14 +60,12 @@ class Chord;
 class ChordRest;
 class Harmony;
 class SlurTie;
-struct MStaff;
+class MStaff;
 class MeasureBase;
 class Dynamic;
 class Selection;
 class Text;
-struct Channel;
-class PageFormat;
-class TextStyle;
+class Channel;
 class Tuplet;
 class KeySig;
 class TimeSig;
@@ -78,14 +81,12 @@ class Spanner;
 class BarLine;
 enum class ClefType : signed char;
 enum class PlayEventType : char;
+class Excerpt;
+class EditData;
 
-// #define DEBUG_UNDO
+#define UNDO_NAME(a)  virtual const char* name() const override { return a; }
 
-#ifdef DEBUG_UNDO
-#define UNDO_NAME(a)  virtual const char* name() const { return a; }
-#else
-#define UNDO_NAME(a)
-#endif
+enum class LayoutMode : char;
 
 //---------------------------------------------------------
 //   UndoCommand
@@ -95,19 +96,44 @@ class UndoCommand {
       QList<UndoCommand*> childList;
 
    protected:
-      virtual void flip() {}
+      virtual void flip(EditData*) {}
 
    public:
       virtual ~UndoCommand();
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*);
+      virtual void redo(EditData*);
       void appendChild(UndoCommand* cmd) { childList.append(cmd);       }
       UndoCommand* removeChild()         { return childList.takeLast(); }
       int childCount() const             { return childList.size();     }
       void unwind();
-#ifdef DEBUG_UNDO
-      virtual const char* name() const  { return "UndoCommand"; }
-#endif
+      const QList<UndoCommand*>& commands() const { return childList; }
+      virtual void cleanup(bool undo);
+// #ifndef QT_NO_DEBUG
+      virtual const char* name() const { return "UndoCommand"; }
+// #endif
+      };
+
+//---------------------------------------------------------
+//   UndoMacro
+//    A root element for undo macro which is stored
+//    directly in UndoStack
+//---------------------------------------------------------
+
+class UndoMacro : public UndoCommand {
+      InputState undoInputState;
+      InputState redoInputState;
+      Element* undoSelectedElement = nullptr;
+      Element* redoSelectedElement = nullptr;
+      Score* score;
+
+      static Element* selectedElement(const Selection&);
+
+   public:
+      UndoMacro(Score* s);
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
+      bool empty() const { return childCount() == 0; }
+      UNDO_NAME("UndoMacro");
       };
 
 //---------------------------------------------------------
@@ -115,47 +141,38 @@ class UndoCommand {
 //---------------------------------------------------------
 
 class UndoStack {
-      UndoCommand* curCmd;
-      QList<UndoCommand*> list;
+      UndoMacro* curCmd;
+      QList<UndoMacro*> list;
+      std::vector<int> stateList;
+      int nextState;
+      int cleanState;
       int curIdx;
-      int cleanIdx;
+
+      void remove(int idx);
 
    public:
       UndoStack();
       ~UndoStack();
 
       bool active() const           { return curCmd != 0; }
-      void beginMacro();
+      void beginMacro(Score*);
       void endMacro(bool rollback);
-      void push(UndoCommand*);      // push & execute
+      void push(UndoCommand*, EditData*);      // push & execute
       void push1(UndoCommand*);
       void pop();
       void setClean();
       bool canUndo() const          { return curIdx > 0;           }
       bool canRedo() const          { return curIdx < list.size(); }
-      bool isClean() const          { return cleanIdx == curIdx;   }
-      bool isEmpty() const          { return !canUndo() && !canRedo();  }
-      UndoCommand* current() const  { return curCmd;               }
-      void undo();
-      void redo();
-      };
-
-//---------------------------------------------------------
-//   SaveState
-//---------------------------------------------------------
-
-class SaveState : public UndoCommand {
-      InputState undoInputState;
-      InputState redoInputState;
-      Selection  undoSelection;
-      Selection  redoSelection;
-      Score* score;
-
-   public:
-      SaveState(Score*);
-      virtual void undo();
-      virtual void redo();
-      UNDO_NAME("SaveState")
+      int state() const             { return stateList[curIdx];    }
+      bool isClean() const          { return cleanState == state();     }
+      int getCurIdx() const         { return curIdx; }
+      bool empty() const            { return !canUndo() && !canRedo();  }
+      UndoMacro* current() const    { return curCmd;               }
+      UndoMacro* last() const       { return curIdx > 0 ? list[curIdx-1] : 0; }
+      void undo(EditData*);
+      void redo(EditData*);
+      void rollback();
+      void reopen();
       };
 
 //---------------------------------------------------------
@@ -168,8 +185,8 @@ class InsertPart : public UndoCommand {
 
    public:
       InsertPart(Part* p, int i);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("InsertPart")
       };
 
@@ -183,8 +200,8 @@ class RemovePart : public UndoCommand {
 
    public:
       RemovePart(Part*, int idx);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("RemovePart")
       };
 
@@ -198,8 +215,8 @@ class InsertStaff : public UndoCommand {
 
    public:
       InsertStaff(Staff*, int idx);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("InsertStaff")
       };
 
@@ -213,8 +230,8 @@ class RemoveStaff : public UndoCommand {
 
    public:
       RemoveStaff(Staff*);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("RemoveStaff")
       };
 
@@ -229,8 +246,8 @@ class InsertMStaff : public UndoCommand {
 
    public:
       InsertMStaff(Measure*, MStaff*, int);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("InsertMStaff")
       };
 
@@ -245,24 +262,9 @@ class RemoveMStaff : public UndoCommand {
 
    public:
       RemoveMStaff(Measure*, MStaff*, int);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("RemoveMStaff")
-      };
-
-//---------------------------------------------------------
-//   InsertMeasure
-//---------------------------------------------------------
-
-class InsertMeasure : public UndoCommand {
-      MeasureBase* measure;
-      MeasureBase* pos;
-
-   public:
-      InsertMeasure(MeasureBase* nm, MeasureBase* p) : measure(nm), pos(p) {}
-      virtual void undo();
-      virtual void redo();
-      UNDO_NAME("InsertMeasure")
       };
 
 //---------------------------------------------------------
@@ -276,8 +278,8 @@ class InsertStaves : public UndoCommand {
 
    public:
       InsertStaves(Measure*, int, int);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("InsertStaves")
       };
 
@@ -292,8 +294,8 @@ class RemoveStaves : public UndoCommand {
 
    public:
       RemoveStaves(Measure*, int, int);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("RemoveStaves")
       };
 
@@ -308,8 +310,8 @@ class SortStaves : public UndoCommand {
 
    public:
       SortStaves(Score*, QList<int>);
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("SortStaves")
       };
 
@@ -322,7 +324,7 @@ class ChangePitch : public UndoCommand {
       int pitch;
       int tpc1;
       int tpc2;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangePitch(Note* note, int pitch, int tpc1, int tpc2);
@@ -340,7 +342,7 @@ class ChangeFretting : public UndoCommand {
       int fret;
       int tpc1;
       int tpc2;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeFretting(Note* note, int pitch, int string, int fret, int tpc1, int tpc2);
@@ -355,11 +357,12 @@ class ChangeKeySig : public UndoCommand {
       KeySig* keysig;
       KeySigEvent ks;
       bool showCourtesy;
+      bool evtInStaff;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeKeySig(KeySig* k, KeySigEvent newKeySig, bool sc) : keysig(k), ks(newKeySig), showCourtesy(sc) {}
+      ChangeKeySig(KeySig* k, KeySigEvent newKeySig, bool sc, bool addEvtToStaff = true);
       UNDO_NAME("ChangeKeySig")
       };
 
@@ -370,7 +373,7 @@ class ChangeKeySig : public UndoCommand {
 class ChangeMeasureLen : public UndoCommand {
       Measure* measure;
       Fraction len;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeMeasureLen(Measure*, Fraction);
@@ -384,101 +387,11 @@ class ChangeMeasureLen : public UndoCommand {
 class ChangeElement : public UndoCommand {
       Element* oldElement;
       Element* newElement;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeElement(Element* oldElement, Element* newElement);
       UNDO_NAME("ChangeElement")
-      };
-
-//---------------------------------------------------------
-//   ChangeChordRestSize
-//---------------------------------------------------------
-
-class ChangeChordRestSize : public UndoCommand {
-      ChordRest* cr;
-      bool small;
-      void flip();
-
-   public:
-      ChangeChordRestSize(ChordRest*, bool small);
-      UNDO_NAME("ChangeChordRestSize")
-      };
-
-//---------------------------------------------------------
-//   ChangeChordNoStem
-//---------------------------------------------------------
-
-class ChangeChordNoStem : public UndoCommand {
-      Chord* chord;
-      bool noStem;
-      void flip();
-
-   public:
-      ChangeChordNoStem(Chord*, bool noStem);
-      UNDO_NAME("ChangeChordNoStem")
-      };
-
-//---------------------------------------------------------
-//   ChangeEndBarLineType
-//---------------------------------------------------------
-
-class ChangeEndBarLineType : public UndoCommand {
-      Measure* measure;
-      BarLineType subtype;
-      bool endBarLineGenerated;
-      void flip();
-
-   public:
-      ChangeEndBarLineType(Measure*, BarLineType subtype);
-      UNDO_NAME("ChangeEndBarLineType")
-      };
-
-//---------------------------------------------------------
-//   ChangeBarLineSpan
-//---------------------------------------------------------
-
-class ChangeBarLineSpan : public UndoCommand {
-      Staff* staff;
-      int span;
-      int spanFrom;
-      int spanTo;
-      void flip();
-
-   public:
-      ChangeBarLineSpan(Staff*, int span, int spanFrom, int spanTo);
-      UNDO_NAME("ChangeBarLineSpan")
-      };
-
-//---------------------------------------------------------
-//   ChangeSingleBarLineSpan
-//---------------------------------------------------------
-
-class ChangeSingleBarLineSpan : public UndoCommand {
-      BarLine* barLine;
-      int span;
-      int spanFrom;
-      int spanTo;
-      void flip();
-
-   public:
-      ChangeSingleBarLineSpan(BarLine* barLine, int span, int spanFrom, int spanTo);
-      UNDO_NAME("ChangeSingleBarLineSpan")
-      };
-
-//---------------------------------------------------------
-//   SigInsertTime
-//---------------------------------------------------------
-
-class SigInsertTime : public UndoCommand {
-      Score* score;
-      int tick;
-      int len;
-      void flip();
-
-   public:
-      SigInsertTime(Score*, int tick, int len);
-      UNDO_NAME("SigInsertTime")
       };
 
 //---------------------------------------------------------
@@ -488,7 +401,7 @@ class SigInsertTime : public UndoCommand {
 class TransposeHarmony : public UndoCommand {
       Harmony* harmony;
       int rootTpc, baseTpc;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       TransposeHarmony(Harmony*, int rootTpc, int baseTpc);
@@ -505,10 +418,30 @@ class ExchangeVoice : public UndoCommand {
       int staff;
 
    public:
-      ExchangeVoice(Measure*, int val1, int val2, int staff);
-      virtual void undo();
-      virtual void redo();
+      ExchangeVoice(Measure* ,int val1, int val2, int staff);
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("ExchangeVoice")
+      };
+
+//---------------------------------------------------------
+//   CloneVoice
+//---------------------------------------------------------
+
+class CloneVoice : public UndoCommand {
+      Segment* sf;
+      Fraction lTick;
+      Segment* d;             //Destination
+      int strack, dtrack;
+      int otrack;
+      bool linked;
+      bool first = true;      //first redo
+
+   public:
+      CloneVoice(Segment* sf, const Fraction& lTick, Segment* d, int strack, int dtrack, int otrack, bool linked = true);
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
+      UNDO_NAME("CloneVoice")
       };
 
 //---------------------------------------------------------
@@ -517,12 +450,12 @@ class ExchangeVoice : public UndoCommand {
 
 class ChangeInstrumentShort : public UndoCommand {
       Part* part;
-      int tick;
+      Fraction tick;
       QList<StaffName> text;
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeInstrumentShort(int, Part*, QList<StaffName>);
+      ChangeInstrumentShort(const Fraction&, Part*, QList<StaffName>);
       UNDO_NAME("ChangeInstrumentShort")
       };
 
@@ -532,42 +465,14 @@ class ChangeInstrumentShort : public UndoCommand {
 
 class ChangeInstrumentLong : public UndoCommand {
       Part* part;
-      int tick;
+      Fraction tick;
       QList<StaffName> text;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       const QList<StaffName>& longNames() const;
-      ChangeInstrumentLong(int, Part*, QList<StaffName>);
+      ChangeInstrumentLong(const Fraction&, Part*, QList<StaffName>);
       UNDO_NAME("ChangeInstrumentLong")
-      };
-
-//---------------------------------------------------------
-//   ChangeChordRestLen
-//---------------------------------------------------------
-
-class ChangeChordRestLen : public UndoCommand {
-      ChordRest* cr;
-      TDuration d;
-      void flip();
-
-   public:
-      ChangeChordRestLen(ChordRest*, const TDuration& d);
-      UNDO_NAME("ChangeChordRestLen")
-      };
-
-//---------------------------------------------------------
-//   ChangeChordRestDuration
-//---------------------------------------------------------
-
-class ChangeChordRestDuration : public UndoCommand {
-      ChordRest* cr;
-      Fraction f;
-      void flip();
-
-   public:
-      ChangeChordRestDuration(ChordRest*, const Fraction& f);
-      UNDO_NAME("ChangeChordRestDuration")
       };
 
 //---------------------------------------------------------
@@ -577,7 +482,7 @@ class ChangeChordRestDuration : public UndoCommand {
 class MoveElement : public UndoCommand {
       Element* element;
       QPointF offset;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       MoveElement(Element*, const QPointF&);
@@ -585,18 +490,17 @@ class MoveElement : public UndoCommand {
       };
 
 //---------------------------------------------------------
-//   ChangeBracketSpan
+//   ChangeBracketType
 //---------------------------------------------------------
 
-class ChangeBracketSpan : public UndoCommand {
-      Staff* staff;
-      int column;
-      int span;
-      void flip();
+class ChangeBracketType : public UndoCommand {
+      Bracket* bracket;
+      BracketType type;
+      void flip(EditData*) override;
 
    public:
-      ChangeBracketSpan(Staff*, int column, int span);
-      UNDO_NAME("ChangeBracketSpan")
+      ChangeBracketType(Bracket*, BracketType type);
+      UNDO_NAME("ChangeBracketType")
       };
 
 //---------------------------------------------------------
@@ -607,14 +511,14 @@ class AddElement : public UndoCommand {
       Element* element;
 
       void endUndoRedo(bool) const;
+      void undo(EditData*) override;
+      void redo(EditData*) override;
 
    public:
       AddElement(Element*);
-      virtual void undo();
-      virtual void redo();
-#ifdef DEBUG_UNDO
-      virtual const char* name() const;
-#endif
+      Element* getElement() const { return element; }
+      virtual void cleanup(bool);
+      virtual const char* name() const override;
       };
 
 //---------------------------------------------------------
@@ -626,25 +530,10 @@ class RemoveElement : public UndoCommand {
 
    public:
       RemoveElement(Element*);
-      virtual void undo();
-      virtual void redo();
-#ifdef DEBUG_UNDO
-      virtual const char* name() const;
-#endif
-      };
-
-//---------------------------------------------------------
-//   ChangeConcertPitch
-//---------------------------------------------------------
-
-class ChangeConcertPitch : public UndoCommand {
-      Score* score;
-      bool val;
-      void flip();
-
-   public:
-      ChangeConcertPitch(Score* s, bool val);
-      UNDO_NAME("ChangeConcertPitch")
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
+      virtual void cleanup(bool);
+      virtual const char* name() const override;
       };
 
 //---------------------------------------------------------
@@ -654,14 +543,14 @@ class ChangeConcertPitch : public UndoCommand {
 class EditText : public UndoCommand {
       Text* text;
       QString oldText;
-      int undoLevel;
+      //int undoLevel;
 
       void undoRedo();
 
    public:
-      EditText(Text* t, const QString& ot, int l) : text(t), oldText(ot), undoLevel(l) {}
-      virtual void undo();
-      virtual void redo();
+      EditText(Text* t, const QString& ot, int /*l*/) : text(t), oldText(ot)/*, undoLevel(l)*/ {}
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("EditText")
       };
 
@@ -670,35 +559,32 @@ class EditText : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangePatch : public UndoCommand {
+      Score* score;
       Channel* channel;
       MidiPatch patch;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangePatch(Channel* c, const MidiPatch* pt)
-         : channel(c), patch(*pt) {}
-      UNDO_NAME("ChangePitch")
+      ChangePatch(Score* s, Channel* c, const MidiPatch* pt)
+         : score(s), channel(c), patch(*pt) {}
+      UNDO_NAME("ChangePatch")
       };
 
 //---------------------------------------------------------
-//   ChangePageFormat
+//   SetUserBankController
 //---------------------------------------------------------
 
-class ChangePageFormat : public UndoCommand {
-      Score* score;
-      PageFormat* pf;
-      qreal spatium;
-      int pageOffset;
+class SetUserBankController : public UndoCommand {
+      Channel* channel;
+      bool val;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangePageFormat(Score*, PageFormat*, qreal sp, int po);
-      ~ChangePageFormat();
-      virtual void undo() { flip(); }
-      virtual void redo() { flip(); }
-      UNDO_NAME("ChangePageFormat")
+      SetUserBankController(Channel* c, bool v)
+         : channel(c), val(v) {}
+      UNDO_NAME("SetUserBankController")
       };
 
 //---------------------------------------------------------
@@ -706,20 +592,20 @@ class ChangePageFormat : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeStaff : public UndoCommand {
-      Staff* staff;
-      bool   small;
-      bool   invisible;
-      qreal  userDist;
-      QColor color;
-      bool   neverHide;
-      bool   showIfEmpty;
-      qreal  mag;
+      Staff*   staff;
+      bool     invisible;
+      ClefTypeList clefType;
+      qreal    userDist;
+      Staff::HideMode hideMode;
+      bool     showIfEmpty;
+      bool     cutaway;
+      bool     hideSystemBarLine;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeStaff(Staff*, bool small, bool invisible, qreal userDist, QColor _color, bool _neverHide,
-         bool _showIfEmpty, qreal _mag);
+      ChangeStaff(Staff*, bool invisible, ClefTypeList _clefType, qreal userDist, Staff::HideMode _hideMode,
+         bool _showIfEmpty, bool _cutaway, bool hide);
       UNDO_NAME("ChangeStaff")
       };
 
@@ -731,7 +617,7 @@ class ChangeStaffType : public UndoCommand {
       Staff*       staff;
       StaffType    staffType;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeStaffType(Staff* s, const StaffType& t) : staff(s), staffType(t) {}
@@ -744,75 +630,14 @@ class ChangeStaffType : public UndoCommand {
 
 class ChangePart : public UndoCommand {
       Part* part;
-      Instrument instrument;
+      Instrument* instrument;
       QString partName;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangePart(Part*, const Instrument&, const QString& name);
+      ChangePart(Part*, Instrument*, const QString& name);
       UNDO_NAME("ChangePart")
-      };
-
-//---------------------------------------------------------
-//   ChangePartProperty
-//---------------------------------------------------------
-
-class ChangePartProperty : public UndoCommand {
-      Part* part;
-      int id;
-      QVariant property;
-
-      void flip();
-
-   public:
-      ChangePartProperty(Part* e, int i, const QVariant& v)
-         : part(e), id(i), property(v) {}
-      UNDO_NAME("ChangePartProperty")
-      };
-
-
-//---------------------------------------------------------
-//   ChangeTextStyle
-//---------------------------------------------------------
-
-class ChangeTextStyle : public UndoCommand {
-      Score* score;
-      TextStyle style;
-      void flip();
-
-   public:
-      ChangeTextStyle(Score*, const TextStyle& style);
-      UNDO_NAME("ChangeTextStyle")
-      };
-
-//---------------------------------------------------------
-//   AddTextStyle
-//---------------------------------------------------------
-
-class AddTextStyle : public UndoCommand {
-      Score* score;
-      TextStyle style;
-
-   public:
-      AddTextStyle(Score* s, const TextStyle& st) : score(s), style(st) {}
-      virtual void undo();
-      virtual void redo();
-      UNDO_NAME("AddTextStyle")
-      };
-
-//---------------------------------------------------------
-//   ChangeStretch
-//---------------------------------------------------------
-
-class ChangeStretch : public UndoCommand {
-      Measure* measure;
-      qreal stretch;
-      void flip();
-
-   public:
-      ChangeStretch(Measure*, qreal);
-      UNDO_NAME("ChangeStretch")
       };
 
 //---------------------------------------------------------
@@ -822,7 +647,7 @@ class ChangeStretch : public UndoCommand {
 class ChangeStyle : public UndoCommand {
       Score* score;
       MStyle style;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeStyle(Score*, const MStyle&);
@@ -835,14 +660,29 @@ class ChangeStyle : public UndoCommand {
 
 class ChangeStyleVal : public UndoCommand {
       Score* score;
-      StyleIdx idx;
+      Sid idx;
       QVariant value;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeStyleVal(Score* s, StyleIdx i, const QVariant& v) : score(s), idx(i), value(v) {}
+      ChangeStyleVal(Score* s, Sid i, const QVariant& v) : score(s), idx(i), value(v) {}
       UNDO_NAME("ChangeStyleVal")
+      };
+
+//---------------------------------------------------------
+//   ChangePageNumberOffset
+//---------------------------------------------------------
+
+class ChangePageNumberOffset : public UndoCommand {
+      Score* score;
+      int pageOffset;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangePageNumberOffset(Score* s, int po) : score(s), pageOffset(po) {}
+      UNDO_NAME("ChangePageNumberOffset")
       };
 
 //---------------------------------------------------------
@@ -850,12 +690,12 @@ class ChangeStyleVal : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeChordStaffMove : public UndoCommand {
-      Chord* chord;
+      ChordRest* chordRest;
       int staffMove;
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeChordStaffMove(Chord*, int);
+      ChangeChordStaffMove(ChordRest* cr, int);
       UNDO_NAME("ChangeChordStaffMove")
       };
 
@@ -867,7 +707,7 @@ class ChangeVelocity : public UndoCommand {
       Note* note;
       Note::ValueType veloType;
       int veloOffset;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeVelocity(Note*, Note::ValueType, int);
@@ -879,49 +719,47 @@ class ChangeVelocity : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeMStaffProperties : public UndoCommand {
-      MStaff* mstaff;
+      Measure* measure;
+      int staffIdx;
       bool visible;
       bool slashStyle;
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeMStaffProperties(MStaff*, bool visible, bool slashStyle);
+      ChangeMStaffProperties(Measure*, int staffIdx, bool visible, bool slashStyle);
       UNDO_NAME("ChangeMStaffProperties")
       };
 
 //---------------------------------------------------------
-//   ChangeTimesig
+//   InsertRemoveMeasures
 //---------------------------------------------------------
 
-class ChangeTimesig : public UndoCommand {
-      TimeSig* timesig;
-      bool showCourtesy;
-      Fraction sig;
-      Fraction stretch;
-      TimeSigType subtype;
-      QString numeratorString;
-      QString denominatorString;
+class InsertRemoveMeasures : public UndoCommand {
+      MeasureBase* fm;
+      MeasureBase* lm;
 
-      void flip();
+      static std::vector<Clef*> getCourtesyClefs(Measure* m);
+
+   protected:
+      void removeMeasures();
+      void insertMeasures();
 
    public:
-      ChangeTimesig(TimeSig* _timesig, bool sc, const Fraction&,
-         const Fraction&, QString, QString, TimeSigType subtype);
-      UNDO_NAME("ChangeTimesig")
+      InsertRemoveMeasures(MeasureBase* _fm, MeasureBase* _lm) : fm(_fm), lm(_lm) {}
+      virtual void undo(EditData*) override = 0;
+      virtual void redo(EditData*) override = 0;
       };
 
 //---------------------------------------------------------
 //   RemoveMeasures
 //---------------------------------------------------------
 
-class RemoveMeasures : public UndoCommand {
-      Measure* fm;
-      Measure* lm;
+class RemoveMeasures : public InsertRemoveMeasures {
 
    public:
-      RemoveMeasures(Measure*, Measure*);
-      virtual void undo();
-      virtual void redo();
+      RemoveMeasures(MeasureBase* m1, MeasureBase* m2) : InsertRemoveMeasures(m1, m2) {}
+      virtual void undo(EditData*) override { insertMeasures(); }
+      virtual void redo(EditData*) override { removeMeasures(); }
       UNDO_NAME("RemoveMeasures")
       };
 
@@ -929,14 +767,12 @@ class RemoveMeasures : public UndoCommand {
 //   InsertMeasures
 //---------------------------------------------------------
 
-class InsertMeasures : public UndoCommand {
-      Measure* fm;
-      Measure* lm;
+class InsertMeasures : public InsertRemoveMeasures {
 
    public:
-      InsertMeasures(Measure* m1, Measure* m2) : fm(m1), lm(m2) {}
-      virtual void undo();
-      virtual void redo();
+      InsertMeasures(MeasureBase* m1, MeasureBase* m2) : InsertRemoveMeasures(m1, m2) {}
+      virtual void redo(EditData*) override { insertMeasures(); }
+      virtual void undo(EditData*) override { removeMeasures(); }
       UNDO_NAME("InsertMeasures")
       };
 
@@ -950,7 +786,7 @@ class ChangeImage : public UndoCommand {
       bool autoScale;
       int z;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeImage(Image* i, bool l, bool a, int _z)
@@ -959,31 +795,16 @@ class ChangeImage : public UndoCommand {
       };
 
 //---------------------------------------------------------
-//   ChangeDuration
-//---------------------------------------------------------
-
-class ChangeDuration : public UndoCommand {
-      ChordRest* cr;
-      Fraction d;
-
-      void flip();
-
-   public:
-      ChangeDuration(ChordRest* _cr, Fraction _d) : cr(_cr), d(_d) {}
-      UNDO_NAME("ChangeDuration")
-      };
-
-//---------------------------------------------------------
 //   AddExcerpt
 //---------------------------------------------------------
 
 class AddExcerpt : public UndoCommand {
-      Score* score;
+      Excerpt* excerpt;
 
    public:
-      AddExcerpt(Score* s) : score(s) {}
-      virtual void undo();
-      virtual void redo();
+      AddExcerpt(Excerpt* ex) : excerpt(ex) {}
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("AddExcerpt")
       };
 
@@ -992,13 +813,44 @@ class AddExcerpt : public UndoCommand {
 //---------------------------------------------------------
 
 class RemoveExcerpt : public UndoCommand {
-      Score* score;
+      Excerpt* excerpt;
 
    public:
-      RemoveExcerpt(Score* s) : score(s) {}
-      virtual void undo();
-      virtual void redo();
+      RemoveExcerpt(Excerpt* ex) : excerpt(ex) {}
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
       UNDO_NAME("RemoveExcerpt")
+      };
+
+//---------------------------------------------------------
+//   SwapExcerpt
+//---------------------------------------------------------
+
+class SwapExcerpt : public UndoCommand {
+      MasterScore* score;
+      int pos1;
+      int pos2;
+
+      void flip(EditData*) override;
+
+   public:
+      SwapExcerpt(MasterScore* s, int p1, int p2) : score(s), pos1(p1), pos2(p2) {}
+      UNDO_NAME("SwapExcerpt")
+      };
+
+//---------------------------------------------------------
+//   ChangeExcerptTitle
+//---------------------------------------------------------
+
+class ChangeExcerptTitle : public UndoCommand {
+      Excerpt* excerpt;
+      QString title;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangeExcerptTitle(Excerpt* x, const QString& t) : excerpt(x), title(t) {}
+      UNDO_NAME("ChangeExcerptTitle")
       };
 
 //---------------------------------------------------------
@@ -1009,7 +861,7 @@ class ChangeBend : public UndoCommand {
       Bend* bend;
       QList<PitchValue> points;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeBend(Bend* b, QList<PitchValue> p) : bend(b), points(p) {}
@@ -1024,7 +876,7 @@ class ChangeTremoloBar : public UndoCommand {
       TremoloBar* bend;
       QList<PitchValue> points;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeTremoloBar(TremoloBar* b, QList<PitchValue> p) : bend(b), points(p) {}
@@ -1036,52 +888,33 @@ class ChangeTremoloBar : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeNoteEvents : public UndoCommand {
-      Chord* chord;
+      //Chord* chord;
       QList<NoteEvent*> events;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeNoteEvents(Chord* n, const QList<NoteEvent*>& l) : chord(n), events(l) {}
+      ChangeNoteEvents(Chord* /*n*/, const QList<NoteEvent*>& l) : /*chord(n),*/ events(l) {}
       UNDO_NAME("ChangeNoteEvents")
       };
 
 //---------------------------------------------------------
 //   ChangeInstrument
+//    change instrument in an InstrumentChange element
 //---------------------------------------------------------
 
 class ChangeInstrument : public UndoCommand {
       InstrumentChange* is;
-      Instrument instrument;
+      Instrument* instrument;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeInstrument(InstrumentChange* _is, const Instrument& i) : is(_is), instrument(i) {}
+      ChangeInstrument(InstrumentChange* _is, Instrument* i) : is(_is), instrument(i) {}
       UNDO_NAME("ChangeInstrument")
       };
 
 extern void updateNoteLines(Segment*, int track);
-
-//---------------------------------------------------------
-//   ChangeBoxProperties
-//---------------------------------------------------------
-
-class ChangeBoxProperties : public UndoCommand {
-      Box* _box;
-
-      qreal _marginLeft, _marginTop, _marginRight, _marginBottom;
-      Spatium _height, _width;
-      qreal _topGap, _bottomGap;
-
-      void flip();
-
-   public:
-      ChangeBoxProperties(Box *, qreal, qreal, qreal, qreal,
-         Spatium, Spatium,
-         qreal, qreal);
-      UNDO_NAME("ChangeBoxProperties")
-      };
 
 //---------------------------------------------------------
 //   SwapCR
@@ -1091,7 +924,7 @@ class SwapCR : public UndoCommand {
       ChordRest* cr1;
       ChordRest* cr2;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       SwapCR(ChordRest* a, ChordRest* b) : cr1(a), cr2(b) {}
@@ -1106,7 +939,7 @@ class ChangeClefType : public UndoCommand {
       Clef* clef;
       ClefType concertClef;
       ClefType transposingClef;
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeClefType(Clef*, ClefType cl, ClefType tc);
@@ -1122,27 +955,11 @@ class MoveStaff : public UndoCommand {
       Part* part;
       int rstaff;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       MoveStaff(Staff* s, Part* p, int idx) : staff(s), part(p), rstaff(idx) {}
       UNDO_NAME("MoveStaff")
-      };
-
-//---------------------------------------------------------
-//   ChangeDurationType
-//---------------------------------------------------------
-
-class ChangeDurationType : public UndoCommand {
-      ChordRest* cr;
-      TDuration t;
-
-      void flip();
-
-   public:
-      ChangeDurationType(ChordRest* _cr, TDuration _t)
-         : cr(_cr), t(_t) {}
-      UNDO_NAME("ChangeDurationType")
       };
 
 //---------------------------------------------------------
@@ -1153,7 +970,7 @@ class ChangeStaffUserDist : public UndoCommand {
       Staff* staff;
       qreal dist;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeStaffUserDist(Staff* s, qreal d)
@@ -1166,18 +983,37 @@ class ChangeStaffUserDist : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeProperty : public UndoCommand {
-      Element* element;
-      P_ID id;
+   protected:
+      ScoreElement* element;
+      Pid id;
       QVariant property;
-      PropertyStyle propertyStyle;
+      PropertyFlags flags;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
-      ChangeProperty(Element* e, P_ID i, const QVariant& v, PropertyStyle ps = PropertyStyle::NOSTYLE)
-         : element(e), id(i), property(v), propertyStyle(ps) {}
-      P_ID getId() const  { return id; }
+      ChangeProperty(ScoreElement* e, Pid i, const QVariant& v, PropertyFlags ps = PropertyFlags::NOSTYLE)
+         : element(e), id(i), property(v), flags(ps) {}
+      Pid getId() const  { return id; }
+      ScoreElement* getElement() const { return element; }
+      QVariant data() const { return property; }
       UNDO_NAME("ChangeProperty")
+      };
+
+//---------------------------------------------------------
+//   ChangeBracketProperty
+//---------------------------------------------------------
+
+class ChangeBracketProperty : public ChangeProperty {
+      Staff* staff;
+      int level;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangeBracketProperty(Staff* s, int l, Pid i, const QVariant& v, PropertyFlags ps = PropertyFlags::NOSTYLE)
+         : ChangeProperty(nullptr, i, v, ps), staff(s), level(l) {}
+      UNDO_NAME("ChangeBracketProperty")
       };
 
 //---------------------------------------------------------
@@ -1189,7 +1025,7 @@ class ChangeMetaText : public UndoCommand {
       QString id;
       QString text;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeMetaText(Score* s, const QString& i, const QString& t) : score(s), id(i), text(t) {}
@@ -1205,7 +1041,7 @@ class ChangeEventList : public UndoCommand {
       QList<NoteEventList> events;
       PlayEventType eventListType;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeEventList(Chord* c, const QList<NoteEventList> l);
@@ -1220,7 +1056,7 @@ class ChangeSynthesizerState : public UndoCommand {
       Score* score;
       SynthesizerState state;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeSynthesizerState(Score* s, const SynthesizerState& st) : score(s), state(st) {}
@@ -1237,8 +1073,8 @@ class RemoveBracket : public UndoCommand {
       BracketType type;
       int span;
 
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
 
    public:
       RemoveBracket(Staff* s, int l, BracketType t, int sp) : staff(s), level(l), type(t), span(sp) {}
@@ -1255,8 +1091,8 @@ class AddBracket : public UndoCommand {
       BracketType type;
       int span;
 
-      virtual void undo();
-      virtual void redo();
+      virtual void undo(EditData*) override;
+      virtual void redo(EditData*) override;
 
    public:
       AddBracket(Staff* s, int l, BracketType t, int sp) : staff(s), level(l), type(t), span(sp) {}
@@ -1272,7 +1108,7 @@ class ChangeSpannerElements : public UndoCommand {
       Element* startElement;
       Element* endElement;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeSpannerElements(Spanner* s, Element* se, Element* ee)
@@ -1289,7 +1125,7 @@ class ChangeParent : public UndoCommand {
       Element* parent;
       int staffIdx;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeParent(Element* e, Element* p, int si) : element(e), parent(p), staffIdx(si) {}
@@ -1304,7 +1140,7 @@ class ChangeMMRest : public UndoCommand {
       Measure* m;
       Measure* mmrest;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeMMRest(Measure* _m, Measure* _mmr) : m(_m), mmrest(_mmr) {}
@@ -1317,16 +1153,33 @@ class ChangeMMRest : public UndoCommand {
 
 class InsertTime : public UndoCommand {
       Score* score;
-      int tick;
-      int len;
+      Fraction tick;
+      Fraction len;
 
-      void redo();
-      void undo();
+      void redo(EditData*) override;
+      void undo(EditData*) override;
 
    public:
-      InsertTime(Score* _score, int _tick, int _len)
+      InsertTime(Score* _score, const Fraction& _tick, const Fraction& _len)
          : score(_score), tick(_tick), len(_len) {}
       UNDO_NAME("InsertTime")
+      };
+
+//---------------------------------------------------------
+//   InsertTimeUnmanagedSpanner
+//---------------------------------------------------------
+
+class InsertTimeUnmanagedSpanner : public UndoCommand {
+      Score* score;
+      Fraction tick;
+      Fraction len;
+
+      void flip(EditData*) override;
+
+   public:
+      InsertTimeUnmanagedSpanner(Score* s, const Fraction& _tick, const Fraction& _len)
+         : score(s), tick(_tick), len(_len) {}
+      UNDO_NAME("InsertTimeUnmanagedSpanner")
       };
 
 //---------------------------------------------------------
@@ -1338,7 +1191,7 @@ class ChangeNoteEvent : public UndoCommand {
       NoteEvent* oldEvent;
       NoteEvent newEvent;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeNoteEvent(Note* n, NoteEvent* oe, const NoteEvent& ne)
@@ -1347,17 +1200,33 @@ class ChangeNoteEvent : public UndoCommand {
       };
 
 //---------------------------------------------------------
+//   LinkUnlink
+//---------------------------------------------------------
+
+class LinkUnlink : public UndoCommand {
+      bool mustDelete  { false };
+
+   protected:
+      LinkedElements* le;
+      ScoreElement* e;
+
+      void link();
+      void unlink();
+
+   public:
+      LinkUnlink() {}
+      ~LinkUnlink();
+      };
+
+//---------------------------------------------------------
 //   Unlink
 //---------------------------------------------------------
 
-class Unlink : public UndoCommand {
-      Element* e;
-      Element* le = 0;
-
+class Unlink : public LinkUnlink {
    public:
-      Unlink(Element* _e);
-      virtual void undo();
-      virtual void redo();
+      Unlink(ScoreElement*);
+      virtual void undo(EditData*) override { link(); }
+      virtual void redo(EditData*) override { unlink(); }
       UNDO_NAME("Unlink")
       };
 
@@ -1365,45 +1234,12 @@ class Unlink : public UndoCommand {
 //   Link
 //---------------------------------------------------------
 
-class Link : public UndoCommand {
-      Element* e1;
-      Element* e2;
-
+class Link : public LinkUnlink {
    public:
-      Link(Element* _e1, Element* _e2) : e1(_e1), e2(_e2) {}
-      virtual void undo();
-      virtual void redo();
+      Link(ScoreElement*, ScoreElement*);
+      virtual void undo(EditData*) override { unlink(); }
+      virtual void redo(EditData*) override { link();   }
       UNDO_NAME("Link")
-      };
-
-//---------------------------------------------------------
-//   LinkStaff
-//---------------------------------------------------------
-
-class LinkStaff : public UndoCommand {
-      Staff* s1;
-      Staff* s2;
-
-   public:
-      LinkStaff(Staff* _s1, Staff* _s2) : s1(_s1), s2(_s2) {}
-      virtual void undo();
-      virtual void redo();
-      UNDO_NAME("LinkStaff")
-      };
-
-//---------------------------------------------------------
-//   UnlinkStaff
-//---------------------------------------------------------
-
-class UnlinkStaff : public UndoCommand {
-      Staff* s1;
-      Staff* s2;
-
-   public:
-      UnlinkStaff(Staff* _s1, Staff* _s2) : s1(_s1), s2(_s2) {}
-      virtual void undo();
-      virtual void redo();
-      UNDO_NAME("UnlinkStaff")
       };
 
 //---------------------------------------------------------
@@ -1415,14 +1251,153 @@ class ChangeStartEndSpanner : public UndoCommand {
       Element* start;
       Element* end;
 
-      void flip();
+      void flip(EditData*) override;
 
    public:
       ChangeStartEndSpanner(Spanner* sp, Element*s, Element*e) : spanner(sp), start(s), end(e) {}
       UNDO_NAME("ChangeStartEndSpanner")
       };
 
+//---------------------------------------------------------
+//   ChangeMetaTags
+//---------------------------------------------------------
+
+class ChangeMetaTags : public UndoCommand {
+      Score* score;
+      QMap<QString,QString> metaTags;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangeMetaTags(Score* s, const QMap<QString,QString>& m) : score(s), metaTags(m) {}
+      UNDO_NAME("ChangeMetaTags")
+      };
+
+//---------------------------------------------------------
+//   ChangeDrumset
+//---------------------------------------------------------
+
+class ChangeDrumset : public UndoCommand {
+      Instrument* instrument;
+      Drumset drumset;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangeDrumset(Instrument* i, const Drumset* d) : instrument(i), drumset(*d) {}
+      UNDO_NAME("ChangeDrumset")
+      };
+
+//---------------------------------------------------------
+//   ChangeGap
+//---------------------------------------------------------
+
+class ChangeGap : public UndoCommand {
+      Rest* rest;
+      bool v;
+
+      void flip(EditData*) override;
+
+   public:
+      ChangeGap(Rest* r, bool v) : rest(r), v(v) {}
+      UNDO_NAME("ChangeGap")
+      };
+
+//---------------------------------------------------------
+//   FretDot
+//---------------------------------------------------------
+
+class FretDot : public UndoCommand {
+      FretDiagram* diagram;
+      int string;
+      int fret;
+      bool add;
+      FretDotType dtype;
+      FretUndoData undoData;
+
+      void redo(EditData*) override;
+      void undo(EditData*) override;
+
+   public:
+      FretDot(FretDiagram* d, int _string, int _fret, bool _add = false, FretDotType _dtype = FretDotType::NORMAL)
+         : diagram(d), string(_string), fret(_fret), add(_add), dtype(_dtype) {}
+      UNDO_NAME("FretDot")
+      };
+
+//---------------------------------------------------------
+//   FretMarker
+//---------------------------------------------------------
+
+class FretMarker : public UndoCommand {
+      FretDiagram* diagram;
+      int string;
+      FretMarkerType mtype;
+      FretUndoData undoData;
+
+      void redo(EditData*) override;
+      void undo(EditData*) override;
+
+   public:
+      FretMarker(FretDiagram* d, int _string, FretMarkerType _mtype) : diagram(d), string(_string), mtype(_mtype) {}
+      UNDO_NAME("FretMarker")
+      };
+
+//---------------------------------------------------------
+//   FretBarre
+//---------------------------------------------------------
+
+class FretBarre : public UndoCommand {
+      FretDiagram* diagram;
+      int string;
+      int fret;
+      bool add;
+      FretUndoData undoData;
+
+      void redo(EditData*) override;
+      void undo(EditData*) override;
+
+   public:
+      FretBarre(FretDiagram* d, int _string, int _fret, bool _add = false) : diagram(d), string(_string), fret(_fret), add(_add) {}
+      UNDO_NAME("FretBarre")
+      };
+
+//---------------------------------------------------------
+//   FretClear
+//---------------------------------------------------------
+
+class FretClear : public UndoCommand {
+      FretDiagram* diagram;
+      FretUndoData undoData;
+
+      void redo(EditData*) override;
+      void undo(EditData*) override;
+
+   public:
+      FretClear(FretDiagram* d) : diagram(d) {}
+      UNDO_NAME("FretClear")
+      };
+
+//---------------------------------------------------------
+//   MoveTremolo
+//---------------------------------------------------------
+
+class MoveTremolo : public UndoCommand {
+      Score* score;
+      Fraction chord1Tick;
+      Fraction chord2Tick;
+      Tremolo* trem;
+      int track;
+
+      Chord* oldC1;
+      Chord* oldC2;
+
+      void undo(EditData*) override;
+      void redo(EditData*) override;
+
+   public:
+      MoveTremolo(Score* s, Fraction c1, Fraction c2, Tremolo* tr, int t) : score(s), chord1Tick(c1), chord2Tick(c2), trem(tr), track(t) {}
+      UNDO_NAME("MoveTremolo")
+      };
 
 }     // namespace Ms
 #endif
-

@@ -1,7 +1,6 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: musescore.cpp 4961 2011-11-11 16:24:17Z lasconic $
 //
 //  Copyright (C) 2002-2011 Werner Schweer and others
 //
@@ -30,15 +29,16 @@
 #include "libmscore/note.h"
 #include "libmscore/undo.h"
 #include "mixer.h"
+#include "parteditbase.h"
 #include "scoreview.h"
 #include "playpanel.h"
 #include "preferences.h"
 #include "seq.h"
 #include "synthesizer/msynthesizer.h"
+#include "shortcut.h"
 
 #ifdef OSC
 #include "ofqf/qoscserver.h"
-static int oscPort = 5282;
 #endif
 
 namespace Ms {
@@ -62,13 +62,9 @@ void MuseScore::initOsc()
 
 void MuseScore::initOsc()
       {
-      if (!preferences.useOsc)
+      if (!preferences.getBool(PREF_IO_OSC_USEREMOTECONTROL))
             return;
-      int port;
-      if (oscPort)
-            port = oscPort;
-      else
-            port = preferences.oscPort;
+      int port = preferences.getInt(PREF_IO_OSC_PORTNUMBER);
       QOscServer* osc = new QOscServer(port, qApp);
 
       PathObject* oo = new PathObject( "/addpitch", QVariant::Int, osc);
@@ -107,7 +103,7 @@ void MuseScore::initOsc()
       QObject::connect(oo, SIGNAL(data(QVariantList)), SLOT(oscColorNote(QVariantList)));
 
       for (const Shortcut* s : Shortcut::shortcuts()) {
-            oo = new PathObject( QString("/actions/%1").arg(s->key()), QVariant::Invalid, osc);
+            oo = new PathObject( QString("/actions/%1").arg(s->key().data()), QVariant::Invalid, osc);
             QObject::connect(oo, SIGNAL(data()), SLOT(oscAction()));
             }
       }
@@ -147,7 +143,25 @@ void MuseScore::oscSelectMeasure(int m)
       qDebug("SelectMeasure %d", m);
       if (cv == 0)
             return;
-      cv->selectMeasure(m);
+//      cv->selectMeasure(m);
+      Score* score = cv->score();
+      int i = 0;
+      for (Measure* measure = score->firstMeasure(); measure; measure = measure->nextMeasure()) {
+            if (++i < m)
+                  continue;
+            score->selection().setState(SelState::RANGE);
+            score->selection().setStartSegment(measure->first());
+            score->selection().setEndSegment(measure->last());
+            score->selection().setStaffStart(0);
+            score->selection().setStaffEnd(score->nstaves());
+            score->selection().updateSelectedElements();
+            score->selection().setState(SelState::RANGE);
+            score->addRefresh(measure->canvasBoundingRect());
+            cv->adjustCanvasPosition(measure, true);
+            score->setUpdateAll();
+            score->update();
+            break;
+            }
       }
 
 
@@ -171,15 +185,15 @@ void MuseScore::oscCloseAll()
 
 void MuseScore::oscTempo(int val)
       {
-      if (val < 0)
-            val = 0;
-      if (val > 127)
-            val = 127;
-      val = (val * 240) / 128;
+      if (val < 10)
+            val = 10;
+      if (val > 300)
+            val = 300;
+      qreal t = val * .01;
       if (playPanel)
-            playPanel->setRelTempo(val);
+            playPanel->setRelTempo(t);
       if (seq)
-            seq->setRelTempo(double(val));
+            seq->setRelTempo(double(t));
       }
 
 //---------------------------------------------------------
@@ -229,10 +243,10 @@ void MuseScore::oscColorNote(QVariantList list)
                   noteColor = color;
             }
 
-      Measure* measure = cs->tick2measure(tick);
+      Measure* measure = cs->tick2measure(Fraction::fromTicks(tick));
       if(!measure)
             return;
-      Segment* s = measure->findSegment(Segment::Type::ChordRest, tick);
+      Segment* s = measure->findSegment(SegmentType::ChordRest, Fraction::fromTicks(tick));
       if (!s)
             return;
       //get all chords in segment...
@@ -241,15 +255,13 @@ void MuseScore::oscColorNote(QVariantList list)
             Element* e = s->element(i);
             if (e && e->isChordRest()) {
                   ChordRest* cr = static_cast<ChordRest*>(e);
-                  if(cr->type() == Element::Type::CHORD) {
+                  if (cr->type() == ElementType::CHORD) {
                         Chord* chord = static_cast<Chord*>(cr);
-                        for (int idx = 0; idx < chord->notes().length(); idx++) {
-                              Note* note = chord->notes()[idx];
+                        for (Note* note : chord->notes()) {
                               if (note->pitch() == pitch) {
                                     cs->startCmd();
-                                    cs->undo(new ChangeProperty(note, P_ID::COLOR, noteColor));
+                                    cs->undo(new ChangeProperty(note, Pid::COLOR, noteColor));
                                     cs->endCmd();
-                                    cs->end();
                                     return;
                                     }
                               }
@@ -273,20 +285,20 @@ void MuseScore::oscVolume(int val)
 
 void MuseScore::oscVolChannel(double val)
       {
-      if(!cs)
+      if (!cs)
             return;
       PathObject* po = (PathObject*) sender();
 
       int i = po->path().mid(4).toInt() - 1;
-      QList<MidiMapping>* mms = cs->midiMapping();
-      if( i >= 0 && i < mms->size()) {
-            MidiMapping mm = mms->at(i);
-            Channel* channel = mm.articulation;
+      auto& mms = cs->masterScore()->midiMapping();
+      if( i >= 0 && i < int(mms.size())) {
+            MidiMapping& mm = mms[i];
+            Channel* channel = mm.articulation();
             int iv = lrint(val*127);
-            seq->setController(channel->channel, CTRL_VOLUME, iv);
-            channel->volume = iv;
+            seq->setController(channel->channel(), CTRL_VOLUME, iv);
+            channel->setVolume(val * 100.0);
             if (mixer)
-                  mixer->partEdit(i)->volume->setValue(iv);
+                  mixer->getPartAtIndex(i)->volume->setValue(val * 100.0);
             }
       }
 
@@ -296,20 +308,20 @@ void MuseScore::oscVolChannel(double val)
 
 void MuseScore::oscPanChannel(double val)
       {
-      if(!cs)
+      if (!cs)
             return;
       PathObject* po = (PathObject*) sender();
 
       int i = po->path().mid(4).toInt() - 1;
-      QList<MidiMapping>* mms = cs->midiMapping();
-      if( i >= 0 && i < mms->size()) {
-            MidiMapping mm = mms->at(i);
-            Channel* channel = mm.articulation;
+      auto& mms = cs->masterScore()->midiMapping();
+      if (i >= 0 && i < int(mms.size())) {
+            MidiMapping& mm = mms[i];
+            Channel* channel = mm.articulation();
             int iv = lrint((val + 1) * 64);
-            seq->setController(channel->channel, CTRL_PANPOT, iv);
-            channel->volume = iv;
+            seq->setController(channel->channel(), CTRL_PANPOT, iv);
+            channel->setPan(val * 180.0);
             if (mixer)
-                  mixer->partEdit(i)->pan->setValue(iv);
+                  mixer->getPartAtIndex(i)->pan->setValue(val * 100.0);
             }
       }
 
@@ -319,18 +331,18 @@ void MuseScore::oscPanChannel(double val)
 
 void MuseScore::oscMuteChannel(double val)
       {
-      if(!cs)
+      if (!cs)
             return;
       PathObject* po = (PathObject*) sender();
 
       int i = po->path().mid(5).toInt() - 1;
-      QList<MidiMapping>* mms = cs->midiMapping();
-      if( i >= 0 && i < mms->size()) {
-            MidiMapping mm = mms->at(i);
-            Channel* channel = mm.articulation;
-            channel->mute = (val==0.0f ? false : true);
+      auto& mms = cs->masterScore()->midiMapping();
+      if (i >= 0 && i < int(mms.size())) {
+            MidiMapping& mm = mms[i];
+            Channel* channel = mm.articulation();
+            channel->setMute(val==0.0f ? false : true);
             if (mixer)
-                  mixer->partEdit(i)->mute->setCheckState(val==0.0f ? Qt::Unchecked:Qt::Checked);
+                  mixer->getPartAtIndex(i)->mute->setChecked(channel->mute());
             }
       }
 #endif // #ifndef OSC
